@@ -1,0 +1,13 @@
+# DoDonPachi: the names of the program's routines and variables, one a line: address, kind (func, code, data, var),
+# name, and for a variable its type. Addresses are DoDonPachi's (International program).
+# Found so far by its likeness to DonPachi's engine (tools/match_code.py against DonPachi Recomp's symbols.txt).
+
+# the reset vector's code; the soft resets jump back to it (DonPachi's 03425A)
+0052EA  func  reset
+# the level 1 interrupt (the VBLANK's): sets frame_flag (DonPachi's 000622)
+000622  func  level_1_interrupt
+# clears frame_flag and spins until the interrupt sets it (DonPachi's 002EB8); its loop at 0571AC is the profile's
+# FRAME_WAIT
+05718E  func  wait_for_frame
+
+100F44  var  frame_flag     u16

@@ -1,0 +1,15 @@
+# never in the repository: the ROM set and anything made from it
+/rom/
+*.zip
+*.dat
+/src/
+/src_jpn/
+/assets/
+# builds and the translator's reports
+/build/
+/release/
+__pycache__/
+*.pyc
+*.log
+# private notes for the assistant
+/CLAUDE.md
