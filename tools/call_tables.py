@@ -244,6 +244,52 @@ def stage_routines():
 MANUAL[0x058954] = stage_routines
 MANUAL[0x058A0C] = stage_routines
 
+
+def stage_table(start, count=7):
+    """A table like STAGE_ROUTINES's: 'count' code addresses by the stage, 0 for none"""
+    @lru_cache(maxsize=None)
+    def routines():
+        image = program()
+        found = set()
+        for index in range(count):
+            target = int.from_bytes(image[start + 4 * index:start + 4 * index + 4], "big")
+            if target and not target & 1 and 0x420 <= target < rom.PROGRAM_SIZE:
+                found.add(target)
+        return frozenset(found)
+    return routines
+
+
+# two more: 05A106 "movea.l ($1a,PC,D0.w), A0" (the table at 05A122) and 05A1E6 "movea.l ($2c,PC,D0.w), A0" (at
+# 05A214), each by the stage, then "jmp (A0)" with D1 pushed (the cases come back to 05A11A, 05A1FE)
+MANUAL[0x05A118] = stage_table(0x05A122)
+MANUAL[0x05A1FC] = stage_table(0x05A214)
+# the records' routines (record_callbacks) also reached by "jmp (A0)": 051432 and 055390 "movea.l ($3c,A6), A0"
+MANUAL[0x051436] = record_callbacks
+MANUAL[0x055390] = record_callbacks
+
+
+@lru_cache(maxsize=None)
+def animation_commands():
+    """DoDonPachi's own: an interpreter's commands, each a byte offset into its handlers (053D12 "andi.w #$ff, D1",
+    053D16 "jmp (-$76,PC,D1.w)": from 053CA2), not a table of stubs. The handlers: the first, and each one after
+    another's "bra $53d32" (the loop's next command), up to the jump"""
+    from m68000 import disassembler
+    memory = disassembler.FlatMemory(program())
+    found, address = {0x053CA2}, 0x053CA2
+    while address < 0x053D12:
+        instruction = disassembler.decode(memory, address)
+        address += instruction.length
+        if instruction.mnemonic == "bra" and instruction.target == 0x053D32:
+            found.add(address)
+    return frozenset(found)
+
+
+MANUAL[0x053D16] = animation_commands
+# DoDonPachi's own: 00B3F2 "move.w ($10,A6), D0", 00B3F6 "jmp ($2,PC,D0.w)", a state of 0, 4 or 8 as DonPachi's
+# 0097A8 (which goes through 3 bra stubs); DoDonPachi has no stubs there: state 0 runs on at 00B3FA, state 4 lands on
+# 00B3FE "bne $b48a" (taken: the state is not 0), state 8 at 00B402
+MANUAL[0x00B3F6] = lambda: frozenset({0x00B3FA, 0x00B3FE, 0x00B402})
+
 # DoDonPachi's own: "movem.l D0-D7/A0-A7, -(A7)" at 03D926 and "movem.l (A7)+, D0-D7/A0-A7" at 03D936, around a call.
 # The 68000 does not load A7 from memory in a movem (A7)+ (it ends with the incremented address), so the pop leaves
 # A7 as a pop of the others would: here both have A7 taken out of their lists (15 registers pushed and popped, the
@@ -430,6 +476,48 @@ def joined_halves(statements):
     return joined
 
 
+# DoDonPachi's own: a routine that reads its caller's stack. 04E32E's one caller (04E046 "move.l D0, -(A7)", 04E048
+# "bsr $4e32e", 04E04C "move.l (A7)+, D0") saves D0 around the call, and the routine reads that copy's low bytes
+# (04E3CE "move.b ($9,A7), D0", 04E400 "add.b ($8,A7), D0", past the word it pushed itself): D0 as the routine was
+# entered. {routine: {the caller's stack offset from the routine's entry: (register, the byte of it, 0 the lowest)}}
+CALLER_STACK_READS = {0x04E32E: {6: (0, 1), 7: (0, 0)}}
+
+
+def bytes_of_words(function, widths):
+    """A byte read of a stack slot written as a word (level_1_interrupt's 0009A6 "move.w D0, -(A7)", 0009AA "move.b
+    (A7)+, D0": D0's high byte, the 68000 being big endian) reads the word's high byte; and CALLER_STACK_READS. The C
+    writer wants one size a slot ("stack slot used at 16 and 8 bits") and none of its caller's"""
+    from v60 import ir
+    entry = function.entry
+    caller = CALLER_STACK_READS.get(entry, {})
+    words = {offset for offset, sizes in widths.items() if 16 in sizes and 8 in sizes}
+    saved = {}
+
+    def change(node):
+        if isinstance(node, ir.Stack) and node.bits == 8:
+            if node.offset in words:
+                return ir.op("trunc", (ir.op("shr", (ir.Stack(node.offset, 16), ir.const(8, 8)), 16),), 8)
+            if node.offset in caller:
+                register, byte = caller[node.offset]
+                temp = saved.setdefault(register, ir.Temp(f"caller_{register}", 32))
+                return ir.op("trunc", (ir.op("shr", (temp, ir.const(8 * byte, 8)), 32),), 8)
+        return None
+    if not words and not caller:
+        return
+    for block in function.blocks.values():
+        for statement in block.statements:
+            ir.map_statement(statement, change)
+        ir.map_statement(block.end, change)
+    if saved:
+        first = function.blocks.get(function.entry) or next(iter(function.blocks.values()))
+        start = [ir.SetTemp(temp, ir.Reg(register)) for register, temp in sorted(saved.items())]
+        for statement in start:
+            statement.origin = entry
+        first.statements[:0] = start
+    for offset in words:
+        widths[offset].discard(8)
+
+
 def split_mixed_slots(function):
     """A slot the function uses at two sizes (034BB0: a word at -8 from "movem.w D6-D7, -(A7)", later a long there from
     "movem.l D7/A5, -(A7)"; 037C2E: two words, cleared with "clr.l (A7)"): the C writer wants one size a slot. In such
@@ -450,6 +538,8 @@ def split_mixed_slots(function):
             for expression in ir.statement_expressions(statement):
                 for node in ir.walk(expression):
                     note(node)
+
+    bytes_of_words(function, widths)
 
     def words_at(offset):
         return 16 in widths.get(offset, ()) or 16 in widths.get(offset + 2, ())

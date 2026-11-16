@@ -5,7 +5,8 @@ A native PC port of **DoDonPachi** (Cave, 1997), the arcade shooter, made by tra
 a model of Cave's 68000 board. It is the second game of the family, after
 [DonPachi Recomp](https://github.com/CapsLock4284/DonPachi-Recomp), and uses the same tools.
 
-**Status: early.** The translation tools are being set up for DoDonPachi's program. There is nothing to play
+**Status: early.** The whole program translates to C, builds on Cave68kSDK and runs headless: its warning screen
+and its attract-mode demo. The picture is still wrong in places and there is no sound yet. There is nothing to play
 yet.
 
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
@@ -40,7 +41,14 @@ python tools/decompile.py --check     # what does not translate yet
 python tools/decompile.py             # the C, into src/
 ```
 
-The C is made from your ROMs, so it is never committed.
+The C is made from your ROMs, so it is never committed. (A run takes a while: about an hour.)
+
+To run it headless (Linux or MSYS2; the board from `runtime/`, the C from `src/`):
+
+```sh
+sh tests/build.sh                     # tests/bin/boot, tests/bin/diag
+cd rom && ../tests/bin/boot 3000 ddonpach.zip    # pictures every 100 frames (boot_NNNNN.ppm)
+```
 
 ## Licence
 

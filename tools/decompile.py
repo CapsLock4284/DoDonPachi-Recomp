@@ -17,4 +17,45 @@ sys.path[:0] = [str(TOOLS / "core"), str(TOOLS)]
 import call_tables  # noqa: E402
 
 call_tables.install()
-runpy.run_path(str(TOOLS / "core" / "decompile.py"), run_name="__main__")
+
+# DoDonPachi has expressions nested deeper than Python's default limits allow (the C writer's simplify pass recursed
+# past 1,000 levels): the core runs in a thread with a large stack, its recursion limit raised to match
+import threading  # noqa: E402
+
+outcome = []
+
+
+def run():
+    try:
+        runpy.run_path(str(TOOLS / "core" / "decompile.py"), run_name="__main__")
+        outcome.append(0)
+    except SystemExit as stopped:
+        outcome.append(stopped.code)
+    except BaseException as error:  # noqa: BLE001 (shown, then the program ends with it)
+        import traceback
+        traceback.print_exc()
+        outcome.append(1)
+
+
+# a function the C writer cannot structure (structure.py's ValueError "block end ...") is listed with the others it
+# cannot write, as an EmitError, instead of stopping the whole run: one run shows them all
+from decompiler import emit as _emit, structure as _structure  # noqa: E402
+
+_structured = _structure.structured
+
+
+def _listed(function, *rest, **named):
+    try:
+        return _structured(function, *rest, **named)
+    except ValueError as problem:
+        raise _emit.EmitError(f"cannot structure: {problem}") from None
+
+
+_structure.structured = _listed
+
+sys.setrecursionlimit(200_000)
+threading.stack_size(1024 * 1024 * 1024)
+worker = threading.Thread(target=run)
+worker.start()
+worker.join()
+sys.exit(outcome[0] if outcome else 1)
