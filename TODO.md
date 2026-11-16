@@ -39,4 +39,15 @@
 
 ## The port
 
-- [ ] Window, controls, settings, save states, replays: DonPachi Recomp's port, carried over.
+- [x] The game in a window (ports/sdl2, DonPachi Recomp's port cut down): the picture with its video settings
+      (scaling, scanlines, the CRT look, the pixel-art scalers, rotation), the sound, keys and gamepads
+      (ddonpach.ini), the EEPROM kept, save states, fast forward, MAME's cheat files, the ROM drop window, its own
+      icon. The test mode: the service switch held 2 seconds at the title (the game ignores it on its warning screen
+      and at the reset, so F4 holds it instead of resetting).
+- [ ] The options menu: DonPachi Recomp's draws in that game's own font; DoDonPachi's text layer is 8-bit, its
+      letters elsewhere.
+- [ ] The quicker picture (DonPachi Recomp's default, a frame sooner): needs the scroll and palette the coming
+      interrupt sets, from the game's memory. For now the picture is drawn as the board shows it (arcade timing).
+- [ ] The main menu, free play, high scores, training, replays, achievements, statistics, side panels, hitbox:
+      each reads DonPachi's memory; DoDonPachi's addresses to find.
+- [ ] A release package (tools/make_release.ps1, as DonPachi Recomp's).
