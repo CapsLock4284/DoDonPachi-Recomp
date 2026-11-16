@@ -271,20 +271,38 @@ MANUAL[0x055390] = record_callbacks
 @lru_cache(maxsize=None)
 def animation_commands():
     """DoDonPachi's own: an interpreter's commands, each a byte offset into its handlers (053D12 "andi.w #$ff, D1",
-    053D16 "jmp (-$76,PC,D1.w)": from 053CA2), not a table of stubs. The handlers: the first, and each one after
-    another's "bra $53d32" (the loop's next command), up to the jump"""
+    053D16 "jmp (-$76,PC,D1.w)": from 053CA2), not a table of stubs. The handlers: the first, each one after another's
+    "bra $53d32" (the loop's next command), and the one right after the jump (053D1A), up to the loop's head at 053D32.
+    Checked against the original on MAME's 68000 (tools/cref/cref_timed DEBUG_JUMPS): in 6,000 VBLANKs of play it
+    goes to 053CA2, 053CAE, 053CBE, 053CCE, 053CD4, 053CDA, 053CEC and 053D1A (missing 053D1A, the port's objects
+    went their own way at game frame 2,392)"""
     from m68000 import disassembler
     memory = disassembler.FlatMemory(program())
     found, address = {0x053CA2}, 0x053CA2
-    while address < 0x053D12:
+    while address < 0x053D32:
         instruction = disassembler.decode(memory, address)
         address += instruction.length
-        if instruction.mnemonic == "bra" and instruction.target == 0x053D32:
+        if address >= 0x053D32:
+            break
+        if (instruction.mnemonic == "bra" and instruction.target == 0x053D32) or instruction.address == 0x053D16:
             found.add(address)
     return frozenset(found)
 
 
 MANUAL[0x053D16] = animation_commands
+
+# DoDonPachi's own: jumps through a table of bra stubs whose index also reaches the code right after the table (the
+# index masked wider than the stubs: 04F47A "moveq #$3c, D0", "and.w D4, D0", 04F47E "jmp ($c,PC,D0.w)" over 7 stubs;
+# a record of kind $1C runs on at 04F4A8, after them). The core takes a table's stubs only: these places were missing
+# and the C's switch did nothing there (the port's first difference from the original, at game frame 2,392). Found
+# with tools/cref/cref_timed DEBUG_JUMPS over 18,000 VBLANKs of play: {the jump: the code past its stubs}
+PAST_THE_STUBS = {
+    0x04F47E: 0x04F4A8,    # the records at 10CF16 (their kind $1C, 65,093 times in 18,000 VBLANKs)
+    0x04E0EA: 0x04E146,    # 04E0EA "jmp ($4e,PC,D1.w)", 3 stubs at 04E13A
+    0x053E20: 0x053E32,    # 053E20 "jmp ($4,PC,D1.w)", 3 stubs at 053E26
+}
+for _jump, _past in PAST_THE_STUBS.items():
+    MANUAL[_jump] = (lambda past: lambda: frozenset({past}))(_past)
 # DoDonPachi's own: 00B3F2 "move.w ($10,A6), D0", 00B3F6 "jmp ($2,PC,D0.w)", a state of 0, 4 or 8 as DonPachi's
 # 0097A8 (which goes through 3 bra stubs); DoDonPachi has no stubs there: state 0 runs on at 00B3FA, state 4 lands on
 # 00B3FE "bne $b48a" (taken: the state is not 0), state 8 at 00B402
@@ -481,6 +499,10 @@ def joined_halves(statements):
 # (04E3CE "move.b ($9,A7), D0", 04E400 "add.b ($8,A7), D0", past the word it pushed itself): D0 as the routine was
 # entered. {routine: {the caller's stack offset from the routine's entry: (register, the byte of it, 0 the lowest)}}
 CALLER_STACK_READS = {0x04E32E: {6: (0, 1), 7: (0, 0)}}
+# where the register is kept from the routine's entry: a stack slot of its own, far below any it uses (a slot is a
+# local variable in the C; a Temp set at the entry was dropped by the C writer, and the routine read 0: found by
+# tools/cref against the original, the records' field $10 at game frame 3,036)
+SAVED_SLOT = -0x200
 
 
 def bytes_of_words(function, widths):
@@ -499,8 +521,8 @@ def bytes_of_words(function, widths):
                 return ir.op("trunc", (ir.op("shr", (ir.Stack(node.offset, 16), ir.const(8, 8)), 16),), 8)
             if node.offset in caller:
                 register, byte = caller[node.offset]
-                temp = saved.setdefault(register, ir.Temp(f"caller_{register}", 32))
-                return ir.op("trunc", (ir.op("shr", (temp, ir.const(8 * byte, 8)), 32),), 8)
+                slot = saved.setdefault(register, SAVED_SLOT - 4 * register)
+                return ir.op("trunc", (ir.op("shr", (ir.Stack(slot, 32), ir.const(8 * byte, 8)), 32),), 8)
         return None
     if not words and not caller:
         return
@@ -510,7 +532,7 @@ def bytes_of_words(function, widths):
         ir.map_statement(block.end, change)
     if saved:
         first = function.blocks.get(function.entry) or next(iter(function.blocks.values()))
-        start = [ir.SetTemp(temp, ir.Reg(register)) for register, temp in sorted(saved.items())]
+        start = [ir.SetStack(slot, ir.Reg(register), 32) for register, slot in sorted(saved.items())]
         for statement in start:
             statement.origin = entry
         first.statements[:0] = start
@@ -909,6 +931,24 @@ def install():
     original_targets = found_class.targets
     original_successors = program_class.successors
     original_source_values = found_class.source_values
+
+    # ---- the 68000's DIVU by a constant (the core's V60 rule) ----
+    # decompiler/expressions.py's simplify_one makes "helper:divu" by a constant C's division: the V60's DIVU leaves
+    # the quotient alone, but the 68000's DIVU.W leaves the remainder in the register's high word and the quotient in
+    # its low word (and on overflow the register unchanged). DoDonPachi's 004E02 "divu.w #$78, D2" then 004E10
+    # "swap D2" keeps the remainder: the C's division lost it (found with tools/cref, game frame 3,951). Here the
+    # 68000's helper stays a helper (m68k_divu in the runtime: the remainder, the quotient and the overflow as the
+    # 68000 has them)
+    from decompiler import expressions
+    original_simplify_one = expressions.simplify_one
+
+    def simplify_one(node):
+        from v60 import ir
+        if isinstance(node, ir.Op) and node.name == "helper:divu":
+            return None
+        return original_simplify_one(node)
+
+    expressions.simplify_one = simplify_one
 
     # ---- the movems with A7 in their lists (MOVEM_WITHOUT_SP) ----
 

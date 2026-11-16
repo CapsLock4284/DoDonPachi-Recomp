@@ -5,9 +5,9 @@ A native PC port of **DoDonPachi** (Cave, 1997), the arcade shooter, made by tra
 a model of Cave's 68000 board. It is the second game of the family, after
 [DonPachi Recomp](https://github.com/CapsLock4284/DonPachi-Recomp), and uses the same tools.
 
-**Status: early.** The whole program translates to C, builds on Cave68kSDK and runs headless: its warning screen
-and its attract-mode demo. The picture is still wrong in places and there is no sound yet. There is nothing to play
-yet.
+**Status: early.** The whole program translates to C, builds on Cave68kSDK and runs headless: its warning, title
+and attract-mode demo are drawn right, and it runs exactly as the original does on MAME's 68000 core, slowdown and
+all (checked frame by frame over 72,000 VBLANKs). There is no sound yet and no window to play in yet.
 
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
 `ddonpachj`. No ROMs, and nothing extracted from them, are part of this repository.
@@ -49,6 +49,24 @@ To run it headless (Linux or MSYS2; the board from `runtime/`, the C from `src/`
 sh tests/build.sh                     # tests/bin/boot, tests/bin/diag
 cd rom && ../tests/bin/boot 3000 ddonpach.zip    # pictures every 100 frames (boot_NNNNN.ppm)
 ```
+
+## Checking it against the original
+
+`tools/cref/cref_timed` runs the original 68000 program on MAME's 68000 core (from `tools/core`) with the same
+board model, at the board's own timing, and `tests/slowdown_check` runs the port; both play the same inputs
+(`tests/player.h`) and write a line for each frame of the game: the frame, the VBLANK it was done by, and a hash of
+the whole board. Any difference in what the game did, or in which frames slowed down, shows.
+
+```sh
+sh tools/cref/build.sh && sh tests/build.sh
+cd rom
+../tests/bin/cref_timed --rom ddonpach.zip --frames 72000 --play --waits mame_waits.txt
+../tests/bin/slowdown_check 72000
+python3 ../tests/slowdown_compare.py mame_waits.txt slowdown_waits.txt
+```
+
+When they differ, `TRACE_FRAME=N` on both (the port built from `tools/decompile.py --trace`) and
+`tests/trace_compare.py` show where the port first goes another way.
 
 ## Licence
 

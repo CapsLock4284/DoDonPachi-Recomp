@@ -17,10 +17,13 @@
       are sprites: layers 0 and 1 stay empty).
 - [ ] The picture, still to check: small black shapes in the demo (shadows? debris?), the layers' offsets, sprite
       priorities against MAME.
-- [ ] The interrupt timing: when the VBLANK interrupt comes (MAME's per-game setting), checked against DonPachi's.
-- [ ] **The arcade's slowdown matched** (owner: very important, for every game on this board). The translated code
-      counts the 68000's cycles (the profile's TIMING_MODEL), so a frame whose work runs past the VBLANK waits a
-      frame more, as on the board; checked against MAME in the busiest scenes.
+- [x] **The arcade's slowdown matched** (owner: very important, for every game on this board). The original program on
+      MAME's 68000 core at the board's timing (tools/cref/cref_timed) against the port (tests/slowdown_check), the
+      same inputs (tests/player.h): over 72,000 VBLANKs, the same board at all 70,684 game frames, on the same
+      VBLANKs, 1,315 VBLANKs lagged in both. Found and fixed on the way: three jumps past their stub tables, a
+      routine reading its caller's stack, and the core's DIVU by a constant (it lost the remainder).
+- [ ] The same check with a player that goes further into the game (the test player only plays the first stage's
+      start; the busiest scenes are later): the attract demo and the first minutes are matched now.
 - [ ] The YMZ280B sound chip.
 
 ## The port
