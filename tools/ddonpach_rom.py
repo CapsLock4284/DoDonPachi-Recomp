@@ -110,9 +110,18 @@ def build_program(rom):
     return bytes(image)
 
 
+def swap16(data):
+    """each 16-bit word's two bytes the other way round"""
+    result = bytearray(len(data))
+    result[0::2] = data[1::2]
+    result[1::2] = data[0::2]
+    return bytes(result)
+
+
 def build_sprites(rom):
-    """sprites region (8 MB): u50-u53 one after the other, as they are (ROM_LOAD)"""
-    return b"".join(bytes(rom[name]) for name in ("u50.bin", "u51.bin", "u52.bin", "u53.bin"))
+    """sprites region (8 MB): u50-u53 one after the other, word swapped as DonPachi's sprites are (the title screen's
+    letters read only that way; Cave68kSDK's src/boards/ddonpach.c loads them so)"""
+    return b"".join(swap16(rom[name]) for name in ("u50.bin", "u51.bin", "u52.bin", "u53.bin"))
 
 
 def build_layer0(rom):
