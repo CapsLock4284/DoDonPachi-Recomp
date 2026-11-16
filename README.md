@@ -7,7 +7,8 @@ a model of Cave's 68000 board. It is the second game of the family, after
 
 **Status: early.** The whole program translates to C, builds on Cave68kSDK and runs headless: its warning, title
 and attract-mode demo are drawn right, and it runs exactly as the original does on MAME's 68000 core, slowdown and
-all (checked frame by frame over 150,000 VBLANKs). There is no sound yet and no window to play in yet.
+all (checked frame by frame over 150,000 VBLANKs). Its sound chip, the YMZ280B, plays (headless: no window to play
+in yet).
 
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
 `ddonpachj`. No ROMs, and nothing extracted from them, are part of this repository.
@@ -56,6 +57,11 @@ cd rom && ../tests/bin/boot 3000 ddonpach.zip    # pictures every 100 frames (bo
 board model, at the board's own timing, and `tests/slowdown_check` runs the port; both play the same inputs
 (`tests/player.h`) and write a line for each frame of the game: the frame, the VBLANK it was done by, and a hash of
 the whole board. Any difference in what the game did, or in which frames slowed down, shows.
+
+The sound chip is part of that timing: DoDonPachi's interrupt handler serves both the VBLANK and the YMZ280B, and
+tells them apart by how long ago the VBLANK began, so when a voice ends matters to the game. The board model raises
+the chip's interrupt at the sample where the voice reads its stop address, as the chip itself does, in both tools
+alike. (MAME's own driver signals it at its next sound update instead, a little later.)
 
 ```sh
 sh tools/cref/build.sh && sh tests/build.sh

@@ -27,7 +27,12 @@
       not a count (147, 149, 180, 206: made by 03622A, which calls that pointer at 036278).
 - [ ] The same check with a player that goes further into the game (the test player only plays the first stage's
       start; the busiest scenes are later): the attract demo and the first minutes are matched now.
-- [ ] The YMZ280B sound chip.
+- [x] The YMZ280B sound chip (in Cave68kSDK, after MAME's ymz280b.cpp): its voices, the mix, and its interrupt at the
+      sample a voice ends, in the port and in tools/cref alike. DoDonPachi's interrupt handler tells the chip's
+      interrupt from the VBLANK's by the time (the cause's bit 2), so it is part of the slowdown: checked again over
+      150,000 VBLANKs, the same at all 147,505 game frames (2,494 lagged in both), and 147,399 of 147,399 with the
+      second player (2,600 lagged).
+- [ ] Listen to it against MAME (the levels, and the samples' order u6 then u7).
 
 ## The port
 

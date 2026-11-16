@@ -4,7 +4,7 @@
  *                 every CAVE_FRAME_USEC of 68000 cycles (278,016 at 16 MHz), whether or not the program is waiting
  *                 for it. A frame whose work runs past the next interrupt makes the program wait a whole frame more:
  *                 the arcade's slowdown. Logs each frame's work in cycles and what was on the screen
- *    Version:     0.3.0 (draft)
+ *    Version:     0.4.0 (draft)
  *    Created:     11-11-2026 (DonPachi Recomp's); DoDonPachi's 16-11-2026: its board (cave_board_ddonpach), its
  *                 frame wait (0571AC) and frame-ready flag (10120C bit 0), the board's clock for the interrupt cause's
  *                 bit 2 (cave_clock), and a player that reads no RAM (inputs by the VBLANK alone)
@@ -27,8 +27,12 @@
  *                     tools/decompile.py --trace: tests/slowdown_check_trace; tests/trace_compare.py lines them up)
  *      DUMP_AT=ADDR   with TRACE_FRAME: the memories as the frame first comes to ADDR, and D0, D1, A6 there
  *      DEBUG_JUMPS=1  where the computed jumps tools/call_tables.py lists by hand really go, in jumps.txt
- *    Checked (16-11-2026): 72,000 VBLANKs of tests/player.h's play, the port and this the same at all 70,684 game
- *    frames (the same VBLANK, the same board; 1,315 VBLANKs lagged in both)
+ *    The YMZ280B's interrupt (16-11-2026): the run stops at each cycle the chip's interrupt may come by
+ *    (cave_sound_event_at) and raises the line there; the chip itself is brought there as the next instruction
+ *    begins, after that instruction's accesses, as the decompiled program has it. The chip's and the cause's bit 2
+ *    read the time at the instruction's start (cave_access_clock), and only the VBLANK's interrupt ends a wait.
+ *    Checked (16-11-2026): 150,000 VBLANKs of tests/player.h's play, the port and this the same at all 147,505 game
+ *    frames (the same VBLANK, the same board; 2,494 VBLANKs lagged in both)
  */
 #include "emu.h"
 #include "m68000.h"
@@ -56,6 +60,8 @@ class reference_cpu : public m68000_device
 public:
 	reference_cpu() : m68000_device(m_config, "maincpu", nullptr, CAVE_CPU_CLOCK) {}
 	u32 pc() const { return m_ipc; }
+	void shorten(int by) { m_icount -= by; }    // (the run ends sooner: the cycles it has left, less 'by')
+	int left() const { return m_icount; }
 	u32 reg(int n) const { return m_da[n]; }
 
 private:
@@ -69,6 +75,10 @@ int g_irq_level = 0;
 uint64_t g_total = 0;                // the cycles done
 uint64_t g_cycles_before_run = 0;    // the cycles done before the current run()
 int g_run_length = 0;
+int g_shortened = 0;                 // (cycles taken off the current run(): a sooner event of the sound chip's)
+uint64_t g_instruction_start = 0;    // where the instruction running began, in cycles
+uint64_t g_sound_due = UINT64_MAX;   // a sound chip's event the run stopped at part way into an instruction: the chip
+bool g_sound_line = false;           // is brought there as the next begins; its interrupt line up meanwhile
 uint64_t g_work_began = 0;           // where the game's work began (its wait ended), in cycles
 bool g_waiting = false;              // the program is in its wait for the next frame
 uint64_t g_game_frames = 0;
@@ -89,9 +99,34 @@ uint64_t clock_now()
 	return now();
 }
 
+uint64_t instruction_start()
+{
+	return g_instruction_start;
+}
+
+/* the sound chip's next interrupt sooner than the run's end (a voice keyed on): the run ends there */
+void sound_events_changed()
+{
+	const uint64_t event = cave_sound_event_at();
+
+	if (g_run_length <= 0 || !g_cpu || g_sound_due != UINT64_MAX)
+		return;
+	const uint64_t end = g_cycles_before_run + uint64_t(g_run_length);
+	if (event >= end)
+		return;
+	int by = int(end - event);
+	if (by > g_cpu->left())
+		by = g_cpu->left();
+	if (by <= 0)
+		return;
+	g_cpu->shorten(by);
+	g_run_length -= by;
+	g_shortened += by;
+}
+
 void sync_irq()
 {
-	const int level = cave_irq_level();
+	const int level = cave_irq_level() ? cave_irq_level() : g_sound_line ? 1 : 0;
 	if (level == g_irq_level)
 		return;
 	if (g_irq_level)
@@ -129,9 +164,9 @@ u16 acknowledge(offs_t address, u16 mem_mask)
 		g_play = false;
 		cave_board.in0 = uint16_t(~player_inputs(cave_board.frame));
 	}
-	if (g_waiting && ((address >> 1) & 7) == 1)
+	if (g_waiting && ((address >> 1) & 7) == 1 && cave_board.vblank_irq)
 	{
-		/* (the VBLANK's interrupt ends the wait: the work of the next frame begins) */
+		/* (the VBLANK's interrupt ends the wait: the work of the next frame begins; the sound chip's does not) */
 		g_waiting = false;
 		g_work_began = now();
 	}
@@ -140,6 +175,16 @@ u16 acknowledge(offs_t address, u16 mem_mask)
 
 void on_instruction(offs_t pc)
 {
+	g_instruction_start = now();
+	if (g_sound_due != UINT64_MAX && g_instruction_start >= g_sound_due)
+	{
+		/* (the chip brought to its event, after the accesses of the instruction it came in: the decompiled program's
+		   order, its events at an instruction's end) */
+		cave_sound_run_to(g_sound_due);
+		g_sound_due = UINT64_MAX;
+		g_sound_line = false;
+		sync_irq();
+	}
 	/* (DEBUG_JUMPS: where the computed jumps and calls tools/call_tables.py lists by hand really go: each site's next
 	   instruction, in jumps.txt as "site target") */
 	static FILE *jumps = getenv("DEBUG_JUMPS") ? std::fopen("jumps.txt", "w") : nullptr;
@@ -238,6 +283,8 @@ int main(int argc, char **argv)
 	}
 	cave_board_describe(&cave_board_ddonpach);
 	cave_clock = clock_now;
+	cave_access_clock = instruction_start;
+	cave_sound_events_changed = sound_events_changed;
 	if (const char *problem = rom_set_load(rom.c_str()))
 	{
 		std::fprintf(stderr, "The game does not start: %s\n", problem);
@@ -268,12 +315,29 @@ int main(int argc, char **argv)
 
 	for (uint64_t vblank = 1; vblank <= frames; vblank++)
 	{
-		/* (the frame's cycles, to the next VBLANK) */
-		while (g_total < vblank * frame_cycles)
+		/* (the frame's cycles, to the next VBLANK; the sound chip's interrupts on the way, each at its sample) */
+		for (;;)
 		{
+			const uint64_t sound = g_sound_due != UINT64_MAX ? UINT64_MAX : cave_sound_event_at();
+
+			if (sound <= g_total && sound < vblank * frame_cycles)
+			{
+				/* (its interrupt line now; the chip there as the next instruction begins) */
+				g_sound_due = sound;
+				g_sound_line = cave_sound_irq_at(sound);
+				sync_irq();
+				continue;
+			}
+			if (g_total >= vblank * frame_cycles)
+				break;
+			uint64_t end = sound < vblank * frame_cycles ? sound : vblank * frame_cycles;
+			if (g_sound_due != UINT64_MAX && end > g_total + 4u)
+				end = g_total + 4u;    /* (on to the next instruction, a little at a time, for the next event) */
+
 			g_cycles_before_run = g_total;
-			g_run_length = int(vblank * frame_cycles - g_total);
-			g_total += uint64_t(cpu.run(g_run_length));
+			g_run_length = int(end - g_total);
+			g_shortened = 0;
+			g_total += uint64_t(cpu.run(g_run_length) - g_shortened);
 			g_cycles_before_run = g_total;
 			g_run_length = 0;
 		}
@@ -290,6 +354,7 @@ int main(int argc, char **argv)
 		if (was_waiting && g_last_busy > int64_t(busiest))
 			busiest = uint64_t(g_last_busy);
 		cave_vblank_start();
+		cave_board.vblank_began = vblank * frame_cycles;    /* (its own cycle: the run may stop a few after it) */
 		if (getenv("DUMP") && vblank == std::strtoull(getenv("DUMP"), nullptr, 10))
 			cave_dump("mame_dump.bin");
 		if (hashes)

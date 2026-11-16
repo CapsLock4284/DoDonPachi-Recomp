@@ -26,6 +26,16 @@ static unsigned player_inputs(uint64_t frame)
 }
 
 static FILE *waits;
+
+/* the VBLANKs come by the start of the instruction the program is at (every 278,016 cycles from the power on), as
+   cref_timed counts them: the runtime has a VBLANK that comes part way into an instruction come at the instruction's
+   end, so its count (cave_board.frame) is one short there until then */
+extern uint64_t m68k_time;
+
+static uint64_t vblanks_by_now(void)
+{
+	return m68k_time / ((uint64_t)CAVE_CPU_CLOCK * CAVE_FRAME_USEC / 1000000u);
+}
 static uint64_t game_frames;
 static bool arrived;
 
@@ -52,7 +62,7 @@ static void at_wait(void)
 	if (getenv("DUMPFRAME") && game_frames == strtoull(getenv("DUMPFRAME"), NULL, 10))
 		cave_dump("port_dump.bin");
 	if (waits)
-		fprintf(waits, "%" PRIu64 " %" PRIu64 " %016" PRIx64 "\n", game_frames, cave_board.frame, cave_state_hash());
+		fprintf(waits, "%" PRIu64 " %" PRIu64 " %016" PRIx64 "\n", game_frames, vblanks_by_now(), cave_state_hash());
 }
 
 int main(int argc, char **argv)
