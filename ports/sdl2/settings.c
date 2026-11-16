@@ -37,7 +37,7 @@ static const char *const action_notes[ACTIONS] = {
 	NULL, NULL, NULL, NULL,
 	"shot; held, the laser",
 	"bomb",
-	"button C (DoDonPachi has none: unused)",
+	"button C: the game's own auto-fire, with the test mode's \"C BUTTON FULL-AUTO\" ([game] c_button_full_auto)",
 	"start",
 	"coin",
 	"the service switch: held 2 seconds at the title or in the attract mode, the test mode"
@@ -74,6 +74,7 @@ void settings_defaults(settings *s)
 	memset(s, 0, sizeof(*s));
 	s->version = 0;
 	s->fast_forward_speed = 4;
+	s->c_button_full_auto = true;
 	s->slowdown = true;
 	s->scale = 3;
 	s->fullscreen = false;
@@ -245,6 +246,8 @@ static bool take(settings *s, const char *section, const char *name, char *value
 		}
 		if (!SDL_strcasecmp(name, "fast_forward_speed"))
 			return parse_int(value, 2, 16, &s->fast_forward_speed);
+		if (!SDL_strcasecmp(name, "c_button_full_auto"))
+			return parse_bool(value, &s->c_button_full_auto);
 		if (!SDL_strcasecmp(name, "slowdown"))
 			return parse_bool(value, &s->slowdown);
 		return false;
@@ -451,6 +454,9 @@ const char *settings_save(const settings *s, const char *path)
 	fprintf(file, "version = %s\n", s->version == 1 ? "japan" : "world");
 	fputs("; while the fast forward key or button is held ([hotkeys]): the game's frames a frame, 2 to 16\n", file);
 	fprintf(file, "fast_forward_speed = %d\n", s->fast_forward_speed);
+	fputs("; true: button C is the game's own auto-fire (the test mode's \"C BUTTON FULL-AUTO\", set in the EEPROM\n"
+		"; as the game starts); false: as the test mode has it\n", file);
+	fprintf(file, "c_button_full_auto = %s\n", bool_text(s->c_button_full_auto));
 	fputs("; the arcade's slowdown: when the screen is busy the board's 68000 can't finish a frame in time and the game\n"
 		"; runs slower, as on the real board (true); false: always full speed\n", file);
 	fprintf(file, "slowdown = %s\n\n", bool_text(s->slowdown));

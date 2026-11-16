@@ -30,11 +30,14 @@
  *      --cheats FILE   the cheat file, MAME's format (default: cheats/ddonpach.xml)
  *      --list-cheats   lists the cheat file's cheats
  *
- *    Controls (the defaults: ddonpach.ini changes them): keys arrows, Z shot (held: the laser), X bomb, 1 start,
+ *    Controls (the defaults: ddonpach.ini changes them): keys arrows, Z shot (held: the laser), X bomb, C auto-fire,
+ *          1 start,
  *          5 coin, F2 the service switch (held 2 seconds at the title or in the attract mode: the test mode); player 2
  *          R F D G, A S, 2, 6.
  *          Gamepads (the first plugged in is player 1's, the second player 2's; the Xbox layout's names): d-pad or
- *          left stick move, X shot, A bomb, Start start. Keys and gamepads work together.
+ *          left stick move, X shot, A bomb, B auto-fire, Start start. Keys and gamepads work together.
+ *          C (B on the gamepad) is the game's own auto-fire: [game] c_button_full_auto sets the test mode's "C BUTTON
+ *          FULL-AUTO" (on by default).
  *          F3 resets the game, F4 the test mode (the service switch held for you; at the title or in the attract
  *          mode, after the warning screen), F11 or Alt+Enter full screen, Escape twice quits.
  *    Fast forward: held, LB on the gamepad or Tab ([hotkeys] fast_forward; [game] fast_forward_speed, 4 by default).
@@ -358,6 +361,16 @@ static uint16_t eeprom_saved[CAVE_EEPROM_WORDS];
 
 static void eeprom_keep(bool always);
 
+/* The test mode's "C BUTTON FULL-AUTO" (configuration item 3: the board's own auto-fire on button C), as DonPachi's:
+   words 1 and 4 as the test mode writes them when that is the only setting changed from the ROM set's EEPROM (word
+   4's bit 2 the setting; word 1 from FFFB to FFFF). Set before the game's first frame, as it reads the EEPROM as it
+   starts */
+static void eeprom_c_button_full_auto(void)
+{
+	cave_board.eeprom.words[1] = 0xFFFFu;
+	cave_board.eeprom.words[4] |= 0x0004u;
+}
+
 /* each version's own EEPROM beside the program (the settings' or --eeprom's: the World one's) */
 static const char *const eeprom_files[2] = { "ddonpach.eeprom", "ddonpach_jpn.eeprom" };
 
@@ -379,6 +392,11 @@ static void eeprom_open(const char *path)
 		break;
 	}
 	memcpy(eeprom_saved, cave_board.eeprom.words, sizeof(eeprom_saved));
+	if (options.c_button_full_auto)
+	{
+		eeprom_c_button_full_auto();
+		eeprom_keep(false);    /* (saved if it was not set) */
+	}
 }
 
 static void eeprom_keep(bool always)

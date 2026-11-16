@@ -65,6 +65,7 @@ contents in `ddonpach.dat` beside the program; it reads that from then on.
 | Move | arrows | d-pad, left stick |
 | Shot (held: the laser) | Z | X |
 | Bomb | X | A |
+| Auto-fire (the game's own: "C BUTTON FULL-AUTO", set by the port) | C | B |
 | Start, coin | 1, 5 | Start |
 | Service switch (held 2 s at the title: the test mode) | F2 | |
 

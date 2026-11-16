@@ -65,6 +65,8 @@ typedef struct
 	/* [game] */
 	int version;                /* the game's version: 0 the World one, 1 the Japanese (the board description's) */
 	int fast_forward_speed;     /* 2-16 */
+	bool c_button_full_auto;    /* the test mode's "C BUTTON FULL-AUTO" set in the EEPROM: button C the game's own
+	                               auto-fire */
 	bool slowdown;              /* the arcade's slowdown: a busy frame takes two (cave/program.h) */
 	/* [window] */
 	int scale;

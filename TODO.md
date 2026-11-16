@@ -44,6 +44,10 @@
       (ddonpach.ini), the EEPROM kept, save states, fast forward, MAME's cheat files, the ROM drop window, its own
       icon. The test mode: the service switch held 2 seconds at the title (the game ignores it on its warning screen
       and at the reset, so F4 holds it instead of resetting).
+- [x] Auto-fire on button C (owner): the test mode's "C BUTTON FULL-AUTO", as DonPachi Recomp's home default (EEPROM
+      words 1 and 4, bit 2 of word 4); [game] c_button_full_auto, on by default, sets it as the game starts.
+- [ ] The side panels: DoDonPachi's own (owner: the game shows more on its screen than DonPachi did, so the panels
+      will differ); later.
 - [ ] The options menu: DonPachi Recomp's draws in that game's own font; DoDonPachi's text layer is 8-bit, its
       letters elsewhere.
 - [ ] The quicker picture (DonPachi Recomp's default, a frame sooner): needs the scroll and palette the coming
