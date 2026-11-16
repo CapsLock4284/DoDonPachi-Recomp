@@ -15,8 +15,11 @@
 
 - [x] The picture: the 8-bit text layer, the palette's banks of 256, the sprites' byte order (the stage backgrounds
       are sprites: layers 0 and 1 stay empty).
-- [ ] The picture, still to check: small black shapes in the demo (shadows? debris?), the layers' offsets, sprite
-      priorities against MAME.
+- [x] The picture checked against MAME's source: the layers' offsets, the background colour, the colour banks and
+      the priorities are MAME's (cave_v.cpp, sprite013.cpp, init_ddonpach). The small dark shapes are the wrecks
+      ground enemies leave (their colour bank is dark). The layers' row-scroll and row-select added to Cave68kSDK
+      (MAME's), in case a later stage uses them (the first stage and the demo do not).
+- [ ] The picture side by side with MAME's own, from a later stage (needs a player that gets further).
 - [x] **The arcade's slowdown matched** (owner: very important, for every game on this board). The original program on
       MAME's 68000 core at the board's timing (tools/cref/cref_timed) against the port (tests/slowdown_check), the
       same inputs (tests/player.h): over 150,000 VBLANKs (about 42 minutes), the same board at all 147,446 game
