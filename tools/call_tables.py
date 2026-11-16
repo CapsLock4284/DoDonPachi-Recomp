@@ -113,11 +113,24 @@ def program():
     return _image
 
 
-def plausible_type(index):
-    """An object type's record DoDonPachi uses: its first pointer's word (the objects it takes) small, and the code after
-    it and at its +4 pointer decoding as instructions. (DoDonPachi's table has records that point into the middle of
-    other code: type 147's "count" is 0x3CAE and its "init code" at 054330 is half an instruction; no object of those
-    types is made)"""
+def _decodes(memory, code):
+    from m68000 import disassembler
+    for _ in range(8):
+        instruction = disassembler.decode(memory, code)
+        if instruction.flow == disassembler.FLOW_INVALID:
+            return False
+        if instruction.flow in (disassembler.FLOW_RETURN, disassembler.FLOW_JUMP):
+            return True
+        code += instruction.length
+    return True
+
+
+@lru_cache(maxsize=None)
+def type_kind(index):
+    """The kind of an object type's record: "counted" (its first pointer to a word, the objects it takes, small, then
+    the init code: DonPachi's kind, the init call's +2), "direct" (its first pointer to code: DoDonPachi's types 147,
+    149, 180, 206, whose objects 03622A makes, calling that pointer itself at 036278), or None (not a record: its
+    pointers out of the program, or to what does not decode). Its +4 pointer, the update routine, is code in both"""
     from m68000 import disassembler
     start, size, _ = OBJECT_TYPES
     image = program()
@@ -126,18 +139,34 @@ def plausible_type(index):
     first = int.from_bytes(image[place:place + 4], "big")
     second = int.from_bytes(image[place + 4:place + 8], "big")
     if not (0x420 <= first < rom.PROGRAM_SIZE and 0x420 <= second < rom.PROGRAM_SIZE) or first & 1 or second & 1:
-        return False
-    if int.from_bytes(image[first:first + 2], "big") > 0x100:
-        return False
-    for code in (first + 2, second):
-        for _ in range(8):
-            instruction = disassembler.decode(memory, code)
-            if instruction.flow == disassembler.FLOW_INVALID:
-                return False
-            if instruction.flow in (disassembler.FLOW_RETURN, disassembler.FLOW_JUMP):
-                break
-            code += instruction.length
-    return True
+        return None
+    if not _decodes(memory, second):
+        return None
+    if int.from_bytes(image[first:first + 2], "big") <= 0x100:
+        return "counted" if _decodes(memory, first + 2) else None
+    return "direct" if _decodes(memory, first) else None
+
+
+def plausible_type(index):
+    """(a counted type's record: object_init_routines's)"""
+    return type_kind(index) == "counted"
+
+
+@lru_cache(maxsize=None)
+def direct_init_routines():
+    """The direct types' first pointers: what "jsr (A1)" at 036278 calls (03626E "lea $15a8a.l, A0", 036274 "movea.l
+    (A0,D3.w), A1": the record's first pointer itself). Found by the slowdown comparison with MAME's 68000: game frame
+    9949 made an object of type 147 there (05432E)"""
+    start, size, count = OBJECT_TYPES
+    image = program()
+    found = set()
+    for index in range(count):
+        if type_kind(index) == "direct":
+            found.add(int.from_bytes(image[start + index * size:start + index * size + 4], "big"))
+    return frozenset(found)
+
+
+MANUAL_LATER = {0x036278: direct_init_routines}
 
 
 @lru_cache(maxsize=None)
@@ -166,7 +195,7 @@ def object_update_routines():
     image = program()
     found = set()
     for index in range(count):
-        if not plausible_type(index):
+        if type_kind(index) is None:
             continue
         place = start + index * size + 4
         target = int.from_bytes(image[place:place + 4], "big")
@@ -177,7 +206,8 @@ def object_update_routines():
 
 MANUAL[here(0x012D86)] = object_update_routines
 
-MANUAL[0x0362A6] = object_update_routines    # (DoDonPachi's own: 0362A2 "movea.l ($4,A0,D0.w), A1", the same table)
+MANUAL[0x0362A6] = object_update_routines
+MANUAL.update(MANUAL_LATER)    # (DoDonPachi's own: 0362A2 "movea.l ($4,A0,D0.w), A1", the same table)
 
 
 @lru_cache(maxsize=None)
@@ -290,6 +320,11 @@ def animation_commands():
 
 
 MANUAL[0x053D16] = animation_commands
+# DoDonPachi's own: 053E16 "moveq #$30, D1", 053E1C "and.w (A1), D1", 053E1E "lsr.w #2, D1", 053E20 "jmp ($4,PC,D1.w)":
+# 4 cases, 3 of them bra stubs (053E26, 053E2A, 053E2E) and the fourth the code after them (053E32 "movea.l $101226.l,
+# A0": a sprite of priority 3 into the list at $101226). Found by the slowdown comparison with MAME's 68000 (game frame
+# 9949: the port drew such a sprite into the other list)
+MANUAL[0x053E20] = lambda: frozenset({0x053E32})
 
 # DoDonPachi's own: jumps through a table of bra stubs whose index also reaches the code right after the table (the
 # index masked wider than the stubs: 04F47A "moveq #$3c, D0", "and.w D4, D0", 04F47E "jmp ($c,PC,D0.w)" over 7 stubs;
@@ -353,7 +388,13 @@ def stub_addresses(base):
     targets = [entry[3] for entry in entries if entry[3] is not None]
     above = [target for target in targets if target > base]
     limit = min(above) if above else None
-    return tuple(entry[1] for entry in entries if limit is None or entry[1] < limit)
+    stubs = tuple(entry[1] for entry in entries if limit is None or entry[1] < limit)
+    # (DoDonPachi: a table whose first case's code follows it straight after its last stub is one record longer: the
+    # index one past the stubs lands on that code, as the first case does: 00AD64, 059E8E, 03502E, 038F02, 03CBFA,
+    # 04C352 (its records 6 bytes). The record after the last stub is that case's place)
+    if stubs and limit is not None and len(stubs) >= 2 and stubs[-1] + (stubs[-1] - stubs[-2]) == limit:
+        stubs += (limit,)
+    return stubs
 
 
 def stack_effect(instruction):

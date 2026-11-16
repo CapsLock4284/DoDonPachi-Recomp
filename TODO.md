@@ -19,9 +19,12 @@
       priorities against MAME.
 - [x] **The arcade's slowdown matched** (owner: very important, for every game on this board). The original program on
       MAME's 68000 core at the board's timing (tools/cref/cref_timed) against the port (tests/slowdown_check), the
-      same inputs (tests/player.h): over 72,000 VBLANKs, the same board at all 70,684 game frames, on the same
-      VBLANKs, 1,315 VBLANKs lagged in both. Found and fixed on the way: three jumps past their stub tables, a
-      routine reading its caller's stack, and the core's DIVU by a constant (it lost the remainder).
+      same inputs (tests/player.h): over 150,000 VBLANKs (about 42 minutes), the same board at all 147,446 game
+      frames, on the same VBLANKs, 2,553 VBLANKs lagged in both; and with a second player (sweeping faster, a bomb now
+      and then) 147,002 of 147,002. Found and fixed on the way: three jumps past their stub tables, a routine reading
+      its caller's stack, the core's DIVU by a constant (it lost the remainder), a jump table whose fourth case is the
+      code after its three stubs (053E20: sprites of priority 3), and four object types whose first pointer is code,
+      not a count (147, 149, 180, 206: made by 03622A, which calls that pointer at 036278).
 - [ ] The same check with a player that goes further into the game (the test player only plays the first stage's
       start; the busiest scenes are later): the attract demo and the first minutes are matched now.
 - [ ] The YMZ280B sound chip.

@@ -7,7 +7,7 @@ a model of Cave's 68000 board. It is the second game of the family, after
 
 **Status: early.** The whole program translates to C, builds on Cave68kSDK and runs headless: its warning, title
 and attract-mode demo are drawn right, and it runs exactly as the original does on MAME's 68000 core, slowdown and
-all (checked frame by frame over 72,000 VBLANKs). There is no sound yet and no window to play in yet.
+all (checked frame by frame over 150,000 VBLANKs). There is no sound yet and no window to play in yet.
 
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
 `ddonpachj`. No ROMs, and nothing extracted from them, are part of this repository.
