@@ -46,6 +46,15 @@
       and at the reset, so F4 holds it instead of resetting).
 - [x] Auto-fire on button C (owner): the test mode's "C BUTTON FULL-AUTO", as DonPachi Recomp's home default (EEPROM
       words 1 and 4, bit 2 of word 4); [game] c_button_full_auto, on by default, sets it as the game starts.
+- [x] Type C's pods (owner): they showed for a frame and never fired. A translation bug: the jump table at 00E008
+      (by the ship's type) had type C's code right after its 2 stubs, which the translator missed. Fixed in
+      tools/call_tables.py (PAST_THE_STUBS); every ship type and style checked against the original on MAME's 68000
+      with button C held, the laser and bombs: exact over 20,000 VBLANKs each.
+- [ ] Better graphics, never touching the game (owner idea): the picture is made from the board's memories after the
+      frame's work, so the renderer can change freely. First: the layers and sprites scaled one by one (sharper than
+      the whole frame's scalers), an option off by default, in Cave68kSDK's video.c for every game on the board.
+      Later perhaps: replacement art packs, a GPU shader pipeline; a wider picture is a judgment call (the game
+      only places things on its own 240 x 320).
 - [ ] The side panels: DoDonPachi's own (owner: the game shows more on its screen than DonPachi did, so the panels
       will differ); later.
 - [ ] The options menu: DonPachi Recomp's draws in that game's own font; DoDonPachi's text layer is 8-bit, its

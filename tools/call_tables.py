@@ -335,6 +335,11 @@ PAST_THE_STUBS = {
     0x04F47E: 0x04F4A8,    # the records at 10CF16 (their kind $1C, 65,093 times in 18,000 VBLANKs)
     0x04E0EA: 0x04E146,    # 04E0EA "jmp ($4e,PC,D1.w)", 3 stubs at 04E13A
     0x053E20: 0x053E32,    # 053E20 "jmp ($4,PC,D1.w)", 3 stubs at 053E26
+    # 00E008 "jsr ($a,PC,D0.w)", D0 the ship's type ($10,A6) times 4: types A and B through the 2 stubs at 00E014,
+    # type C on at 00E01C (its two pods: their animation, and the 2 calls of 00ECC6 that fire their shots). Missing,
+    # type C's pods showed for a frame or two and never fired (owner; found by comparing a type C game, button C held,
+    # with the original on MAME's 68000: game frame 2,655, on the ship select screen's demo)
+    0x00E008: 0x00E01C,
 }
 for _jump, _past in PAST_THE_STUBS.items():
     MANUAL[_jump] = (lambda past: lambda: frozenset({past}))(_past)
