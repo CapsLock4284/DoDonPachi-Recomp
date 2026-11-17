@@ -35,8 +35,8 @@
  *          5 coin, F2 the service switch (held 2 seconds at the title or in the attract mode: the test mode); player 2
  *          R F D G, A S, 2, 6.
  *          Gamepads (the first plugged in is player 1's, the second player 2's; the Xbox layout's names): d-pad or
- *          left stick move, X shot, A bomb, B auto-fire, Start start. Keys and gamepads work together.
- *          C (B on the gamepad) is the game's own auto-fire: [game] c_button_full_auto sets the test mode's "C BUTTON
+ *          left stick move, A shot, B bomb, X auto-fire, Start start. Keys and gamepads work together.
+ *          C (X on the gamepad) is the game's own auto-fire: [game] c_button_full_auto sets the test mode's "C BUTTON
  *          FULL-AUTO" (on by default).
  *          F3 resets the game, F4 the test mode (the service switch held for you; at the title or in the attract
  *          mode, after the warning screen), F11 or Alt+Enter full screen, Escape twice quits.

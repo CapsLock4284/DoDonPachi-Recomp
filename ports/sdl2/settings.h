@@ -99,7 +99,8 @@ typedef struct
 
 extern const uint16_t settings_action_bits[ACTIONS];
 
-/* The defaults: the keys and buttons the port had before the file (the Xbox layout: X shot, A bomb, B button C) */
+/* The defaults: the keys and buttons the port had before the file (the Xbox layout: A shot, B bomb, X auto-fire
+   (button C), as the owner's other ports have them) */
 void settings_defaults(settings *s);
 
 /* The file over 's' (which holds the defaults): NULL, or what was wrong with it (the lines it could not take, which
