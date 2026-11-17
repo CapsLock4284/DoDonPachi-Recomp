@@ -8,9 +8,9 @@
  *    license:BSD-3-Clause
  *    DonPachi Recomp's window port (ports/sdl2/main.c), cut down to what does not depend on that game's memory: the
  *    window and its video settings (scaling, the CRT look, the pixel-art scalers, rotation), the sound, the controls,
- *    the EEPROM, the save states, fast forward, MAME's cheat files. Not yet: the options menu (it draws in the game's
- *    own font: DoDonPachi's is another), the main menu, high scores, training, replays, achievements, statistics,
- *    the side panels, the hitbox.
+ *    the EEPROM, the save states, fast forward, MAME's cheat files, and the options menu (menu.h: in the game's own
+ *    font, its options, game options, graphics, controls and cheats pages). Not yet: the main menu, high scores,
+ *    training, replays, achievements, statistics, the side panels, the hitbox.
  *
  *    Usage: ddonpach [--settings PATH] [--rom PATH] [--scale N] [--no-sound] [--eeprom PATH] [--cheats FILE]
  *                    [--cheat NAME ...] [--list-cheats]
@@ -39,7 +39,8 @@
  *          C (X on the gamepad) is the game's own auto-fire: [game] c_button_full_auto sets the test mode's "C BUTTON
  *          FULL-AUTO" (on by default).
  *          F3 resets the game, F4 the test mode (the service switch held for you; at the title or in the attract
- *          mode, after the warning screen), F11 or Alt+Enter full screen, Escape twice quits.
+ *          mode, after the warning screen), F11 or Alt+Enter full screen, Escape or the gamepad's View button the
+ *          options menu (QUIT TO DESKTOP there).
  *    Fast forward: held, LB on the gamepad or Tab ([hotkeys] fast_forward; [game] fast_forward_speed, 4 by default).
  *    Save states: F5 keeps the game as it is now, F8 goes back to it, in the chosen slot of 5 (F6 / F7), in memory
  *          until the program closes.
@@ -48,7 +49,7 @@
  */
 #include "crash_log.h"
 #include "crt.h"
-#include "notice.h"
+#include "menu.h"
 #include "paths.h"
 #include "rom_drop.h"
 #include "scaler.h"
@@ -74,7 +75,7 @@
 #endif
 
 /* the settings: ddonpach.ini, then the command line (settings.h) */
-static settings options;
+static settings options, file_options;    /* (in use: the file's and the command line's; the file's alone) */
 static char settings_path[1024];
 static SDL_Window *window;
 static int running = 1;
@@ -183,13 +184,13 @@ static void hotkeys(void)
 			if (hotkey == HOTKEY_SERVICE_MENU)
 			{
 				service_held = SERVICE_MENU_FRAMES;    /* (no reset: the game looks at the switch after its warning) */
-				notice_show("THE TEST SWITCH HELD");
+				menu_notice("THE TEST SWITCH HELD");
 			}
 			else
 			{
 				program_reset();
 				service_held = 0;
-				notice_show("RESET");
+				menu_notice("RESET");
 			}
 		}
 		hotkey_was_down[hotkey] = down;
@@ -223,13 +224,28 @@ static uint16_t held_inputs(int player)
 	return pressed;
 }
 
+/* what the game does not see until it is let go: what was held as the menu closed (the A that chose RESUME is no
+   shot) */
+static uint16_t ignored[2];
+
+static void ignore_held_inputs(void)
+{
+	ignored[0] = held_inputs(0);
+	ignored[1] = held_inputs(1);
+}
+
 /* The inputs from the keys and the gamepads held: active low */
 static void read_keys(void)
 {
 	uint16_t pressed[2];
 
 	for (int player = 0; player < 2; player++)
-		pressed[player] = held_inputs(player);
+	{
+		const uint16_t held = held_inputs(player);
+
+		ignored[player] &= held;    /* (let go: seen again) */
+		pressed[player] = (uint16_t)(held & ~ignored[player]);
+	}
 	if (service_held)
 	{
 		pressed[0] |= CAVE_SERVICE;
@@ -365,10 +381,19 @@ static void eeprom_keep(bool always);
    words 1 and 4 as the test mode writes them when that is the only setting changed from the ROM set's EEPROM (word
    4's bit 2 the setting; word 1 from FFFB to FFFF). Set before the game's first frame, as it reads the EEPROM as it
    starts */
-static void eeprom_c_button_full_auto(void)
+static void eeprom_c_button_full_auto(bool on)
 {
-	cave_board.eeprom.words[1] = 0xFFFFu;
-	cave_board.eeprom.words[4] |= 0x0004u;
+	/* (word 1's bit 2 with word 4's: FFFB off, FFFF on, as the test mode writes them both ways) */
+	if (on)
+	{
+		cave_board.eeprom.words[1] |= 0x0004u;
+		cave_board.eeprom.words[4] |= 0x0004u;
+	}
+	else
+	{
+		cave_board.eeprom.words[1] &= (uint16_t)~0x0004u;
+		cave_board.eeprom.words[4] &= (uint16_t)~0x0004u;
+	}
 }
 
 /* each version's own EEPROM beside the program (the settings' or --eeprom's: the World one's) */
@@ -394,7 +419,7 @@ static void eeprom_open(const char *path)
 	memcpy(eeprom_saved, cave_board.eeprom.words, sizeof(eeprom_saved));
 	if (options.c_button_full_auto)
 	{
-		eeprom_c_button_full_auto();
+		eeprom_c_button_full_auto(true);
 		eeprom_keep(false);    /* (saved if it was not set) */
 	}
 }
@@ -632,19 +657,19 @@ static void state_action(bool save)
 
 		if (!state)
 		{
-			notice_show("NO MEMORY FOR A SAVE STATE");
+			menu_notice("NO MEMORY FOR A SAVE STATE");
 			return;
 		}
 		program_state_free(slot_states[state_slot]);
 		slot_states[state_slot] = state;
 		snprintf(text, sizeof(text), "STATE SAVED (SLOT %d)", state_slot + 1);
-		notice_show(text);
+		menu_notice(text);
 		return;
 	}
 	if (!slot_states[state_slot])
 	{
 		snprintf(text, sizeof(text), "SLOT %d IS EMPTY", state_slot + 1);
-		notice_show(text);
+		menu_notice(text);
 		return;
 	}
 	program_state_load(slot_states[state_slot]);
@@ -654,7 +679,7 @@ static void state_action(bool save)
 		audio_restart();
 	cave_sound_drop();
 	snprintf(text, sizeof(text), "STATE LOADED (SLOT %d)", state_slot + 1);
-	notice_show(text);
+	menu_notice(text);
 }
 
 /* F6 / F7: the slot before or after, told on the screen */
@@ -664,11 +689,68 @@ static void state_slot_hotkey(int step)
 
 	state_slot = ((state_slot + step) % STATE_SLOTS + STATE_SLOTS) % STATE_SLOTS;
 	snprintf(text, sizeof(text), "STATE SLOT %d%s", state_slot + 1, slot_states[state_slot] ? "" : " (EMPTY)");
-	notice_show(text);
+	menu_notice(text);
+}
+
+/* ---- what the options menu does (menu.h's menu_host) ---- */
+
+static void menu_reset(void)
+{
+	program_reset();
+	service_held = 0;
+	menu_notice("RESET");
+}
+
+static void menu_test_mode(void)
+{
+	service_held = SERVICE_MENU_FRAMES;    /* (no reset: the game looks at the switch after its warning) */
+	menu_notice("THE TEST SWITCH HELD");
+}
+
+static void menu_apply_window(void)
+{
+	if (options.fullscreen)
+		set_fullscreen();
+	else
+	{
+		SDL_SetWindowFullscreen(window, 0);
+		SDL_SetWindowSize(window, shown_width() * options.scale, shown_height() * options.scale);
+	}
+}
+
+/* the smoothing and vsync, as the settings have them */
+static void menu_apply_video(void)
+{
+	SDL_SetTextureScaleMode(texture, options.smooth ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+	if (SDL_RenderSetVSync(renderer, options.vsync ? 1 : 0) != 0)
+		fprintf(stderr, "vsync: %s\n", SDL_GetError());
+}
+
+/* the auto-fire into the EEPROM now (both ways: off as the test mode clears it); the game reads it at its reset */
+static void menu_apply_auto_fire(void)
+{
+	eeprom_c_button_full_auto(options.c_button_full_auto);
+	eeprom_keep(false);
+}
+
+static void menu_quit(void)
+{
+	running = 0;
+}
+
+static int menu_state_slot(int step)
+{
+	if (step)
+		state_slot = ((state_slot + step) % STATE_SLOTS + STATE_SLOTS) % STATE_SLOTS;
+	return state_slot;
+}
+
+static bool menu_state_used(int slot)
+{
+	return slot_states[slot] != NULL;
 }
 
 #define CHEATS_MAX 16
-#define QUIT_FRAMES 120    /* Escape again within about two seconds quits */
 
 int main(int argc, char **argv)
 {
@@ -677,7 +759,6 @@ int main(int argc, char **argv)
 	int cheat_count = 0, list_cheats = 0;
 	bool settings_written;
 	const char *problem;
-	unsigned quit_asked = 0;
 	Uint64 next, period;
 
 	{
@@ -689,14 +770,15 @@ int main(int argc, char **argv)
 	}
 	cave_board_describe(&cave_board_ddonpach);
 	/* the settings file, then the command line over it */
-	settings_defaults(&options);
+	settings_defaults(&file_options);
 	settings_path[0] = '\0';
 	for (int index = 1; index + 1 < argc; index++)
 		if (!strcmp(argv[index], "--settings"))
 			snprintf(settings_path, sizeof(settings_path), "%s", argv[index + 1]);
 	if (!settings_path[0])
 		snprintf(settings_path, sizeof(settings_path), "%sddonpach.ini", paths_folder());
-	problem = settings_load(&options, settings_path, &settings_written);
+	problem = settings_load(&file_options, settings_path, &settings_written);
+	options = file_options;    /* (the command line goes over it, for this run only) */
 	if (problem)
 	{
 		char message[1400];
@@ -799,8 +881,26 @@ int main(int argc, char **argv)
 	if (SDL_RenderSetVSync(renderer, options.vsync ? 1 : 0) != 0)
 		fprintf(stderr, "vsync: %s\n", SDL_GetError());
 	program_after_vblank = after_vblank;
+	{
+		menu_host menu = { 0 };
+
+		menu.options = &options;
+		menu.file = &file_options;
+		menu.path = settings_path;
+		menu.pads = pads;
+		menu.reset = menu_reset;
+		menu.test_mode = menu_test_mode;
+		menu.apply_window = menu_apply_window;
+		menu.apply_video = menu_apply_video;
+		menu.apply_auto_fire = menu_apply_auto_fire;
+		menu.quit = menu_quit;
+		menu.state = state_action;
+		menu.state_slot = menu_state_slot;
+		menu.state_used = menu_state_used;
+		menu_init(&menu);
+	}
 	if (data_extracted)
-		notice_show("ROM DATA EXTRACTED");
+		menu_notice("ROM DATA EXTRACTED");
 	if (options.sound)
 		audio_open();
 	if (audio)
@@ -817,8 +917,6 @@ int main(int argc, char **argv)
 
 		if (program_frames() % EEPROM_CHECK_FRAMES == 0)
 			eeprom_keep(false);
-		if (quit_asked)
-			quit_asked--;
 		while (SDL_PollEvent(&event))
 		{
 			if (event.type == SDL_RENDER_TARGETS_RESET || event.type == SDL_RENDER_DEVICE_RESET)
@@ -839,20 +937,32 @@ int main(int argc, char **argv)
 				else
 					SDL_SetWindowFullscreen(window, 0);
 			}
-			else if (event.type == SDL_KEYDOWN && !event.key.repeat && event.key.keysym.sym == SDLK_ESCAPE)
-			{
-				/* (no options menu yet: Escape twice quits) */
-				if (quit_asked)
-					running = 0;
-				else
-				{
-					quit_asked = QUIT_FRAMES;
-					notice_show("ESCAPE AGAIN TO QUIT");
-				}
-			}
+			else if (menu_is_open())
+				menu_event(&event);
+			else if ((event.type == SDL_KEYDOWN && !event.key.repeat && event.key.keysym.sym == SDLK_ESCAPE)
+					|| (event.type == SDL_CONTROLLERBUTTONDOWN && event.cbutton.button == SDL_CONTROLLER_BUTTON_BACK))
+				menu_open();    /* (the options menu: the game paused while it is up) */
+		}
+		if (menu_just_closed())
+		{
+			ignore_held_inputs();
+			if (audio)
+				audio_restart();
 		}
 		if (!running)
 			break;
+		if (menu_is_open())
+		{
+			/* (the game paused: the menu over its last picture, at the board's pace) */
+			static uint32_t menu_picture[VIDEO_WIDTH * VIDEO_HEIGHT];
+
+			menu_tick();
+			menu_draw(picture, menu_picture);
+			show_picture(menu_picture);
+			goto pace;
+		}
+		if (program_slowdown() != options.slowdown)
+			program_set_slowdown(options.slowdown);    /* (changed in the menu) */
 		hotkeys();
 		{
 			/* fast forward, while its key or button is held: fast_forward_speed of the game's frames in this one,
@@ -879,7 +989,8 @@ int main(int argc, char **argv)
 				video_latch_sprites();    /* (VBLANK: the 013 takes the sprites) */
 			}
 		}
-		show_picture(notice_over(picture));
+		show_picture(menu_with_notice(picture));
+pace:
 
 		/* (the board's 57.55 frames a second: SDL_Delay may sleep a whole tick of the system's timer longer than
 		   asked, up to 15 ms on Windows, so it sleeps only to 2 ms before the frame's time, and the rest is waited

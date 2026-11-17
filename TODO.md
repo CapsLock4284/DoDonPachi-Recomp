@@ -57,8 +57,11 @@
       only places things on its own 240 x 320).
 - [ ] The side panels: DoDonPachi's own (owner: the game shows more on its screen than DonPachi did, so the panels
       will differ); later.
-- [ ] The options menu: DonPachi Recomp's draws in that game's own font; DoDonPachi's text layer is 8-bit, its
-      letters elsewhere.
+- [x] The options menu (Escape / View): DonPachi Recomp's, in DoDonPachi's own font (its text layer's 8x8 tiles,
+      8 bits a pixel, ASCII as they are): options, game options (slowdown, C button auto-fire, fast forward speed,
+      the test mode, cheats), graphics, controls (remapping, both players, the hotkeys). Silent for now (DonPachi
+      Recomp's menu sounds are that game's samples).
+- [ ] The menu's sounds, from DoDonPachi's own samples (the YMZ280B's).
 - [ ] The quicker picture (DonPachi Recomp's default, a frame sooner): needs the scroll and palette the coming
       interrupt sets, from the game's memory. For now the picture is drawn as the board shows it (arcade timing).
 - [ ] The main menu, free play, high scores, training, replays, achievements, statistics, side panels, hitbox:

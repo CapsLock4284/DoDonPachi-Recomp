@@ -7,8 +7,8 @@ a model of Cave's 68000 board. It is the second game of the family, after
 
 **Status: early, playable.** The whole program translates to C, builds on Cave68kSDK and plays in a window with
 its sound, and it runs exactly as the original does on MAME's 68000 core, slowdown and all (checked frame by frame
-over 150,000 VBLANKs). The window port is DonPachi Recomp's, cut down for now: no options menu yet (the settings
-are in `ddonpach.ini`), and none of DonPachi Recomp's extras (training, replays, high scores, achievements, side
+over 150,000 VBLANKs). The window port is DonPachi Recomp's, cut down for now: its options menu (Escape, or the
+gamepad's View button), and none of DonPachi Recomp's extras yet (training, replays, high scores, achievements, side
 panels).
 
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
@@ -71,8 +71,9 @@ contents in `ddonpach.dat` beside the program; it reads that from then on.
 
 F3 resets the game, F4 holds the service switch for you (the test mode, from the title or the attract mode), Tab
 (LB) fast-forwards, F5 / F8 save and load a state (F6 / F7 choose the slot, of 5), F11 or Alt+Enter switches full
-screen, Escape twice quits. Player 2: R F D G, A, S, 2, 6. Everything can be changed in `ddonpach.ini`, written
-beside the program on its first run: the keys and buttons, the window's size, the video (scaling, scanlines, the
+screen, Escape (View on the gamepad) opens the options menu: video, sound, controls (remapping), the game's options,
+save states, cheats, QUIT TO DESKTOP. Player 2: R F D G, A, S, 2, 6. Everything can be changed there or in `ddonpach.ini`,
+written beside the program on its first run: the keys and buttons, the window's size, the video (scaling, scanlines, the
 CRT look, the pixel-art scalers, a monitor on its side), the sound's volume, the arcade's slowdown.
 
 ## Running it headless
