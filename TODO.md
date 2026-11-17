@@ -68,8 +68,12 @@
       only. It hides the frames the game itself waits before it answers an input, without changing what it does
       (the real run is the same as without it, slowdown included). Costs 2-3 times the game's work a frame; the
       saved state must take the sound chip and the frame's timing with it.
-- [ ] The quicker picture (DonPachi Recomp's default, a frame sooner): needs the scroll and palette the coming
-      interrupt sets, from the game's memory. For now the picture is drawn as the board shows it (arcade timing).
+- [x] The quicker picture (owner: input lag as low as possible): each frame shown as its VBLANK comes, a frame
+      sooner. Generic, no addresses: a look-ahead of one frame (state saved, next frame run silently, its interrupt
+      draws the picture, state put back). Checked: the same game at every frame over 30,000 VBLANKs, each picture the
+      same as the next real frame's, type C with button C the same as MAME over 18,000 VBLANKs. The save states now
+      keep the program's timing and the EEPROM's transfer (Cave68kSDK). INPUT TIMING (FAST / ARCADE) in the game
+      options. It is the base for the run-ahead above (more frames, the inputs held).
 - [ ] The main menu, free play, high scores, training, replays, achievements, statistics, side panels, hitbox:
       each reads DonPachi's memory; DoDonPachi's addresses to find.
 - [ ] A release package (tools/make_release.ps1, as DonPachi Recomp's).

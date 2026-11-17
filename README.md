@@ -76,6 +76,11 @@ save states, cheats, QUIT TO DESKTOP. Player 2: R F D G, A, S, 2, 6. Everything 
 written beside the program on its first run: the keys and buttons, the window's size, the video (scaling, scanlines, the
 CRT look, the pixel-art scalers, a monitor on its side), the sound's volume, the arcade's slowdown.
 
+Input lag: each frame is shown as the board shows it, as its VBLANK comes, not a frame later when the game's vblank
+interrupt returns. The port runs on through the next frame from a saved state, keeps its picture and puts the state
+back, so the game itself runs exactly as it would without it (slowdown included). INPUT TIMING in the game options
+(ARCADE, or `arcade_timing = true`) turns it off.
+
 ## Running it headless
 
 For the checks (Linux or MSYS2; the board from `runtime/`, the C from `src/`):

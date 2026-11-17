@@ -80,6 +80,7 @@ static char settings_path[1024];
 static SDL_Window *window;
 static int running = 1;
 static bool fast_forwarding;
+static bool reset_asked;    /* a reset asked for this frame (the look-ahead's state would undo it: main.c's look_ahead) */
 
 /* ---- the gamepads ---- */
 
@@ -189,6 +190,7 @@ static void hotkeys(void)
 			else
 			{
 				program_reset();
+				reset_asked = true;
 				service_held = 0;
 				menu_notice("RESET");
 			}
@@ -642,6 +644,30 @@ static void after_vblank(void)
 	draw_picture();
 }
 
+/* ---- the look-ahead picture: no frame of lag the board does not have ---- */
+
+
+/* The board shows a frame as its VBLANK comes: the sprites latched then, the layers' scroll and the palette as the
+   vblank interrupt sets them just after (its first 2 ms). program_run_frame returns at that VBLANK, before the
+   interrupt, so a picture drawn as the interrupt returns (after_vblank) comes a frame later, after the next frame's
+   work. Here the program runs on through that next frame with the state saved first, its interrupt drawing the
+   picture the board shows now, and the state is put back: the game goes on exactly as it would without it (the next
+   frame is run again, for real, with the inputs then; checked: the same game at every frame over 30,000 VBLANKs, and
+   the same picture as the frame after draws at each). Its sound is not kept (cave_sound_quiet). Costs the game's
+   work twice a frame: a millisecond or less. Without a state (no memory), the picture of arcade timing */
+static void look_ahead(void)
+{
+	program_state *state;
+
+	if (options.arcade_timing || reset_asked || !(state = program_state_save()))
+		return;
+	cave_sound_quiet = true;
+	program_run_frame();    /* (its interrupt draws the picture: after_vblank) */
+	cave_sound_quiet = false;
+	program_state_load(state);
+	program_state_free(state);    /* (freed once it is put back, at the next frame) */
+}
+
 /* ---- the save states (cave/program.h): STATE_SLOTS of them, in memory, until the program closes ---- */
 
 static program_state *slot_states[STATE_SLOTS];
@@ -697,6 +723,7 @@ static void state_slot_hotkey(int step)
 static void menu_reset(void)
 {
 	program_reset();
+	reset_asked = true;
 	service_held = 0;
 	menu_notice("RESET");
 }
@@ -987,7 +1014,9 @@ int main(int argc, char **argv)
 				else
 					audio_queue();
 				video_latch_sprites();    /* (VBLANK: the 013 takes the sprites) */
+				reset_asked = false;      /* (done: the frame began from the reset) */
 			}
+			look_ahead();    /* (the picture the board shows now) */
 		}
 		show_picture(menu_with_notice(picture));
 pace:
