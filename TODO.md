@@ -62,6 +62,12 @@
       the test mode, cheats), graphics, controls (remapping, both players, the hotkeys). Silent for now (DonPachi
       Recomp's menu sounds are that game's samples).
 - [ ] The menu's sounds, from DoDonPachi's own samples (the YMZ280B's).
+- [ ] Look-ahead for input latency (owner; not a priority): predictive emulation, as rollback in fighting games
+      (RetroArch calls it run-ahead). Each frame: the game kept (program_state_save), run on 1-2 frames with the
+      inputs held now, that frame shown, then put back and run the one real frame; the sound from the real frames
+      only. It hides the frames the game itself waits before it answers an input, without changing what it does
+      (the real run is the same as without it, slowdown included). Costs 2-3 times the game's work a frame; the
+      saved state must take the sound chip and the frame's timing with it.
 - [ ] The quicker picture (DonPachi Recomp's default, a frame sooner): needs the scroll and palette the coming
       interrupt sets, from the game's memory. For now the picture is drawn as the board shows it (arcade timing).
 - [ ] The main menu, free play, high scores, training, replays, achievements, statistics, side panels, hitbox:
