@@ -8,9 +8,9 @@
  *    license:BSD-3-Clause
  *    DonPachi Recomp's window port (ports/sdl2/main.c), cut down to what does not depend on that game's memory: the
  *    window and its video settings (scaling, the CRT look, the pixel-art scalers, rotation), the sound, the controls,
- *    the EEPROM, the save states, fast forward, MAME's cheat files, and the options menu (menu.h: in the game's own
- *    font, its options, game options, graphics, controls and cheats pages). Not yet: the main menu, high scores,
- *    training, replays, achievements, statistics, the side panels, the hitbox.
+ *    the EEPROM, the save states, fast forward, free play, MAME's cheat files, and the options menu (menu.h: in the
+ *    game's own font, its options, game options, graphics, controls and cheats pages). Not yet: the main menu, high
+ *    scores, training, replays, achievements, statistics, the side panels, the hitbox.
  *
  *    Usage: ddonpach [--settings PATH] [--rom PATH] [--scale N] [--no-sound] [--eeprom PATH] [--cheats FILE]
  *                    [--cheat NAME ...] [--list-cheats]
@@ -44,8 +44,9 @@
  *    Fast forward: held, LB on the gamepad or Tab ([hotkeys] fast_forward; [game] fast_forward_speed, 4 by default).
  *    Save states: F5 keeps the game as it is now, F8 goes back to it, in the chosen slot of 5 (F6 / F7), in memory
  *          until the program closes.
- *    The picture is drawn as the board does: as the game's vblank interrupt returns, with the sprites latched as
- *    VBLANK began (as MAME; DonPachi Recomp's quicker picture needs the game's own memory: not yet).
+ *    The picture: each frame shown as the board shows it, as its VBLANK comes (the look-ahead: look_ahead); [game]
+ *    arcade_timing true draws it as the game's vblank interrupt returns, a frame later (as MAME).
+ *    Free play ([game] free_play, on by default): Start drops in the coins a game needs (cave/free_play.h).
  */
 #include "crash_log.h"
 #include "crt.h"
@@ -58,6 +59,7 @@
 
 #include "cave/boards.h"
 #include "cave/cheats.h"
+#include "cave/free_play.h"
 #include "cave/machine.h"
 #include "cave/program.h"
 #include "cave/rom_set.h"
@@ -192,6 +194,7 @@ static void hotkeys(void)
 				program_reset();
 				reset_asked = true;
 				service_held = 0;
+				free_play_reset();
 				menu_notice("RESET");
 			}
 		}
@@ -255,6 +258,8 @@ static void read_keys(void)
 	}
 	cave_board.in0 = (uint16_t)~pressed[0];
 	cave_board.in1 = (uint16_t)~pressed[1];
+	if (options.free_play)
+		free_play_inputs();    /* (a Start with too few credits: the coins first) */
 }
 
 static void show_problem(const char *problem)
@@ -699,6 +704,7 @@ static void state_action(bool save)
 		return;
 	}
 	program_state_load(slot_states[state_slot]);
+	free_play_reset();
 	video_latch_sprites();
 	draw_picture();
 	if (audio)
@@ -725,6 +731,7 @@ static void menu_reset(void)
 	program_reset();
 	reset_asked = true;
 	service_held = 0;
+	free_play_reset();
 	menu_notice("RESET");
 }
 

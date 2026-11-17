@@ -74,6 +74,7 @@ void settings_defaults(settings *s)
 	memset(s, 0, sizeof(*s));
 	s->version = 0;
 	s->fast_forward_speed = 4;
+	s->free_play = true;
 	s->arcade_timing = false;
 	s->c_button_full_auto = true;
 	s->slowdown = true;
@@ -247,6 +248,8 @@ static bool take(settings *s, const char *section, const char *name, char *value
 		}
 		if (!SDL_strcasecmp(name, "fast_forward_speed"))
 			return parse_int(value, 2, 16, &s->fast_forward_speed);
+		if (!SDL_strcasecmp(name, "free_play"))
+			return parse_bool(value, &s->free_play);
 		if (!SDL_strcasecmp(name, "arcade_timing"))
 			return parse_bool(value, &s->arcade_timing);
 		if (!SDL_strcasecmp(name, "c_button_full_auto"))
@@ -457,6 +460,9 @@ const char *settings_save(const settings *s, const char *path)
 	fprintf(file, "version = %s\n", s->version == 1 ? "japan" : "world");
 	fputs("; while the fast forward key or button is held ([hotkeys]): the game's frames a frame, 2 to 16\n", file);
 	fprintf(file, "fast_forward_speed = %d\n", s->fast_forward_speed);
+	fputs("; true (the default): Start drops in the coins a game needs first (the game has no free play of its own;\n"
+		"; its coin sound and credit as on the board); false: coins with the coin key\n", file);
+	fprintf(file, "free_play = %s\n", bool_text(s->free_play));
 	fputs("; false (the default): each frame shown as the board shows it, as its VBLANK comes, a frame sooner than\n"
 		"; drawing it when the game's vblank interrupt returns (true: a frame more of input lag). The game runs the\n"
 		"; same either way\n", file);

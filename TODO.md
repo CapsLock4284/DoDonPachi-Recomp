@@ -74,6 +74,12 @@
       same as the next real frame's, type C with button C the same as MAME over 18,000 VBLANKs. The save states now
       keep the program's timing and the EEPROM's transfer (Cave68kSDK). INPUT TIMING (FAST / ARCADE) in the game
       options. It is the base for the run-ahead above (more frames, the inputs held).
-- [ ] The main menu, free play, high scores, training, replays, achievements, statistics, side panels, hitbox:
+- [x] Free play (on by default): Cave68kSDK's free_play.c, now for both games (each board description says where
+      its credits are: DoDonPachi's word at $1013AA, 2 a game when bit 0 of $101297, DISCOUNT CONTINUE, is set).
+      Start drops the coins, then presses Start (6 frames on, 6 off) until the game takes it, at most 5 s: on the
+      title the game may take it 150 frames after the credit. Checked: player 1 from the attract and the title,
+      player 2 joining, 2 credits a game; DonPachi's the same as before. With DISCOUNT CONTINUE a continue takes 1:
+      free play drops 2, one left over.
+- [ ] The main menu, high scores, training, replays, achievements, statistics, side panels, hitbox:
       each reads DonPachi's memory; DoDonPachi's addresses to find.
 - [ ] A release package (tools/make_release.ps1, as DonPachi Recomp's).

@@ -64,6 +64,7 @@ typedef struct
 {
 	/* [game] */
 	int version;                /* the game's version: 0 the World one, 1 the Japanese (the board description's) */
+	bool free_play;             /* Start drops in the coins a game needs first (cave/free_play.h); true by default */
 	bool arcade_timing;         /* the picture shown a frame late, as drawn when the vblank interrupt returns (false, the
 	                               default: shown as its VBLANK comes, by the look-ahead: main.c) */
 	int fast_forward_speed;     /* 2-16 */
