@@ -109,6 +109,9 @@
       save-state game's entry dropped and the HIGH put back, the file untouched.
 - [x] The start's WARNING screen skipped (owner): its 1,809 frames run unseen at once (0.15 s), the game unchanged;
       SKIP WARNING in the game options.
+      Fixed 18-11 (owner: the FPS log's burst right after starting): a game started before the reset's frame 2,400
+      cleared the between-games flag again, and up to 577 frames of it ran unseen too; the skip now ends for good
+      when the warning is over (until the next reset).
 - [x] FPS meter (owner: "feels slower than the original"): F9 / FPS METER, GAME (the game's frames), BOARD (the
       board's: 57.55), WINDOW, LATE, WORK. The picture is now drawn only when it is shown (the look-ahead's, or with
       arcade timing the last frame's): half the drawing a frame, nothing drawn in fast forward's unseen frames or the

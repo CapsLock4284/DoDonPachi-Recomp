@@ -190,7 +190,15 @@ static bool hotkey_down(int hotkey)
 
 static bool warning_showing(void)
 {
-	return program_frames_since_reset() < WARNING_FRAMES_MOST && !(*cave_work_ram_byte(0x1017A5u) & 0x80u);
+	static bool over;              /* (since the last reset: the flag is clear again in a game, 2,400 frames from the
+	                                  reset a game started at once would be run unseen too) */
+	const uint64_t frames = program_frames_since_reset();
+
+	if (frames == 0u)
+		over = false;              /* (a reset; a save state put back keeps its own count, never 0) */
+	if (!over && (frames >= WARNING_FRAMES_MOST || *cave_work_ram_byte(0x1017A5u) & 0x80u))
+		over = true;
+	return !over;
 }
 
 /* A hotkey pressed (not held from before): the reset, or the test mode (the service switch held for the player); the
