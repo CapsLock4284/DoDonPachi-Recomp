@@ -2,7 +2,7 @@
    as the screen shows them, played by tests/player.h (or another: -DPLAYER='"players/type_A_shot.h"') and kept from
    harm from VBLANK 2,500 as slowdown_check's INVINCIBLE (MORTAL=1: not); every EVERY VBLANKs a picture
    panels_VBLANK_WIDTH.ppm for each panel width given (120 156 251 by default: 16:10, 16:9 and 21:9 screens). The
-   stages' best scores in panels_test.stages (started empty). Run where ddonpach.zip is, as slowdown_check */
+   stages' best scores in panels_test.stages (started empty; KEEP_STAGES=1: kept from the last run). Run where ddonpach.zip is, as slowdown_check */
 #include "cave/boards.h"
 #include "cave/machine.h"
 #include "cave/program.h"
@@ -66,7 +66,8 @@ int main(int argc, char **argv)
 	if (argc > 3)
 		for (width_count = 0; width_count < 8 && 3 + width_count < argc; width_count++)
 			widths[width_count] = atoi(argv[3 + width_count]);
-	remove("panels_test.stages");
+	if (!getenv("KEEP_STAGES"))
+		remove("panels_test.stages");
 	widgets_open("panels_test.stages");
 	cave_board_describe(&cave_board_ddonpach);
 	if ((problem = rom_set_load("ddonpach.zip")) != NULL || (problem = program_start()) != NULL)

@@ -106,8 +106,10 @@ and the panels only take the black space at its sides (as wide as the screen lea
 - Right: the stage and the score, and the high score table chased one place at a time: #5 first, then #4 once it
   is passed, up to #1 ("NEXT #3", the score, and how much more it takes). The graph shows the score through the
   game against the place being chased (the dashed line at the top); each place passed leaves a line in its colour
-  where it was passed, with its number. Below: this stage's score against the best ever for that stage, and the last
-  stage finished ("NEW BEST!"). The stages' best scores are kept in `ddonpach.stages` beside the program, from clean
+  where it was passed, with its number. Below: the loop's six stages one under the other, a record of the game so
+  far: each stage finished with its score and how it went against the best ever for that stage (+ or -, gold for a
+  new best), the stage being played as it goes (yellow), and those to come with their best to beat. The stages' best
+  scores are kept in `ddonpach.stages` beside the program, from clean
   games only (no cheat, no save state, the slowdown on); a stage after a continue doesn't count either.
 
 If the game stops or crashes, it says so in a message box, and leaves two files beside the program: `ddonpach.log`

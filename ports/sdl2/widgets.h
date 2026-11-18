@@ -4,7 +4,8 @@
  *                 the player's ship, its shot and laser power (1 to MAX) and bombs, and the board's speed (the game's
  *                 frames a second and the slowdown, now, this stage and this game). Right: the score chasing the high
  *                 score table (#5 first, then #4 ... #1) with a graph of the run (a coloured line where each was
- *                 passed), and this stage's score against the best ever for that stage
+ *                 passed), and the loop's stages one under the other, each one's score against the best ever
+ *                 for it (+ or -)
  *    Version:     0.1.0 (draft)
  *    Created:     18-11-2026
  *

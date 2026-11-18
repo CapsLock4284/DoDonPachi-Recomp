@@ -91,7 +91,9 @@
         the other): a power-up raises both, so there are no halves; a life lost takes the first down one and the
         second back to 0. Shown as two rows of five (SHOT, LASER: LV 1-4, MAX)
   - [x] The stage's score against the best ever for that stage (`ddonpach.stages`: the 12 stages of both loops,
-        from clean games; a stage after a continue doesn't count)
+        from clean games; a stage after a continue doesn't count). As a list (owner, 18-11-2026): the loop's six
+        stages one under the other, each finished one's score and + or - against its best, the one being played
+        live, those to come with their best
   - [x] The board's FPS with the percentage of slowdown (over the last second, this stage, this game)
   - [x] **The high score chase** (owner, 18-11-2026): the score against #5 of the table, then #4 once passed, up to
         #1; a line in each place's colour on the graph where it was passed

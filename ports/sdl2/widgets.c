@@ -209,9 +209,9 @@ static struct
 	int area;                   /* -1: none */
 	uint32_t stage_start;       /* the score as it began */
 	bool stage_counts;          /* clean all through, from its start, no continue */
-	int last_area;              /* the last stage finished: its score, and the best before it */
-	uint32_t last_score, last_best;
-	bool last_new, last_counted;
+	/* each stage finished in this game: its score, the best before it, whether it counted (and was a new best) */
+	bool done[AREAS], counted[AREAS], new_best[AREAS];
+	uint32_t made[AREAS], best_before[AREAS];
 	/* the graph */
 	uint32_t table[5];          /* the high score table as the game began */
 	int chasing;                /* the place chased: 4 (#5) ... 0 (#1), -1 all passed */
@@ -228,7 +228,7 @@ static bool was_in_game;
 void widgets_reset(void)
 {
 	memset(&run, 0, sizeof(run));
-	run.area = run.last_area = -1;
+	run.area = -1;
 	for (int place = 0; place < 5; place++)
 		run.passed_at[place] = -1;
 	memset(&speed, 0, sizeof(speed));
@@ -238,7 +238,7 @@ void widgets_reset(void)
 static void run_begin(void)
 {
 	memset(&run, 0, sizeof(run));
-	run.area = run.last_area = -1;
+	run.area = -1;
 	speed.stage_frames = speed.stage_lagged = speed.game_frames = speed.game_lagged = 0;
 	run.on = true;
 	run.player = followed();
@@ -283,12 +283,12 @@ static void stage_end(uint32_t score)
 	const int area = run.area;
 	const uint32_t made = score - run.stage_start;
 
-	run.last_area = area;
-	run.last_score = made;
-	run.last_best = best[area];
-	run.last_counted = run.stage_counts;
-	run.last_new = run.stage_counts && made > best[area];
-	if (run.last_new)
+	run.done[area] = true;
+	run.made[area] = made;
+	run.best_before[area] = best[area];
+	run.counted[area] = run.stage_counts;
+	run.new_best[area] = run.stage_counts && made > best[area];
+	if (run.new_best[area])
 	{
 		best[area] = made;
 		stages_save();
@@ -674,6 +674,78 @@ static void draw_graph(panel *p, uint32_t score)
 	}
 }
 
+/* a difference against a best: "+N" or "-N" */
+static void difference(char *out, size_t size, uint32_t made, uint32_t against, int room)
+{
+	char value[32];
+
+	score_text(value, sizeof(value), made > against ? made - against : against - made, room - 8);
+	snprintf(out, size, "%c%s", made > against ? '+' : '-', value);
+}
+
+/* the stages of the loop being played, one under the other: each finished one's score and how it went against the
+   best for that stage before it (a new best in gold), the one being played as it goes (against its best so far),
+   those to come dim */
+#define STAGES_TOP  184
+#define STAGE_ROWS  19
+
+static void draw_stages(panel *p, uint32_t score)
+{
+	const int room = p->w - 16;
+	const int loop = run.on && run.area >= 0 ? run.area / STAGES : run.on && run.done[STAGES] ? 1 : 0;
+
+	section(p, STAGES_TOP, "STAGES");
+	for (int stage = 0; stage < STAGES; stage++)
+	{
+		const int area = loop * STAGES + stage, y = STAGES_TOP + 12 + stage * STAGE_ROWS;
+		const bool live = run.on && area == run.area && in_game();
+		char label[8], value[32], text[40];
+
+		snprintf(label, sizeof(label), "%d-%d", loop + 1, stage + 1);
+		if (live)
+		{
+			/* the stage being played: its score so far, against its best */
+			const uint32_t made = score - run.stage_start;
+
+			put_text(p, 8, y, label, YELLOW, 1);
+			score_text(value, sizeof(value), made, room - 32);
+			put_right(p, y, value, WHITE, 1);
+			if (!run.stage_counts)
+				put_right(p, y + 9, "UNRANKED", DIM, 1);
+			else if (best[area])
+			{
+				difference(text, sizeof(text), made, best[area], room);
+				put_right(p, y + 9, text, made > best[area] ? GOLD : GREY, 1);
+			}
+		}
+		else if (run.on && run.done[area])
+		{
+			put_text(p, 8, y, label, GREY, 1);
+			score_text(value, sizeof(value), run.made[area], room - 32);
+			put_right(p, y, value, run.new_best[area] ? GOLD : WHITE, 1);
+			if (!run.counted[area])
+				put_right(p, y + 9, "UNRANKED", DIM, 1);
+			else if (!run.best_before[area])
+				put_right(p, y + 9, "NEW BEST", GOLD, 1);
+			else
+			{
+				difference(text, sizeof(text), run.made[area], run.best_before[area], room);
+				put_right(p, y + 9, text, run.new_best[area] ? GOLD : RED, 1);
+			}
+		}
+		else
+		{
+			put_text(p, 8, y, label, DIM, 1);
+			if (best[area])
+			{
+				/* (to come: its best, to beat) */
+				score_text(value, sizeof(value), best[area], room - 32);
+				put_right(p, y, value, DIM, 1);
+			}
+		}
+	}
+}
+
 static void draw_right(panel *p)
 {
 	const bool showing = run.on;
@@ -714,57 +786,7 @@ static void draw_right(panel *p)
 	}
 	draw_graph(p, score);
 
-	/* this stage against the best for it */
-	section(p, 186, "THIS STAGE");
-	if (showing && run.area >= 0)
-	{
-		const uint32_t made = score - run.stage_start, best_now = best[run.area];
-
-		score_text(value, sizeof(value), made, room);
-		put_right(p, 200, value, WHITE, 1);
-		put_text(p, 8, 212, "BEST", GREY, 1);
-		if (best_now)
-		{
-			score_text(value, sizeof(value), best_now, room - 40);
-			put_right(p, 212, value, GREY, 1);
-			bar(p, 224, (float)made / (float)best_now, made > best_now ? GOLD : GREEN);
-			if (made > best_now)
-			{
-				score_text(value, sizeof(value), made - best_now, room - 8);
-				snprintf(text, sizeof(text), "+%s", value);
-				put_right(p, 236, text, GOLD, 1);
-			}
-			else
-			{
-				score_text(value, sizeof(value), best_now - made, room - 48);
-				put_text(p, 8, 236, "TO GO", GREY, 1);
-				put_right(p, 236, value, WHITE, 1);
-			}
-		}
-		else
-			put_right(p, 212, "-", DIM, 1);
-		if (!run.stage_counts)
-			put_centre(p, 250, "NOT RECORDED", RED, 1);
-	}
-	/* the last stage finished */
-	section(p, 268, "LAST STAGE");
-	if (run.on && run.last_area >= 0)
-	{
-		snprintf(text, sizeof(text), "%d-%d", run.last_area / STAGES + 1, run.last_area % STAGES + 1);
-		put_text(p, 8, 282, text, GREY, 1);
-		score_text(value, sizeof(value), run.last_score, room - 32);
-		put_right(p, 282, value, run.last_new ? GOLD : WHITE, 1);
-		if (run.last_new)
-			put_centre(p, 296, "NEW BEST!", GOLD, 1);
-		else if (!run.last_counted)
-			put_centre(p, 296, "NOT RECORDED", DIM, 1);
-		else if (run.last_best)
-		{
-			score_text(value, sizeof(value), run.last_best, room - 40);
-			put_text(p, 8, 296, "BEST", DIM, 1);
-			put_right(p, 296, value, DIM, 1);
-		}
-	}
+	draw_stages(p, score);
 }
 
 void widgets_draw(uint32_t *left, uint32_t *right, int width)
