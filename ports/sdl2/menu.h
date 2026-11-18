@@ -6,8 +6,8 @@
  *    Created:     17-11-2026
  *
  *    license:BSD-3-Clause
- *    DonPachi Recomp's menu (ports/sdl2/menu.h), with the pages that do not read that game's memory: the options,
- *    the game options, the graphics, the controls, the cheats.
+ *    DonPachi Recomp's menu (ports/sdl2/menu.h), with the pages that do not read that game's memory: the main menu,
+ *    the options, the game options, the graphics, the controls, the cheats.
  *    The gamepad's View button or Escape opens it; the game is not run while it is open (it goes on from the same
  *    frame). D-pad, stick or arrows move; A, Enter, Z or Space choose; left and right change a value; B, Backspace or
  *    X go back; View or Escape close. Its changes go to ddonpach.ini at once.
@@ -38,12 +38,19 @@ typedef struct
 	void (*state)(bool save);   /* the save state: kept, or gone back to (the chosen slot's) */
 	int (*state_slot)(int step);    /* the save states' slot, 0 to STATE_SLOTS - 1, moved by 'step' (0: as it is) */
 	bool (*state_used)(int slot);   /* a save state is kept in the slot */
+	void (*main_menu)(void);    /* the board reset and kept at its start, for the main menu (then it shows) */
 } menu_host;
 
 void menu_init(const menu_host *host);
 
 bool menu_is_open(void);
 void menu_open(void);
+
+/* The main menu (START GAME, SETTINGS, QUIT TO DESKTOP), as the program starts ([game] main_menu) and from the
+   options' MAIN MENU: the game is not run while it is up (menu_is_open), and START GAME closes it; Escape or View
+   don't */
+void menu_open_front(void);
+bool menu_in_front(void);
 
 /* An event while it is open: true when the menu took it (all are taken while it is open) */
 bool menu_event(const SDL_Event *event);

@@ -50,6 +50,8 @@
  *    High scores: kept in ddonpach.hiscore beside the program (hiscore.h; the game options' SAVE HIGH SCORES, or
  *          [game] save_high_scores); not saved from a game that had a cheat on or went back to a save state.
  *    The start's WARNING screen (31 seconds) is run at once, unseen ([game] skip_warning, on by default).
+ *    Main menu: as the program starts (START GAME, SETTINGS, QUIT TO DESKTOP; [game] main_menu), and from the options'
+ *          MAIN MENU (the game reset); the game waits at its start while it is up, and runs from there with START GAME.
  */
 #include "crash_log.h"
 #include "crt.h"
@@ -187,6 +189,7 @@ static bool hotkey_down(int hotkey)
    are run unseen, at once (all of them, as the board runs them: the game the same, about 0.15 s). Over when the
    game's between-games flag ($1017A5 bit 7) is first set; at most WARNING_FRAMES_MOST */
 #define WARNING_FRAMES_MOST 2400
+#define WARNING_FRAMES_LEAST 1500     /* (the warning is never over sooner) */
 #define WARNING_FRAMES_AT_ONCE 600    /* (a frame of the window's at most: it answers meanwhile) */
 
 static bool warning_showing(void)
@@ -195,9 +198,16 @@ static bool warning_showing(void)
 	                                  reset a game started at once would be run unseen too) */
 	const uint64_t frames = program_frames_since_reset();
 
-	if (frames == 0u)
-		over = false;              /* (a reset; a save state put back keeps its own count, never 0) */
-	if (!over && (frames >= WARNING_FRAMES_MOST || *cave_work_ram_byte(0x1017A5u) & 0x80u))
+	if (frames == 0u || reset_asked)
+	{
+		over = false;              /* (a reset, or one asked for: it comes with the next frame, the count from it;
+		                              a save state put back keeps its own count, never 0) */
+		return true;
+	}
+	/* (the flag looked at from WARNING_FRAMES_LEAST on: after a reset the work RAM still holds the last run's, set,
+	   until the game's start clears it) */
+	if (!over && (frames >= WARNING_FRAMES_MOST
+			|| (frames >= WARNING_FRAMES_LEAST && *cave_work_ram_byte(0x1017A5u) & 0x80u)))
 		over = true;
 	return !over;
 }
@@ -1034,6 +1044,21 @@ static void menu_reset(void)
 	menu_notice("RESET");
 }
 
+/* The options' MAIN MENU: the board reset and kept at its start (it is not run while the main menu is up), the side
+   panels' game forgotten; START GAME runs it from there, as the board switched on */
+static void menu_main_menu(void)
+{
+	program_reset();
+	reset_asked = true;
+	service_held = 0;
+	free_play_reset();
+	hiscore_reset();
+	widgets_reset();
+	state_loaded = false;
+	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
+	memset(picture, 0, sizeof(picture));
+}
+
 static void menu_test_mode(void)
 {
 	service_held = SERVICE_MENU_FRAMES;    /* (no reset: the game looks at the switch after its warning) */
@@ -1250,7 +1275,10 @@ int main(int argc, char **argv)
 		menu.state = state_action;
 		menu.state_slot = menu_state_slot;
 		menu.state_used = menu_state_used;
+		menu.main_menu = menu_main_menu;
 		menu_init(&menu);
+		if (options.main_menu)
+			menu_open_front();    /* (the main menu first: the game waits at its start until START GAME) */
 	}
 	if (data_extracted)
 		menu_notice("ROM DATA EXTRACTED");

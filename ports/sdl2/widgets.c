@@ -666,7 +666,12 @@ static void draw_bee(panel *p, int x, int y, bool taken)
 
 					if (pen)
 					{
-						const uint32_t colour = palette_colour(BEE_COLOUR * 256u + pen);
+						/* (its palette, or before the game has set it up (the main menu at the start) gold made
+						   here, brighter for the lower pens as the bee's palette goes) */
+						const uint32_t colour = cave_board.palette[BEE_COLOUR * 256u + 2u]
+							? palette_colour(BEE_COLOUR * 256u + pen)
+							: pen == 1u ? 0xFFFFFFu : pen < 12u ? shade(GOLD, 110 - (int)pen * 9)
+							: shade(0xC0E000u, 130 - (int)pen * 8);
 
 						r += colour >> 16 & 255u;
 						g += colour >> 8 & 255u;

@@ -77,6 +77,7 @@ void settings_defaults(settings *s)
 	s->version = 0;
 	s->fast_forward_speed = 4;
 	s->skip_warning = true;
+	s->main_menu = true;
 	s->save_high_scores = true;
 	s->free_play = true;
 	s->arcade_timing = false;
@@ -257,6 +258,8 @@ static bool take(settings *s, const char *section, const char *name, char *value
 			return parse_int(value, 2, 16, &s->fast_forward_speed);
 		if (!SDL_strcasecmp(name, "skip_warning"))
 			return parse_bool(value, &s->skip_warning);
+		if (!SDL_strcasecmp(name, "main_menu"))
+			return parse_bool(value, &s->main_menu);
 		if (!SDL_strcasecmp(name, "save_high_scores"))
 			return parse_bool(value, &s->save_high_scores);
 		if (!SDL_strcasecmp(name, "free_play"))
@@ -480,6 +483,9 @@ const char *settings_save(const settings *s, const char *path)
 	fputs("; true (the default): the WARNING screen the game shows as it starts (31 seconds) is run at once, unseen\n"
 		"; (the game runs every frame of it, as on the board); false: shown\n", file);
 	fprintf(file, "skip_warning = %s\n", bool_text(s->skip_warning));
+	fputs("; true (the default): the main menu as the program starts (START GAME, SETTINGS, QUIT TO DESKTOP); false:\n"
+		"; straight into the game, as the board switched on\n", file);
+	fprintf(file, "main_menu = %s\n", bool_text(s->main_menu));
 	fputs("; true (the default): the high score table kept in ddonpach.hiscore beside the program (the arcade board\n"
 		"; forgets it when it is switched off); not kept from a game that had a cheat on or went back to a save state\n",
 		file);

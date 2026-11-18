@@ -12,10 +12,12 @@
  *    for the cabinet: a tile's row is the picture's column.
  */
 #include "menu.h"
+#include "hiscore.h"
 #include "scaler.h"
 
 #include "cave/cheats.h"
 #include "cave/machine.h"
+#include "cave/board.h"
 #include "cave/rom_set.h"
 #include "cave/video.h"
 
@@ -43,7 +45,7 @@
 #define STICK_DEAD   16000
 #define CHEAT_ROWS   16                 /* the cheats page's: as many shown at a time, scrolled with the choice */
 
-enum { PAGE_MAIN, PAGE_CONTROLS, PAGE_GRAPHICS, PAGE_GAME, PAGE_CHEATS };
+enum { PAGE_MAIN, PAGE_CONTROLS, PAGE_GRAPHICS, PAGE_GAME, PAGE_CHEATS, PAGE_FRONT };
 enum { NAV_NONE, NAV_UP, NAV_DOWN, NAV_LEFT, NAV_RIGHT, NAV_CHOOSE, NAV_BACK, NAV_CLOSE };
 
 enum
@@ -53,6 +55,9 @@ enum
 	ITEM_ROTATE, ITEM_DEADZONE, ITEM_SAVE_STATE, ITEM_LOAD_STATE, ITEM_GAME, ITEM_CHEATS, ITEM_SLOWDOWN, ITEM_CRT,
 	ITEM_STATE_SLOT, ITEM_FILTER, ITEM_AUTO_FIRE, ITEM_TIMING, ITEM_FREE_PLAY, ITEM_HIGH_SCORES,
 	ITEM_SKIP_WARNING, ITEM_FPS, ITEM_RENDERER, ITEM_PANELS,
+	ITEM_START_GAME, ITEM_SETTINGS,   /* the main menu's */
+	ITEM_MAIN_MENU,               /* the options': the game left, the main menu */
+	ITEM_FRONT_AT_START,          /* the game options': the main menu as the program starts */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -64,7 +69,7 @@ static const char *const item_labels[] = {
 	"QUIT TO DESKTOP", "RESET TO DEFAULTS", "BACK", "GRAPHICS", "SCALING", "SMOOTHING", "SCANLINES", "VSYNC",
 	"ROTATE", "STICK DEADZONE", "SAVE STATE", "LOAD STATE", "GAME OPTIONS", "CHEATS", "SLOWDOWN", "CRT",
 	"STATE SLOT", "FILTER", "C BUTTON AUTO FIRE", "INPUT TIMING", "FREE PLAY", "SAVE HIGH SCORES", "SKIP WARNING",
-	"FPS METER", "RENDERER", "SIDE PANELS"
+	"FPS METER", "RENDERER", "SIDE PANELS", "START GAME", "SETTINGS", "MAIN MENU", "MAIN MENU AT START"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -73,6 +78,7 @@ static const char *const action_labels[ACTIONS] = {
 
 static menu_host host;
 static bool open, just_closed;
+static bool front;                      /* the main menu is up, or its SETTINGS (the game not started) */
 static int page, selected, player;
 static int items[128], item_count;
 static int capture = -1;                /* the action waiting for its key or button, or -1 */
@@ -111,19 +117,34 @@ static void add_items(const int *list, size_t count)
 static void build_items(void)
 {
 	item_count = 0;
-	if (page == PAGE_MAIN)
+	if (page == PAGE_FRONT)
+	{
+		static const int front_items[] = { ITEM_START_GAME, ITEM_SETTINGS, ITEM_QUIT };
+
+		add_items(front_items, sizeof(front_items) / sizeof(front_items[0]));
+	}
+	else if (page == PAGE_MAIN && front)
+	{
+		/* (the main menu's SETTINGS: what can be set before a game) */
+		static const int settings_items[] = { ITEM_VOLUME, ITEM_GAME, ITEM_GRAPHICS, ITEM_CONTROLS, ITEM_BACK };
+
+		add_items(settings_items, sizeof(settings_items) / sizeof(settings_items[0]));
+	}
+	else if (page == PAGE_MAIN)
 	{
 		static const int main_items[] = { ITEM_RESUME, ITEM_RESET, ITEM_VOLUME, ITEM_SAVE_STATE, ITEM_LOAD_STATE,
-			ITEM_STATE_SLOT, ITEM_GAME, ITEM_GRAPHICS, ITEM_CONTROLS, ITEM_QUIT };
+			ITEM_STATE_SLOT, ITEM_GAME, ITEM_GRAPHICS, ITEM_CONTROLS, ITEM_MAIN_MENU, ITEM_QUIT };
 
 		add_items(main_items, sizeof(main_items) / sizeof(main_items[0]));
 	}
 	else if (page == PAGE_GAME)
 	{
 		static const int game_items[] = { ITEM_TIMING, ITEM_FREE_PLAY, ITEM_HIGH_SCORES, ITEM_SKIP_WARNING,
-			ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
+			ITEM_FRONT_AT_START, ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
 
-		add_items(game_items, sizeof(game_items) / sizeof(game_items[0]));
+		for (size_t index = 0; index < sizeof(game_items) / sizeof(game_items[0]); index++)
+			if (!(front && game_items[index] == ITEM_TEST_MODE))    /* (no game running to hold the switch for) */
+				items[item_count++] = game_items[index];
 	}
 	else if (page == PAGE_CHEATS)
 	{
@@ -238,6 +259,9 @@ static void change(int item, int step, bool wrap)
 	case ITEM_SKIP_WARNING:
 		in_use->skip_warning = file->skip_warning = !in_use->skip_warning;
 		break;
+	case ITEM_FRONT_AT_START:
+		in_use->main_menu = file->main_menu = !in_use->main_menu;
+		break;
 	case ITEM_HIGH_SCORES:
 		in_use->save_high_scores = file->save_high_scores = !in_use->save_high_scores;
 		break;
@@ -348,6 +372,16 @@ static void to_page(int to)
 /* back to the page before, on the entry that opened this one */
 static void back(void)
 {
+	if (page == PAGE_MAIN && front)
+	{
+		/* (the main menu's SETTINGS: back to the main menu, on SETTINGS) */
+		page = PAGE_FRONT;
+		build_items();
+		for (selected = 0; selected < item_count - 1 && items[selected] != ITEM_SETTINGS; selected++)
+			;
+		return;
+	}
+	{
 	const int opened_by = page == PAGE_GRAPHICS ? ITEM_GRAPHICS : page == PAGE_GAME ? ITEM_GAME
 		: page == PAGE_CHEATS ? ITEM_CHEATS : ITEM_CONTROLS;
 
@@ -355,6 +389,7 @@ static void back(void)
 	build_items();
 	for (selected = 0; selected < item_count - 1 && items[selected] != opened_by; selected++)
 		;
+	}
 }
 
 static void choose(int item)
@@ -363,6 +398,17 @@ static void choose(int item)
 	{
 	case ITEM_RESUME:
 		close_menu();
+		break;
+	case ITEM_START_GAME:
+		front = false;
+		close_menu();    /* (the game starts: it runs from its reset, as the board switched on) */
+		break;
+	case ITEM_SETTINGS:
+		to_page(PAGE_MAIN);
+		break;
+	case ITEM_MAIN_MENU:
+		host.main_menu();
+		menu_open_front();
 		break;
 	case ITEM_RESET:
 		host.reset();
@@ -452,12 +498,20 @@ static void navigate(int nav)
 		choose(item);
 		break;
 	case NAV_BACK:
-		if (page != PAGE_MAIN)
+		if (page == PAGE_FRONT)
+			break;    /* (the main menu stays until a game starts) */
+		if (page != PAGE_MAIN || front)
 			back();
 		else
 			close_menu();
 		break;
 	case NAV_CLOSE:
+		if (front)
+		{
+			if (page != PAGE_FRONT)
+				menu_open_front();    /* (from its settings: back to the main menu, not into a game) */
+			break;
+		}
 		close_menu();
 		break;
 	}
@@ -529,11 +583,26 @@ bool menu_is_open(void)
 void menu_open(void)
 {
 	open = true;
+	front = false;
 	page = PAGE_MAIN;
 	selected = 0;
 	capture = -1;
 	held_direction = NAV_NONE;
 	build_items();
+}
+
+void menu_open_front(void)
+{
+	menu_open();
+	front = true;
+	page = PAGE_FRONT;
+	build_items();
+	selected = 0;    /* (on START GAME) */
+}
+
+bool menu_in_front(void)
+{
+	return open && front;
 }
 
 bool menu_just_closed(void)
@@ -807,6 +876,9 @@ static void item_value(int item, char *out, size_t size)
 	case ITEM_SKIP_WARNING:
 		snprintf(out, size, "%s", s->skip_warning ? "ON" : "OFF");
 		break;
+	case ITEM_FRONT_AT_START:
+		snprintf(out, size, "%s", s->main_menu ? "ON" : "OFF");
+		break;
 	case ITEM_HIGH_SCORES:
 		snprintf(out, size, "%s", s->save_high_scores ? "ON" : "OFF");
 		break;
@@ -918,8 +990,140 @@ static int cheats_first(int *total)
 	return first;
 }
 
+/* ---- the main menu: the title over a dark sky, its entries ---- */
+
+/* the bee (the game's own sprite, from the player's ROM set: a frame of its flight, 32 x 32) at (x, y), turned as the
+   picture is; its colours made here (the game's palette is not set up before it runs): gold, brighter for its
+   lower pens, as the bee's own palette goes */
+#define BEE_CODE 0x4496u
+
+static void put_bee(uint32_t *out, int x, int y)
+{
+	if (!rom_set.sprites)
+		return;
+	for (int row = 0; row < 32; row++)
+		for (int column = 0; column < 32; column++)
+		{
+			const uint32_t pixel = (BEE_CODE << 8) + (uint32_t)((31 - row) * 32 + column);
+			const uint8_t byte = rom_set.sprites[(pixel >> 1) & (rom_set_region_size(CAVE_ROM_SPRITES) - 1u)];
+			const unsigned pen = (pixel & 1u) ? (byte & 15u) : (byte >> 4);
+			uint32_t colour;
+
+			if (!pen || x + column < 0 || x + column >= PICTURE_W || y + row < 0 || y + row >= PICTURE_H)
+				continue;
+			if (pen == 1u)
+				colour = 0xFFFFFFu;
+			else if (pen < 12u)
+				colour = shade(GOLD, 110 - (int)pen * 9);
+			else
+				colour = shade(0xC0E000u, 130 - (int)pen * 8);
+			out[(y + row) * PICTURE_W + x + column] = colour;
+		}
+}
+
+/* a BCD score as the game shows it (its last digit, the continues, left as 0), with commas */
+static void score_text(char *out, size_t size, const unsigned char *bcd)
+{
+	char digits[16];
+	int length = 0, at = 0;
+
+	for (int byte = 0; byte < 4; byte++)
+	{
+		digits[length++] = (char)('0' + (bcd[byte] >> 4));
+		digits[length++] = (char)('0' + (bcd[byte] & 15));
+	}
+	digits[length++] = '0';
+	digits[length] = '\0';
+	while (at < length - 1 && digits[at] == '0')
+		at++;
+	{
+		char grouped[24];
+		int put = 0;
+
+		for (int i = at; i < length; i++)
+		{
+			grouped[put++] = digits[i];
+			if ((length - 1 - i) % 3 == 0 && i < length - 1)
+				grouped[put++] = ',';
+		}
+		grouped[put] = '\0';
+		snprintf(out, size, "%s", grouped);
+	}
+}
+
+static void draw_front(uint32_t *out)
+{
+	static const char title[] = "DODONPACHI";
+	const int scale = 2, title_w = (int)strlen(title) * 8 * scale, title_x = (PICTURE_W - title_w) / 2;
+	const unsigned char *const table = hiscore_table();
+
+	for (int y = 0; y < PICTURE_H; y++)
+	{
+		/* dark red to black (the game's colours), with a few fixed stars */
+		const uint32_t red = (uint32_t)(44 - y * 36 / PICTURE_H);
+
+		for (int x = 0; x < PICTURE_W; x++)
+		{
+			const unsigned hash = (unsigned)(x * 73856093u ^ y * 19349663u);
+
+			out[y * PICTURE_W + x] = hash % 997u == 0u ? 0xA09088u : red << 16 | (red / 4u) << 8 | red / 3u;
+		}
+	}
+	put_centre(out, 2, rom_set.version ? "ARCADE  JAPANESE VERSION" : "ARCADE  INTERNATIONAL VERSION", GREY);
+	/* the title between two bees, its shadow under it */
+	put_bee(out, title_x - 36, 46);
+	put_bee(out, title_x + title_w + 4, 46);
+	for (int at = 0; title[at]; at++)
+		put_glyph(out, title_x + at * 8 * scale + 2, 56, title[at], 0x300800u, scale);
+	for (int at = 0; title[at]; at++)
+		put_glyph(out, title_x + at * 8 * scale, 54, title[at], GOLD, scale);
+	put_centre_y(out, 80, "R E C O M P", GREY);
+	/* the high score kept (the file's #1) */
+	if (table)
+	{
+		char score[24];
+
+		score_text(score, sizeof(score), table);
+		put_centre_y(out, 104, "HIGH SCORE", GREY);
+		put_centre_y(out, 116, score, WHITE);
+	}
+	for (int index = 0; index < item_count; index++)
+	{
+		const bool chosen = index == selected;
+		const char *const label = item_label(items[index]);
+		const int x = (PICTURE_W - (int)strlen(label) * 8) / 2, y = 156 + index * 20;
+
+		if (chosen)
+		{
+			put_glyph(out, x - 16, y, '>', GOLD, 1);
+			put_glyph(out, x + ((int)strlen(label) + 1) * 8, y, '<', GOLD, 1);
+		}
+		put_centre_y(out, y, label, chosen ? GOLD : WHITE);
+	}
+	if (notice_frames > 0)
+	{
+		notice_frames--;
+		put_centre(out, 33, notice, CYAN);
+	}
+	put_centre(out, 37, "A: CHOOSE", GREY);
+#ifdef DDONPACH_VERSION
+	{
+		/* the version, small in the corner (CMake's project version) */
+		char version[24];
+
+		snprintf(version, sizeof(version), "V%s", DDONPACH_VERSION);
+		put_text_y(out, COLUMNS - (int)strlen(version), PICTURE_H - 10, version, GREY);
+	}
+#endif
+}
+
 void menu_draw(const uint32_t *game, uint32_t *out)
 {
+	if (page == PAGE_FRONT)
+	{
+		draw_front(out);
+		return;
+	}
 	const int left = PANEL_LEFT * 8 - 4, right = (PANEL_RIGHT + 1) * 8 + 4;
 	const int top = PANEL_TOP * 8 - 4, bottom = (PANEL_TOP + PANEL_ROWS) * 8 + 4;
 	int cheats_total = 0, cheats_shown = 0;
@@ -933,7 +1137,7 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 	fill(out, right - 2, top, right, bottom, GOLD);
 
 	if (page == PAGE_MAIN)
-		put_centre(out, PANEL_TOP + 1, "OPTIONS", GOLD);
+		put_centre(out, PANEL_TOP + 1, front ? "SETTINGS" : "OPTIONS", GOLD);
 	else if (page == PAGE_GRAPHICS)
 		put_centre(out, PANEL_TOP + 1, "GRAPHICS", GOLD);
 	else if (page == PAGE_GAME)
@@ -974,7 +1178,8 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 			if (page == PAGE_CHEATS && index < cheats_total
 					&& (index < cheats_shown || index >= cheats_shown + CHEAT_ROWS))
 				continue;    /* (scrolled out of the list) */
-			if (item == ITEM_QUIT || item == ITEM_BACK || item == ITEM_FAST_FORWARD_KEY || item == ITEM_DEADZONE
+			if ((item == ITEM_QUIT && !(index > 0 && items[index - 1] == ITEM_MAIN_MENU)) || item == ITEM_MAIN_MENU
+					|| item == ITEM_BACK || item == ITEM_FAST_FORWARD_KEY || item == ITEM_DEADZONE
 					|| item == ITEM_SCALE || item == ITEM_SAVE_STATE || item == ITEM_GAME || item == ITEM_CHEATS)
 				y += page == PAGE_CONTROLS ? 6 : 8;    /* (a gap before them) */
 			if (chosen)
@@ -1005,7 +1210,7 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 		put_centre(out, PANEL_TOP + PANEL_ROWS - 2, "(ESC: NO CHANGE)", GREY);
 	}
 	else if (page == PAGE_MAIN)
-		put_hints(out, "A: CHOOSE   <>: CHANGE", "B / VIEW: CLOSE");
+		put_hints(out, "A: CHOOSE   <>: CHANGE", front ? "B: BACK" : "B / VIEW: CLOSE");
 	else if (page == PAGE_CONTROLS)
 		put_centre(out, PANEL_TOP + PANEL_ROWS - 1, "A:CHANGE <>:PLAYER B:BACK", GREY);
 	else

@@ -8,8 +8,8 @@ a model of Cave's 68000 board. It is the second game of the family, after
 **Status: early, playable.** The whole program translates to C, builds on Cave68kSDK and plays in a window with
 its sound, and it runs exactly as the original does on MAME's 68000 core, slowdown and all (checked frame by frame
 over 150,000 VBLANKs). The window port is DonPachi Recomp's, cut down for now: its options menu (Escape, or the
-gamepad's View button), high scores kept, and its own side panels; none of DonPachi Recomp's other extras yet
-(training, replays, achievements).
+gamepad's View button), a main menu, high scores kept, and its own side panels; none of DonPachi Recomp's other
+extras yet (training, replays, achievements).
 
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
 `ddonpachj`. No ROMs, and nothing extracted from them, are part of this repository.
@@ -68,6 +68,12 @@ contents in `ddonpach.dat` beside the program; it reads that from then on.
 | Auto-fire (the game's own: "C BUTTON FULL-AUTO", set by the port) | C | X |
 | Start, coin | 1, 5 | Start |
 | Service switch (held 2 s at the title: the test mode) | F2 | |
+
+The main menu comes up as the program starts: START GAME, SETTINGS (the volume, the game options, graphics and
+controls, before a game) and QUIT TO DESKTOP, with the high score kept. The game waits at its start while it is up,
+and runs from there with START GAME, as the board switched on. MAIN MENU in the options menu leaves the game for it
+(the game reset). MAIN MENU AT START in the game options (`main_menu` in `ddonpach.ini`) turns it off: straight into
+the game.
 
 F3 resets the game, F4 holds the service switch for you (the test mode, from the title or the attract mode), Tab
 (LB) fast-forwards, F5 / F8 save and load a state (F6 / F7 choose the slot, of 5), F9 shows the FPS meter, F11 or Alt+Enter

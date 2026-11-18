@@ -182,7 +182,15 @@
 - [ ] The slowdown against the real MAME (owner's report): our checks compare MAME's 68000 core on the SDK's board
       model; a recording of MAME's own ddonpach (its frames of slowdown over a known input run) would check the
       board model's timing itself.
-- [ ] The main menu, training, replays, achievements, statistics, side panels, hitbox:
+- [x] **The main menu** (18-11-2026; menu.c's PAGE_FRONT, as DonPachi Recomp's): START GAME, SETTINGS, QUIT TO
+      DESKTOP, the title "DODONPACHI" between two of the game's bees, the version (International or Japanese),
+      the high score kept and the program's version; as the program starts ([game] main_menu, MAIN MENU AT START in
+      the game options) and from the options' MAIN MENU (the board reset). The game waits at its start while it is
+      up. Its entries to come as they are made: TRAINING, REPLAYS, ACHIEVEMENTS, STATISTICS, VERSION.
+      Found with it: a reset (F3, the menu's RESET, MAIN MENU) showed the WARNING screen again although SKIP
+      WARNING was on (the reset comes with the next frame, and the work RAM still held the last run's flag): fixed
+      in main.c's warning_showing.
+- [ ] Training, replays, achievements, statistics, hitbox:
       each reads DonPachi's memory; DoDonPachi's addresses to find.
 - [ ] **The aura overlay, not a priority** (owner, 18-11-2026: "would be cool to see"): DoDonPachi's ship has an aura, a small space around it where enemies take extra damage from its shots. An overlay as DonPachi Recomp's HITBOX shows the ship's hitbox, drawing the aura's range around the ship (an option, off by default; never changing the game). To find: where the game tests an enemy against the aura (its range, from the ship's position in its record at $102C8C, and whether it differs for shot and laser), in the code that adds an enemy's damage
 - [ ] **Update from inside the program** (owner, 18-11-2026; DonPachi Recomp's TODO has the same): the options menu checks for a newer release and installs it, with no download or extracting by hand: GitHub's releases API for the latest tag (WinHTTP on Windows, libcurl on Linux, in the background, when the player asks), the release's zip downloaded and checked (size, SHA-256), unpacked beside the program, the exe swapped on the next start (a running .exe cannot overwrite itself). The player's files stay (settings, EEPROM, high scores, ddonpach.dat). The repository is private: an update from it needs the releases somewhere public (a public releases-only repository, or the repository made public), never a token in the program. After the release package
