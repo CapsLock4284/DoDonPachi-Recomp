@@ -88,6 +88,14 @@
       save-state game's entry dropped and the HIGH put back, the file untouched.
 - [x] The start's WARNING screen skipped (owner): its 1,809 frames run unseen at once (0.15 s), the game unchanged;
       SKIP WARNING in the game options.
+- [x] FPS meter (owner: "feels slower than the original"): F9 / FPS METER, GAME (the game's frames), BOARD (the
+      board's: 57.55), WINDOW, LATE, WORK. The picture is now drawn only when it is shown (the look-ahead's, or with
+      arcade timing the last frame's): half the drawing a frame, nothing drawn in fast forward's unseen frames or the
+      warning's skip (which had drawn each of its 1,809 frames: seconds, not 0.15 s). In the cloud (software
+      renderer): 57.5 / 57.5 / 57.5, LATE 0, WORK 6 ms (was 11).
+- [ ] The slowdown against the real MAME (owner's report): our checks compare MAME's 68000 core on the SDK's board
+      model; a recording of MAME's own ddonpach (its frames of slowdown over a known input run) would check the
+      board model's timing itself.
 - [ ] The main menu, training, replays, achievements, statistics, side panels, hitbox:
       each reads DonPachi's memory; DoDonPachi's addresses to find.
 - [ ] A release package (tools/make_release.ps1, as DonPachi Recomp's).

@@ -70,8 +70,8 @@ contents in `ddonpach.dat` beside the program; it reads that from then on.
 | Service switch (held 2 s at the title: the test mode) | F2 | |
 
 F3 resets the game, F4 holds the service switch for you (the test mode, from the title or the attract mode), Tab
-(LB) fast-forwards, F5 / F8 save and load a state (F6 / F7 choose the slot, of 5), F11 or Alt+Enter switches full
-screen, Escape (View on the gamepad) opens the options menu: video, sound, controls (remapping), the game's options,
+(LB) fast-forwards, F5 / F8 save and load a state (F6 / F7 choose the slot, of 5), F9 shows the FPS meter, F11 or Alt+Enter
+switches full screen, Escape (View on the gamepad) opens the options menu: video, sound, controls (remapping), the game's options,
 save states, cheats, QUIT TO DESKTOP. Player 2: R F D G, A, S, 2, 6. Everything can be changed there or in `ddonpach.ini`,
 written beside the program on its first run: the keys and buttons, the window's size, the video (scaling, scanlines, the
 CRT look, the pixel-art scalers, a monitor on its side), the sound's volume, the arcade's slowdown.
@@ -87,6 +87,11 @@ ends. SAVE HIGH SCORES in the game options turns this off.
 
 The 31-second WARNING screen the game shows as it starts is skipped: the port runs its frames at once, unseen (the
 game itself runs every one of them, as on the board). SKIP WARNING in the game options shows it again.
+
+The FPS meter (F9, or FPS METER in the graphics options) shows, each second: GAME, the game's own frames (fewer
+while the game slows down, as the arcade board does: SLOWDOWN OFF in the game options to compare); BOARD, the
+board's frames run (57.55 a second, the arcade's rate: fewer means the PC can't keep up); WINDOW, the pictures
+shown; LATE, the frames the PC ran late; and WORK, a frame's milliseconds on average and at most.
 
 Input lag: each frame is shown as the board shows it, as its VBLANK comes, not a frame later when the game's vblank
 interrupt returns. The port runs on through the next frame from a saved state, keeps its picture and puts the state

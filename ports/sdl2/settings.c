@@ -89,6 +89,7 @@ void settings_defaults(settings *s)
 	s->crt = 0;
 	s->filter = SCALER_OFF;
 	s->vsync = false;
+	s->show_fps = false;
 	s->rotate = ROTATE_NONE;
 	s->sound = true;
 	s->volume = 100;
@@ -305,6 +306,8 @@ static bool take(settings *s, const char *section, const char *name, char *value
 			return (s->crt = name_of(value, settings_crt_names, 3)) >= 0 || (s->crt = 0, false);
 		if (!SDL_strcasecmp(name, "vsync"))
 			return parse_bool(value, &s->vsync);
+		if (!SDL_strcasecmp(name, "show_fps"))
+			return parse_bool(value, &s->show_fps);
 		if (!SDL_strcasecmp(name, "rotate"))
 			return (s->rotate = name_of(value, settings_rotate_names, ROTATIONS)) >= 0
 				|| (s->rotate = ROTATE_NONE, false);
@@ -513,6 +516,10 @@ const char *settings_save(const settings *s, const char *path)
 	fprintf(file, "filter = %s\n", scaler_key(s->filter));
 	fputs("; true: no tearing, the picture waits for the monitor (a little more delay); false: the least delay\n", file);
 	fprintf(file, "vsync = %s\n", bool_text(s->vsync));
+	fputs("; the FPS meter (F9 too): GAME the game's own frames a second (fewer in the arcade's slowdown), BOARD the\n"
+		"; board's frames run a second (57.55), WINDOW the pictures shown, LATE the frames the PC ran late in that\n"
+		"; second, WORK the milliseconds a frame takes the PC\n", file);
+	fprintf(file, "show_fps = %s\n", bool_text(s->show_fps));
 	fputs("; none, right or left: the picture turned for a monitor on its side (TATE)\n", file);
 	fprintf(file, "rotate = %s\n", settings_rotate_names[s->rotate]);
 	fputc('\n', file);

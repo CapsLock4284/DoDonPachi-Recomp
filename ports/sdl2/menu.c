@@ -52,7 +52,7 @@ enum
 	ITEM_QUIT, ITEM_DEFAULTS, ITEM_BACK, ITEM_GRAPHICS, ITEM_SCALING, ITEM_SMOOTH, ITEM_SCANLINES, ITEM_VSYNC,
 	ITEM_ROTATE, ITEM_DEADZONE, ITEM_SAVE_STATE, ITEM_LOAD_STATE, ITEM_GAME, ITEM_CHEATS, ITEM_SLOWDOWN, ITEM_CRT,
 	ITEM_STATE_SLOT, ITEM_FILTER, ITEM_AUTO_FIRE, ITEM_TIMING, ITEM_FREE_PLAY, ITEM_HIGH_SCORES,
-	ITEM_SKIP_WARNING,
+	ITEM_SKIP_WARNING, ITEM_FPS,
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -63,7 +63,8 @@ static const char *const item_labels[] = {
 	"RESUME", "RESET", "TEST MODE", "FAST FWD SPEED", "VOLUME", "WINDOW SIZE", "FULL SCREEN", "CONTROLS",
 	"QUIT TO DESKTOP", "RESET TO DEFAULTS", "BACK", "GRAPHICS", "SCALING", "SMOOTHING", "SCANLINES", "VSYNC",
 	"ROTATE", "STICK DEADZONE", "SAVE STATE", "LOAD STATE", "GAME OPTIONS", "CHEATS", "SLOWDOWN", "CRT",
-	"STATE SLOT", "FILTER", "C BUTTON AUTO FIRE", "INPUT TIMING", "FREE PLAY", "SAVE HIGH SCORES", "SKIP WARNING"
+	"STATE SLOT", "FILTER", "C BUTTON AUTO FIRE", "INPUT TIMING", "FREE PLAY", "SAVE HIGH SCORES", "SKIP WARNING",
+	"FPS METER"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -135,7 +136,7 @@ static void build_items(void)
 	else if (page == PAGE_GRAPHICS)
 	{
 		static const int graphics_items[] = { ITEM_SCALING, ITEM_SMOOTH, ITEM_FILTER, ITEM_SCANLINES, ITEM_CRT,
-			ITEM_VSYNC, ITEM_ROTATE, ITEM_SCALE, ITEM_FULLSCREEN, ITEM_BACK };
+			ITEM_VSYNC, ITEM_FPS, ITEM_ROTATE, ITEM_SCALE, ITEM_FULLSCREEN, ITEM_BACK };
 
 		add_items(graphics_items, sizeof(graphics_items) / sizeof(graphics_items[0]));
 	}
@@ -314,6 +315,9 @@ static void change(int item, int step, bool wrap)
 	case ITEM_VSYNC:
 		in_use->vsync = file->vsync = !in_use->vsync;
 		host.apply_video();
+		break;
+	case ITEM_FPS:
+		in_use->show_fps = file->show_fps = !in_use->show_fps;
 		break;
 	case ITEM_ROTATE:
 		in_use->rotate = file->rotate = cycle(in_use->rotate, ROTATIONS, step, wrap);
@@ -737,6 +741,25 @@ const uint32_t *menu_with_notice(const uint32_t *picture)
 	return out;
 }
 
+void menu_put_meter(uint32_t *picture, const char *const *lines, int count)
+{
+	int widest = 0;
+
+	for (int line = 0; line < count; line++)
+		if ((int)strlen(lines[line]) > widest)
+			widest = (int)strlen(lines[line]);
+	if (widest > COLUMNS)
+		widest = COLUMNS;
+	{
+		const int left = PICTURE_W - widest * 8 - 2, top = PICTURE_H - count * 10 - 2;
+
+		fill(picture, left - 2, top - 2, PICTURE_W, PICTURE_H, 0x000000u);
+		for (int line = 0; line < count; line++)
+			for (int at = 0; lines[line][at] && at < widest; at++)
+				put_glyph(picture, left + at * 8, top + line * 10, lines[line][at], line ? WHITE : GOLD, 1);
+	}
+}
+
 /* ---- the entries' names and values ---- */
 
 static const char *item_label(int item)
@@ -833,6 +856,9 @@ static void item_value(int item, char *out, size_t size)
 	}
 	case ITEM_VSYNC:
 		snprintf(out, size, "%s", s->vsync ? "ON" : "OFF");
+		break;
+	case ITEM_FPS:
+		snprintf(out, size, "%s", s->show_fps ? "ON" : "OFF");
 		break;
 	case ITEM_ROTATE:
 		snprintf(out, size, "%s", s->rotate == ROTATE_NONE ? "OFF" : settings_rotate_names[s->rotate]);

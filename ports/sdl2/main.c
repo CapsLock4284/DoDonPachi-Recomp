@@ -39,8 +39,8 @@
  *          C (X on the gamepad) is the game's own auto-fire: [game] c_button_full_auto sets the test mode's "C BUTTON
  *          FULL-AUTO" (on by default).
  *          F3 resets the game, F4 the test mode (the service switch held for you; at the title or in the attract
- *          mode, after the warning screen), F11 or Alt+Enter full screen, Escape or the gamepad's View button the
- *          options menu (QUIT TO DESKTOP there).
+ *          mode, after the warning screen), F9 the FPS meter, F11 or Alt+Enter full screen, Escape or the gamepad's
+ *          View button the options menu (QUIT TO DESKTOP there).
  *    Fast forward: held, LB on the gamepad or Tab ([hotkeys] fast_forward; [game] fast_forward_speed, 4 by default).
  *    Save states: F5 keeps the game as it is now, F8 goes back to it, in the chosen slot of 5 (F6 / F7), in memory
  *          until the program closes.
@@ -677,9 +677,15 @@ static void window_title(void)
 
 /* As the vblank interrupt returns: the picture drawn there, as the board shows it (the sprites latched as VBLANK
    began, the layers' scroll and the palette as the interrupt has just set them) */
+/* Drawn only when it will be shown: the look-ahead's picture, or with arcade_timing the last frame's of the window's
+   frame (not the frames fast forward or the warning's skip run unseen, nor the real frame's the look-ahead's
+   replaces: the drawing is the most of a frame's work) */
+static bool picture_wanted = true;
+
 static void after_vblank(void)
 {
-	draw_picture();
+	if (picture_wanted)
+		draw_picture();
 }
 
 /* ---- the look-ahead picture: no frame of lag the board does not have ---- */
@@ -697,13 +703,87 @@ static void look_ahead(void)
 {
 	program_state *state;
 
-	if (options.arcade_timing || reset_asked || !(state = program_state_save()))
+	if (options.arcade_timing)
+		return;    /* (the picture drawn as the last frame's interrupt returned) */
+	if (reset_asked || !(state = program_state_save()))
+	{
+		draw_picture();    /* (no look-ahead: the board as it is at the VBLANK) */
 		return;
+	}
 	cave_sound_quiet = true;
+	picture_wanted = true;
 	program_run_frame();    /* (its interrupt draws the picture: after_vblank) */
+	picture_wanted = false;
 	cave_sound_quiet = false;
 	program_state_load(state);
 	program_state_free(state);    /* (freed once it is put back, at the next frame) */
+}
+
+/* ---- the FPS meter (F9, or the graphics options' FPS METER: [video] show_fps) ---- */
+
+/* Counted over about a second, then shown: the game's own frames (the board's less its frames of slowdown), the
+   board's frames run (57.55 a second at the board's pace; fewer: the PC can't keep up), the pictures shown, the
+   frames the PC came to its frame's time late (its work and the picture's took longer than a frame), and the
+   milliseconds a frame's work and picture take the PC, on average and at most */
+static struct
+{
+	Uint64 since;                   /* the counter when this second began */
+	unsigned game_frames, board_frames, windows, late;
+	Uint64 work, work_most;         /* (counter ticks) */
+	char lines[3][32];
+} meter;
+
+static void meter_board_frame(void)
+{
+	meter.board_frames++;
+	if (!program_frame_lagged())
+		meter.game_frames++;
+}
+
+/* At the frame's end, before its wait: 'began' when its work began, 'next' when the next frame is due */
+static void meter_frame_end(Uint64 began, Uint64 next)
+{
+	const Uint64 frequency = SDL_GetPerformanceFrequency(), now = SDL_GetPerformanceCounter();
+	const Uint64 work = now - began;
+
+	meter.windows++;
+	meter.work += work;
+	if (work > meter.work_most)
+		meter.work_most = work;
+	if (now > next)
+		meter.late++;
+	if (!meter.since)
+		meter.since = now;
+	else if (now - meter.since >= frequency)
+	{
+		const double seconds = (double)(now - meter.since) / (double)frequency;
+		const double ms = 1000.0 / (double)frequency;
+
+		snprintf(meter.lines[0], sizeof(meter.lines[0]), "GAME %.1f FPS", meter.game_frames / seconds);
+		snprintf(meter.lines[1], sizeof(meter.lines[1]), "BOARD %.1f  WINDOW %.1f", meter.board_frames / seconds,
+			meter.windows / seconds);
+		snprintf(meter.lines[2], sizeof(meter.lines[2]), "LATE %u  WORK %.1f/%.1fMS", meter.late,
+			meter.windows ? (double)meter.work * ms / meter.windows : 0.0, (double)meter.work_most * ms);
+#ifdef METER_LOG
+		fprintf(stderr, "%s | %s | %s\n", meter.lines[0], meter.lines[1], meter.lines[2]);
+#endif
+		meter.since = now;
+		meter.game_frames = meter.board_frames = meter.windows = meter.late = 0;
+		meter.work = meter.work_most = 0;
+	}
+}
+
+/* The picture with the meter over its corner, when it is on */
+static const uint32_t *with_meter(const uint32_t *pixels)
+{
+	static uint32_t out[VIDEO_WIDTH * VIDEO_HEIGHT];
+	const char *const lines[3] = { meter.lines[0], meter.lines[1], meter.lines[2] };
+
+	if (!options.show_fps || !meter.lines[0][0])
+		return pixels;
+	memcpy(out, pixels, sizeof(out));
+	menu_put_meter(out, lines, 3);
+	return out;
 }
 
 /* ---- the save states (cave/program.h): STATE_SLOTS of them, in memory, until the program closes ---- */
@@ -986,6 +1066,7 @@ int main(int argc, char **argv)
 	while (running)
 	{
 		SDL_Event event;
+		const Uint64 frame_began = SDL_GetPerformanceCounter();
 
 		if (program_frames() % EEPROM_CHECK_FRAMES == 0)
 			eeprom_keep(false);
@@ -999,6 +1080,9 @@ int main(int argc, char **argv)
 				pad_added(event.cdevice.which);
 			else if (event.type == SDL_CONTROLLERDEVICEREMOVED)
 				pad_removed(event.cdevice.which);
+			else if (event.type == SDL_KEYDOWN && !event.key.repeat
+					&& event.key.keysym.sym == SDLK_F9)
+				options.show_fps = !options.show_fps;    /* (the FPS meter: for this run; the menu's is kept) */
 			else if (event.type == SDL_KEYDOWN && !event.key.repeat
 					&& (event.key.keysym.sym == SDLK_F11
 						|| (event.key.keysym.sym == SDLK_RETURN && (event.key.keysym.mod & KMOD_ALT))))
@@ -1055,7 +1139,9 @@ int main(int argc, char **argv)
 				if (skip && !warning_showing())
 					break;    /* (the warning over: the attract mode's first picture from the next frame on) */
 				read_keys();
+				picture_wanted = options.arcade_timing && count == frames - 1;
 				program_run_frame();
+				meter_board_frame();
 				cheats_apply();
 				if (fast || skip)
 					cave_sound_drop();
@@ -1074,8 +1160,9 @@ int main(int argc, char **argv)
 			}
 			look_ahead();    /* (the picture the board shows now) */
 		}
-		show_picture(menu_with_notice(picture));
+		show_picture(with_meter(menu_with_notice(picture)));
 pace:
+		meter_frame_end(frame_began, next);
 
 		/* (the board's 57.55 frames a second: SDL_Delay may sleep a whole tick of the system's timer longer than
 		   asked, up to 15 ms on Windows, so it sleeps only to 2 ms before the frame's time, and the rest is waited
