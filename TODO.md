@@ -18,14 +18,21 @@
       replay), never a silent skip. A sweep with every switch reporting (all players, the attract mode, continues,
       2 players, the test mode) found no other. Tools: CYCLELOG=FILE (each frame's cycle at its wait, both sides),
       cref_timed TRACE_CYCLES=1 (each traced instruction's cycle)
-- [ ] **An interrupt over the stack's temporary bytes, as the board has it** (asked the owner): 057A70 (a number to
+- [x] **An interrupt over the stack's temporary bytes, as the board has it** (owner: "this needs to mirror the
+      arcade board, that's the point"): 057A70 (a number to
       decimal digits) builds its digits below the stack pointer (movea.l A7, A0; move.b Dn, -(A0) x3, clr.b -(A0))
       and reads them back as a long; an interrupt in between (the YMZ280B's) pushes its PC and status register there
       on the 68000, and the digits read back are those bytes: a glitch the arcade and MAME show, the port not (the C
       keeps the bytes in its own variables). Rare: once in about 2 million frames of the checks (type B laser's run,
       game frame 47,518: 672 cycles more on the board, the game going its own way after). To match it: the runtime
       counting the interrupts taken and the status register as they came, the C of this routine writing the frame's
-      bytes into its slots when one came between its writes and its read
+      bytes into its slots when one came between its writes and its read.
+      Done 18-11: the frame's bytes there are the PC's alone (the 68000 pushes the PC at A7-4..A7-1, its status
+      register below), so no flags are needed. tools/call_tables.py STACK_DIGITS (057A6E and its twin 001F98, the
+      only two: a scan for "movea.l A7, An"), applied by tools/decompile.py after the core writes src/
+      (interrupt_frames: after each of the 4 writes, if program_interrupts() moved, the slots get the next
+      instruction's address). Checked: all 7 full-game runs the same as MAME's 68000 at every frame, type B laser's
+      included (290,204 game frames)
 - [ ] The Japanese version (`ddonpachj`).
 
 ## The board (in Cave68kSDK)
@@ -83,7 +90,18 @@
       the test mode, cheats), graphics, controls (remapping, both players, the hotkeys). Silent for now (DonPachi
       Recomp's menu sounds are that game's samples).
 - [ ] The menu's sounds, from DoDonPachi's own samples (the YMZ280B's).
-- [ ] Look-ahead for input latency (owner; not a priority): predictive emulation, as rollback in fighting games
+- [ ] **Input latency checked against the arcade, exact** (owner, 18-11-2026: "I want this to be exact"): measure,
+      frame by frame, how many frames pass from a key press to the first picture that answers it, and compare with
+      the board. On the board: the inputs are read by the game's code at a known point of its frame (in the vblank
+      interrupt or the main loop: find where IN0 is read), and the picture the board shows is the one the 013 and the
+      layers have at VBLANK. In the port: the key read at the frame's start (read_keys), the game's frame, the
+      look-ahead's picture, then the window's present (and the monitor's own lag after it). A test: a scripted press
+      at a known frame, the frame its effect first appears in the picture (the ship's sprite moving), both on MAME
+      (cref) and the port, with INPUT TIMING FAST and ARCADE; then the port's own extra from SDL's input and the
+      present (the time from the key's event to the present, logged as the FPS log does). The aim: ARCADE timing the
+      board's latency exactly, FAST one frame less (the look-ahead), and nothing else added by the port.
+- [ ] Look-ahead for input latency, "better than arcade" (owner; an option, after the exact check above): predictive
+      emulation, as rollback in fighting games
       (RetroArch calls it run-ahead). Each frame: the game kept (program_state_save), run on 1-2 frames with the
       inputs held now, that frame shown, then put back and run the one real frame; the sound from the real frames
       only. It hides the frames the game itself waits before it answers an input, without changing what it does

@@ -1300,3 +1300,67 @@ def install():
             register_names={**m68000.register_names, left: "left_caller"},
             variable_names={**m68000.variable_names, left: "left_caller"})
     found_class._call_tables_installed = True
+
+
+# ---- an interrupt over the bytes below the stack pointer, as the 68000 has it ----
+
+# The routines that keep bytes below their stack pointer and read them back (a number to decimal digits: movea.l A7,
+# A0; move.b D1, D2, D3, then clr.b, each to -(A0); move.l (A0), D2): {the function: the address of its first
+# move.b}. On the 68000 an interrupt taken in between pushes its PC there (A7-4 to A7-1 the PC's 4 bytes: 00, the
+# bank, the address's high and low bytes), and the digits read back are those bytes (MAME, the board: once in about 2
+# million frames of the full-game checks, type B laser's game frame 47,518). The C keeps the bytes as its own
+# variables (the stack's slots): after each of the 4 writes, if the runtime took an interrupt in it
+# (program_interrupts(): cave/program.h), the slots get the PC the 68000 would have pushed, the next instruction's
+# address; the writes after it put theirs back over, as on the board. Found by a scan for "movea.l A7, An"
+# in the program: these two (and text in the ROM at 041152, 04BF2E)
+STACK_DIGITS = {0x001F98: 0x001FB2, 0x057A6E: 0x057A84}
+
+
+def interrupt_frames(src_dir):
+    """The C of STACK_DIGITS' functions in src_dir given the interrupt's frame over their slots (above). Stops when
+    a function's C is not as expected (the translation changed: look again)."""
+    import re
+    from pathlib import Path
+
+    for function, first_write in STACK_DIGITS.items():
+        name = f"func_{function:06X}("
+        for path in sorted(Path(src_dir).glob("game_*.c")):
+            text = path.read_text(encoding="ascii")
+            start = next((m.start() for m in re.finditer(r"^[a-z][^\n;]* " + re.escape(name) + r"[^\n;]*\)\n\{",
+                                                       text, re.M)), None)
+            if start is None:
+                continue
+            end = text.index("\n}\n", start)
+            body = text[start:end]
+            read = re.search(r"\(\(uint32_t\)(\w+) << 24\) \| \(\(uint32_t\)(\w+) << 16\) \| \(\(uint32_t\)(\w+) << 8\) \| (\w+);",
+                             body)
+            if not read or "program_interrupts" in body:
+                raise SystemExit(f"interrupt_frames: {name[:-1]}'s C is not as expected")
+            slots = [read.group(4), read.group(3), read.group(2), read.group(1)]    # (A7-1, -2, -3, -4)
+            at = read.start()
+            pieces = []
+            cursor = 0
+            for index, slot in enumerate(slots):
+                write = re.compile(r"\t" + slot + r" = [^;]*;\n\tm68k_block\(\d+, \d+\);\n").search(body, cursor)
+                if not write or write.start() > at:
+                    raise SystemExit(f"interrupt_frames: {name[:-1]}: no write of {slot}")
+                pc = first_write + 2 * (index + 1)    # (the next instruction: the PC the interrupt pushes)
+                before = "\tinterrupts_before = program_interrupts();\n" if index == 0 else ""
+                frame = (f"\tif (program_interrupts() != interrupts_before)    /* (an interrupt as it ended: the 68000 "
+                         f"pushed its PC, {pc:06X}, over these bytes) */\n\t{{\n"
+                         f"\t\t{slots[0]} = 0x{pc & 0xFF:02X}u;\n\t\t{slots[1]} = 0x{pc >> 8 & 0xFF:02X}u;\n"
+                         f"\t\t{slots[2]} = 0x{pc >> 16 & 0xFF:02X}u;\n\t\t{slots[3]} = 0x{pc >> 24 & 0xFF:02X}u;\n"
+                         f"\t\tinterrupts_before = program_interrupts();\n\t}}\n")
+                pieces.append(body[cursor:write.start()] + before + write.group(0) + frame)
+                cursor = write.end()
+            pieces.append(body[cursor:])
+            new_body = "".join(pieces)
+            new_body = new_body.replace("{\n", "{\n\tuint32_t interrupts_before = 0;\n", 1)
+            text = text[:start] + new_body + text[end:]
+            if '#include "cave/program.h"' not in text:    # (program_interrupts)
+                text = text.replace('#include "game.h"\n', '#include "game.h"\n#include "cave/program.h"\n', 1)
+            path.write_text(text, encoding="ascii")
+            break
+        else:
+            raise SystemExit(f"interrupt_frames: {name[:-1]} not found in {src_dir}")
+

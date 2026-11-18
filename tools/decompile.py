@@ -58,4 +58,9 @@ threading.stack_size(1024 * 1024 * 1024)
 worker = threading.Thread(target=run)
 worker.start()
 worker.join()
+if outcome and outcome[0] in (0, None) and not any(arg.startswith("--check") and arg != "--checks"
+                                                   for arg in sys.argv[1:]):
+    # an interrupt over the bytes some routines keep below their stack pointer (call_tables.py: STACK_DIGITS)
+    out = sys.argv[sys.argv.index("--out") + 1] if "--out" in sys.argv else str(TOOLS.parent / "src")
+    call_tables.interrupt_frames(out)
 sys.exit(outcome[0] if outcome else 1)
