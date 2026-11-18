@@ -95,6 +95,9 @@
         stages one under the other, each finished one's score and + or - against its best, the one being played
         live, those to come with their best
   - [x] The board's FPS with the percentage of slowdown (over the last second, this stage, this game)
+  - [x] **The bee tracker, from DonPachi** (owner, 18-11-2026): the stage's 13 bees on the left panel, greyed until
+        taken ($103F8E: the bees since the stage began or the last miss; the panel counts its rises in each stage;
+        the icon from the bee's own sprite, $4496 in palette $17, at half size)
   - [x] **The high score chase** (owner, 18-11-2026): the score against #5 of the table, then #4 once passed, up to
         #1; a line in each place's colour on the graph where it was passed
 - [ ] Side panel ideas still open: the lives; the hit counter's chain (the GP gauge's DoDonPachi equivalent);

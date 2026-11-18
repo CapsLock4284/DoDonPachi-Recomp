@@ -2,7 +2,8 @@
  *    Name:        widgets.h
  *    Description: the side panels: what the game is doing, from its memory, beside the picture on a wide screen. Left:
  *                 the player's ship, its shot and laser power (1 to MAX) and bombs, and the board's speed (the game's
- *                 frames a second and the slowdown, now, this stage and this game). Right: the score chasing the high
+ *                 frames a second and the slowdown, now, this stage and this game), and the stage's 13 bees,
+ *                 each greyed until it is taken. Right: the score chasing the high
  *                 score table (#5 first, then #4 ... #1) with a graph of the run (a coloured line where each was
  *                 passed), and the loop's stages one under the other, each one's score against the best ever
  *                 for it (+ or -)
@@ -23,6 +24,8 @@
  *      $102CB0 / $102CF0  the bombs (high byte) and the most the ship can carry (low byte: 3, up to 6)
  *      $101978            the stage of the loop, 0-5 (6: between the loops, and the ending)   $10197A  the loop, 0/1
  *      $1017A5 bit 7      no game (the attract mode, the title)
+ *      $103F8E            the bees taken since the stage began or the last miss (the game sets it back to 0 then:
+ *                         the panel counts its rises in each stage); the bee's sprite $4496, palette $17
  *    The game is not touched: the panels only read. The stages' best scores are kept in ddonpach.stages (or
  *    ddonpach_jpn.stages) beside the program, from clean games only (no cheat, no save state, the slowdown on).
  */

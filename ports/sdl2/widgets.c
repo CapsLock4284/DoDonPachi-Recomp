@@ -14,6 +14,7 @@
 #include "widgets.h"
 #include "paths.h"
 
+#include "cave/board.h"
 #include "cave/machine.h"
 #include "cave/program.h"
 #include "cave/rom_set.h"
@@ -53,6 +54,9 @@ static const uint32_t rank_colours[5] = { GOLD, MAGENTA, ORANGE, GREEN, CYAN };
 #define BOMBS       0x102CB0u
 #define STAGE       0x101978u
 #define LOOP        0x10197Au
+#define BEES_TAKEN  0x103F8Eu  /* the bees taken since the stage began or the last miss (09:4628 adds one; the game
+                                   sets it back to 0 at a miss and at the stage's end: the panel counts the rises) */
+#define BEES        13          /* in each stage */
 #define PLAYER_STEP 0x40u
 #define MAX_POWER   4u
 #define STAGES      6           /* in a loop */
@@ -211,6 +215,9 @@ static struct
 	bool stage_counts;          /* clean all through, from its start, no continue */
 	/* each stage finished in this game: its score, the best before it, whether it counted (and was a new best) */
 	bool done[AREAS], counted[AREAS], new_best[AREAS];
+	/* the bees taken in each stage (the panel shows the one being played, or the last played) */
+	unsigned bees[AREAS], last_bees;
+	int bee_area;
 	uint32_t made[AREAS], best_before[AREAS];
 	/* the graph */
 	uint32_t table[5];          /* the high score table as the game began */
@@ -249,6 +256,8 @@ static void run_begin(void)
 	}
 	run.chasing = 4;
 	run.interval = 4;
+	run.last_bees = word(BEES_TAKEN);
+	run.bee_area = -1;
 }
 
 static void graph_point(uint32_t score)
@@ -337,6 +346,17 @@ void widgets_frame(bool clean)
 				stage_begin(area, score, clean);
 			else
 				run.area = -1;
+		}
+		{
+			const unsigned bees = word(BEES_TAKEN);
+
+			if (area >= 0)
+			{
+				if (bees > run.last_bees && run.bees[area] + (bees - run.last_bees) <= BEES)
+					run.bees[area] += bees - run.last_bees;
+				run.bee_area = area;
+			}
+			run.last_bees = bees;
 		}
 		while (run.chasing >= 0 && score > run.table[run.chasing])
 			run.passed_at[run.chasing--] = run.count;
@@ -550,6 +570,8 @@ static void draw_percent(panel *p, int y, const char *name, unsigned lagged, uns
 	put_right(p, y, text, WHITE, 1);
 }
 
+static void draw_bees(panel *p);
+
 static void draw_left(panel *p)
 {
 	static const char *const ships[3] = { "TYPE-A", "TYPE-B", "TYPE-C" };
@@ -596,6 +618,103 @@ static void draw_left(panel *p)
 		bar(p, 194, (float)percent / 100.0f, percent < 25 ? YELLOW : RED);
 		draw_percent(p, 210, "THIS STAGE", showing ? speed.stage_lagged : 0u, showing ? speed.stage_frames : 0u);
 		draw_percent(p, 222, "THIS GAME", run.on ? speed.game_lagged : 0u, run.on ? speed.game_frames : 0u);
+	}
+	draw_bees(p);
+}
+
+/* ---- the bees: the stage's 13, each greyed until it is taken ---- */
+
+#define BEE_CODE    0x4496u     /* the bee's sprite (a frame of its flight: 32 x 32, at the code's 256 pixels on) */
+#define BEE_COLOUR  0x17u       /* its palette (the sprite's attribute as shown, $1730) */
+#define BEE_SIZE    32
+#define BEE_ICON    16          /* drawn at half size */
+
+static unsigned bee_pen(int x, int y)
+{
+	const uint32_t pixel = (BEE_CODE << 8) + (uint32_t)(y * BEE_SIZE + x);
+	const uint8_t byte = rom_set.sprites[(pixel >> 1) & (rom_set_region_size(CAVE_ROM_SPRITES) - 1u)];
+
+	return (pixel & 1u) ? (byte & 15u) : (byte >> 4);    /* (DoDonPachi's sprites: high nibble first) */
+}
+
+/* xGRB 555, as the board's palette has it, to 0x00RRGGBB */
+static uint32_t palette_colour(unsigned pen)
+{
+	const uint16_t value = cave_board.palette[pen & 0x7FFFu];
+	const uint32_t g = value >> 10 & 31u, r = value >> 5 & 31u, b = value & 31u;
+
+	return (r << 3 | r >> 2) << 16 | (g << 3 | g >> 2) << 8 | (b << 3 | b >> 2);
+}
+
+/* a bee at (x, y): 2 x 2 of the sprite's pixels to each of the icon's, their colours averaged, turned as the picture
+   is (the board's screen lies on its side); a pixel with fewer than two of the bee's left clear. Taken: its own
+   colours; not yet: grey, dim */
+static void draw_bee(panel *p, int x, int y, bool taken)
+{
+	if (!rom_set.sprites)
+		return;
+	for (int row = 0; row < BEE_ICON; row++)
+		for (int column = 0; column < BEE_ICON; column++)
+		{
+			unsigned r = 0, g = 0, b = 0, count = 0;
+
+			for (int sy = 0; sy < 2; sy++)
+				for (int sx = 0; sx < 2; sx++)
+				{
+					/* (the picture's (column, row) is the sprite's (31 - row, column), at twice the size) */
+					const unsigned pen = bee_pen((BEE_ICON - 1 - row) * 2 + sx, column * 2 + sy);
+
+					if (pen)
+					{
+						const uint32_t colour = palette_colour(BEE_COLOUR * 256u + pen);
+
+						r += colour >> 16 & 255u;
+						g += colour >> 8 & 255u;
+						b += colour & 255u;
+						count++;
+					}
+				}
+			if (count < 2)
+				continue;
+			r /= count;
+			g /= count;
+			b /= count;
+			if (!taken)
+			{
+				const unsigned grey = (r * 30u + g * 59u + b * 11u) / 100u * 45u / 100u + 18u;
+
+				r = g = b = grey;
+			}
+			dot(p, x + column, y + row, r << 16 | g << 8 | b);
+		}
+}
+
+#define BEES_TOP    240
+
+static void draw_bees(panel *p)
+{
+	const unsigned taken = run.on && run.bee_area >= 0 ? run.bees[run.bee_area] : 0u;
+	/* (as many to a row as fit, 14 pixels apart at least: the bee leaves the sides of its icon clear) */
+	const int room = p->w - 16, per_row = room / 14 < BEES ? room / 14 : BEES;
+	const int step = room / per_row < BEE_ICON + 2 ? room / per_row : BEE_ICON + 2;
+	const int rows = (BEES + per_row - 1) / per_row;
+	char text[16];
+
+	section(p, BEES_TOP, "BEES");
+	snprintf(text, sizeof(text), "%u/%d", taken, BEES);
+	put_right(p, BEES_TOP + 12, text, taken == BEES ? GOLD : run.on ? WHITE : DIM, 1);
+	if (run.on && run.bee_area >= 0)
+	{
+		snprintf(text, sizeof(text), "%d-%d", run.bee_area / STAGES + 1, run.bee_area % STAGES + 1);
+		put_text(p, 8, BEES_TOP + 12, text, GREY, 1);
+	}
+	for (int bee = 0; bee < BEES; bee++)
+	{
+		const int row = bee / per_row, column = bee % per_row;
+		const int in_row = row == rows - 1 ? BEES - row * per_row : per_row;
+		const int left = 8 + (room - ((in_row - 1) * step + BEE_ICON)) / 2;    /* (each row centred) */
+
+		draw_bee(p, left + column * step, BEES_TOP + 24 + row * (BEE_ICON + 1), (unsigned)bee < taken);
 	}
 }
 

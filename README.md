@@ -102,7 +102,8 @@ and the panels only take the black space at its sides (as wide as the screen lea
 - Left: the ship and its style; its shot and laser power, 1 to MAX (each power-up raises both by one: four reach
   MAX; a life lost takes the style's own weapon down one and the other back to 1); the bombs; and the board's
   speed: the game's frames a second over the last second (the board's 57.55, less its frames of slowdown), the
-  slowdown now, this stage and this game.
+  slowdown now, this stage and this game; and the stage's 13 bees, each greyed until it is taken (in its own
+  colours then), with the count ("9/13").
 - Right: the stage and the score, and the high score table chased one place at a time: #5 first, then #4 once it
   is passed, up to #1 ("NEXT #3", the score, and how much more it takes). The graph shows the score through the
   game against the place being chased (the dashed line at the top); each place passed leaves a line in its colour
