@@ -92,6 +92,8 @@ The FPS meter (F9, or FPS METER in the graphics options) shows, each second: GAM
 while the game slows down, as the arcade board does: SLOWDOWN OFF in the game options to compare); BOARD, the
 board's frames run (57.55 a second, the arcade's rate: fewer means the PC can't keep up); WINDOW, the pictures
 shown; LATE, the frames the PC ran late; and WORK, a frame's milliseconds on average and at most.
+While the meter is on, each second is also written to `ddonpach_fps.log` beside the program, with the settings,
+the renderer, and the time each part of a frame takes.
 
 Input lag: each frame is shown as the board shows it, as its VBLANK comes, not a frame later when the game's vblank
 interrupt returns. The port runs on through the next frame from a saved state, keeps its picture and puts the state

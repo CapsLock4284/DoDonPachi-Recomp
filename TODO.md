@@ -93,6 +93,10 @@
       arcade timing the last frame's): half the drawing a frame, nothing drawn in fast forward's unseen frames or the
       warning's skip (which had drawn each of its 1,809 frames: seconds, not 0.15 s). In the cloud (software
       renderer): 57.5 / 57.5 / 57.5, LATE 0, WORK 6 ms (was 11).
+- [x] Frames dropped in heavy action on the owner's PC (owner: about 42 fps in explosions): the picture's drawing
+      was the cost (4.1 ms a frame on average, 13.5 at most; twice a frame before the look-ahead drew only its own).
+      Cave68kSDK's video.c: the layers in one pass, the sprites clipped once: 1.1 ms (identical pictures, every frame
+      of 14,000, both games). The meter's log (ddonpach_fps.log) times each part of a frame.
 - [ ] The slowdown against the real MAME (owner's report): our checks compare MAME's 68000 core on the SDK's board
       model; a recording of MAME's own ddonpach (its frames of slowdown over a known input run) would check the
       board model's timing itself.
