@@ -837,6 +837,7 @@ static void meter_log_open(void)
 	if (renderer && SDL_GetRendererInfo(renderer, &info) == 0)
 		fprintf(meter_log, "renderer %s%s%s\n", info.name, info.flags & SDL_RENDERER_ACCELERATED ? " accelerated" : "",
 			info.flags & SDL_RENDERER_PRESENTVSYNC ? " vsync" : "");
+	fprintf(meter_log, "renderer setting %s\n", settings_renderer_names[options.renderer]);
 	if (window)
 	{
 		SDL_GetWindowSize(window, &w, &h);
@@ -1129,7 +1130,10 @@ int main(int argc, char **argv)
 	}
 	if (window && options.fullscreen && options.exclusive)
 		set_fullscreen();    /* (exclusive: at the desktop's mode, not the window's size) */
-	renderer = window ? SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED) : NULL;
+	if (options.renderer > 0)    /* (the one asked for; SDL falls back to another if it can't make it) */
+		SDL_SetHint(SDL_HINT_RENDER_DRIVER, settings_renderer_names[options.renderer]);
+	renderer = window ? SDL_CreateRenderer(window, -1,
+		options.renderer == RENDERERS - 1 ? SDL_RENDERER_SOFTWARE : SDL_RENDERER_ACCELERATED) : NULL;
 	if (!renderer)
 		renderer = window ? SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE) : NULL;
 	texture = renderer ? SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,

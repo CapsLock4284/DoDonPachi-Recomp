@@ -29,6 +29,8 @@ const char *const settings_scaling_names[VIDEO_SCALINGS] = { "fit", "integer", "
 const char *const settings_scanline_names[4] = { "off", "light", "medium", "heavy" };
 const char *const settings_crt_names[3] = { "off", "light", "full" };
 const char *const settings_rotate_names[ROTATIONS] = { "none", "right", "left" };
+const char *const settings_renderer_names[RENDERERS] = { "auto", "direct3d", "direct3d11", "direct3d12", "opengl",
+	"software" };
 
 static const char *const hotkey_names[HOTKEYS] = { "reset", "service_menu", "fast_forward", "save_state",
 	"load_state", "state_slot_previous", "state_slot_next" };
@@ -89,6 +91,7 @@ void settings_defaults(settings *s)
 	s->crt = 0;
 	s->filter = SCALER_OFF;
 	s->vsync = false;
+	s->renderer = 0;
 	s->show_fps = false;
 	s->rotate = ROTATE_NONE;
 	s->sound = true;
@@ -306,6 +309,8 @@ static bool take(settings *s, const char *section, const char *name, char *value
 			return (s->crt = name_of(value, settings_crt_names, 3)) >= 0 || (s->crt = 0, false);
 		if (!SDL_strcasecmp(name, "vsync"))
 			return parse_bool(value, &s->vsync);
+		if (!SDL_strcasecmp(name, "renderer"))
+			return (s->renderer = name_of(value, settings_renderer_names, RENDERERS)) >= 0 || (s->renderer = 0, false);
 		if (!SDL_strcasecmp(name, "show_fps"))
 			return parse_bool(value, &s->show_fps);
 		if (!SDL_strcasecmp(name, "rotate"))
@@ -515,6 +520,10 @@ const char *settings_save(const settings *s, const char *path)
 	fprintf(file, "filter = %s\n", scaler_key(s->filter));
 	fputs("; true: no tearing, the picture waits for the monitor (a little more delay); false: the least delay\n", file);
 	fprintf(file, "vsync = %s\n", bool_text(s->vsync));
+	fputs("; auto (SDL's choice), direct3d (Direct3D 9), direct3d11, direct3d12, opengl or software: how the picture\n"
+		"; reaches the screen. Each can take Windows a different time to show (the FPS log names the one in use);\n"
+		"; one the PC lacks falls back to another. Used from the next start\n", file);
+	fprintf(file, "renderer = %s\n", settings_renderer_names[s->renderer]);
 	fputs("; the FPS meter (F9 too): GAME the game's own frames a second (fewer in the arcade's slowdown), BOARD the\n"
 		"; board's frames run a second (57.55), WINDOW the pictures shown, LATE the frames the PC ran late in that\n"
 		"; second, WORK the milliseconds a frame takes the PC\n", file);

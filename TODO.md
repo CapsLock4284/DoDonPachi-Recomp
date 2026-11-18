@@ -110,7 +110,9 @@
 - [ ] The display's own delay (after the present): the owner's PC uses SDL's "direct3d" renderer (Direct3D 9) in
       borderless full screen, which Windows' compositor (DWM) may hold up to a refresh before the monitor shows it.
       To look at: Direct3D 11 (flip model: "independent flip" in borderless full screen skips the compositor) or
-      exclusive full screen, checked with PresentMon (its present mode and latency); a [video] renderer setting
+      exclusive full screen, checked with PresentMon (its present mode and latency). The [video] renderer setting
+      (GRAPHICS > RENDERER: auto, direct3d, direct3d11, direct3d12, opengl, software) is in; still to do: the
+      PresentMon runs on the owner's PC, then the best one made the default
 - [ ] Look-ahead for input latency, "better than arcade" (owner; an option, after the exact check above): predictive
       emulation, as rollback in fighting games
       (RetroArch calls it run-ahead). Each frame: the game kept (program_state_save), run on 1-2 frames with the
