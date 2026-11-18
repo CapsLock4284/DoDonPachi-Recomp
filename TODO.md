@@ -190,7 +190,17 @@
       Found with it: a reset (F3, the menu's RESET, MAIN MENU) showed the WARNING screen again although SKIP
       WARNING was on (the reset comes with the next frame, and the work RAM still held the last run's flag): fixed
       in main.c's warning_showing.
-- [ ] Training, replays, achievements, statistics, hitbox:
+- [x] **Training** (18-11-2026; `ports/sdl2/training.c`, the main menu's TRAINING, `[training]`): a stage's start or
+      its boss, 1-1 to 2-6, the ship, style, power (both weapons, 1-4 or MAX) and bombs (3 or 6), RETRY ON MISS;
+      in a training game's options RETRY TRAINING and TRAINING MENU. The way there: from the reset, a coin, Start,
+      the ship and style chosen; 1-1 played kept from harm ($102CCA), not firing, until it is cleared ($1017A4 = 3),
+      when the stage and loop are set ($101978, $10197A) to the one before the place's (2-1: 1-6, through the loop's
+      end); a boss: on to where its stage's scroll ends ($101996 = $FFFF). There: score 0 and the HUD's digits
+      cleared ($10162A: 8 sprites), 3 lives ($101965), the bombs ($102CB0), the power. All 24 places reached
+      (`tests/training_check`: 0.3-4.6 s each on the build machine, the bosses of 1-3 and 2-3 the longest).
+      Still to do, as DonPachi Recomp's: a point part way through a stage, the mid-bosses, the difficulty, ON PACE
+      power, the true last boss (2-6's second), a quicker way (1-1's boss is waited out)
+- [ ] Replays, achievements, statistics, hitbox:
       each reads DonPachi's memory; DoDonPachi's addresses to find.
 - [ ] **The aura overlay, not a priority** (owner, 18-11-2026: "would be cool to see"): DoDonPachi's ship has an aura, a small space around it where enemies take extra damage from its shots. An overlay as DonPachi Recomp's HITBOX shows the ship's hitbox, drawing the aura's range around the ship (an option, off by default; never changing the game). To find: where the game tests an enemy against the aura (its range, from the ship's position in its record at $102C8C, and whether it differs for shot and laser), in the code that adds an enemy's damage
 - [ ] **Update from inside the program** (owner, 18-11-2026; DonPachi Recomp's TODO has the same): the options menu checks for a newer release and installs it, with no download or extracting by hand: GitHub's releases API for the latest tag (WinHTTP on Windows, libcurl on Linux, in the background, when the player asks), the release's zip downloaded and checked (size, SHA-256), unpacked beside the program, the exe swapped on the next start (a running .exe cannot overwrite itself). The player's files stay (settings, EEPROM, high scores, ddonpach.dat). The repository is private: an update from it needs the releases somewhere public (a public releases-only repository, or the repository made public), never a token in the program. After the release package

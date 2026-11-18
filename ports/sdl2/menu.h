@@ -39,6 +39,9 @@ typedef struct
 	int (*state_slot)(int step);    /* the save states' slot, 0 to STATE_SLOTS - 1, moved by 'step' (0: as it is) */
 	bool (*state_used)(int slot);   /* a save state is kept in the slot */
 	void (*main_menu)(void);    /* the board reset and kept at its start, for the main menu (then it shows) */
+	bool (*training)(void);     /* the game run to the training's place (options' [training]): false if it failed */
+	bool (*in_training)(void);  /* a training game is being played */
+	void (*retry_training)(void);   /* back to the training's place */
 } menu_host;
 
 void menu_init(const menu_host *host);
@@ -51,6 +54,9 @@ void menu_open(void);
    don't */
 void menu_open_front(void);
 bool menu_in_front(void);
+
+/* The main menu's TRAINING page (from a training game's TRAINING MENU: the game reset first) */
+void menu_open_training(void);
 
 /* An event while it is open: true when the menu took it (all are taken while it is open) */
 bool menu_event(const SDL_Event *event);

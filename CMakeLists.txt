@@ -103,7 +103,7 @@ endif()
 if(SDL2_FOUND)
 	add_executable(ddonpach WIN32 ports/sdl2/main.c ports/sdl2/settings.c ports/sdl2/rom_drop.c ports/sdl2/paths.c
 		ports/sdl2/crt.c ports/sdl2/scaler.c ports/sdl2/crash_log.c ports/sdl2/menu.c ports/sdl2/hiscore.c
-		ports/sdl2/widgets.c)
+		ports/sdl2/widgets.c ports/sdl2/training.c)
 	target_link_libraries(ddonpach PRIVATE ddonpach_game ${DDONPACH_SDL2})
 	target_compile_definitions(ddonpach PRIVATE DDONPACH_VERSION="${PROJECT_VERSION}")
 	if(WIN32)

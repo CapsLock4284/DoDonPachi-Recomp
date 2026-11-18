@@ -93,6 +93,14 @@ typedef struct
 	bool side_panels;          /* the side panels (widgets.h) beside the picture: not with it turned */
 	bool show_fps;              /* the FPS meter over the picture's corner (main.c; F9) */
 	int rotate;                 /* ROTATE_NONE, ROTATE_RIGHT (90 degrees clockwise), ROTATE_LEFT */
+	/* [training] (the main menu's TRAINING: training.h) */
+	int training_stage;         /* 0-11: 1-1 ... 2-6 */
+	int training_point;         /* 0 the stage's start, 1 its boss */
+	int training_ship;          /* 0-2: types A, B, C */
+	bool training_laser;        /* the style: laser, or shot */
+	int training_power;         /* 0-4: levels 1-4, MAX */
+	bool training_max_bombs;    /* 6 bombs (the most), or 3 */
+	bool training_retry;        /* a miss: back to the place at once */
 	/* [sound] */
 	bool sound;
 	int volume;                 /* 0-100 */

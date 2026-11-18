@@ -96,6 +96,8 @@ void settings_defaults(settings *s)
 	s->show_fps = false;
 	s->side_panels = true;
 	s->rotate = ROTATE_NONE;
+	s->training_power = 4;
+	s->training_retry = true;
 	s->sound = true;
 	s->volume = 100;
 	snprintf(s->rom, sizeof(s->rom), "rom");
@@ -332,6 +334,38 @@ static bool take(settings *s, const char *section, const char *name, char *value
 			return parse_int(value, 0, 100, &s->volume);
 		return false;
 	}
+	if (!SDL_strcasecmp(section, "training"))
+	{
+		if (!SDL_strcasecmp(name, "stage"))
+			return parse_int(value, 0, 11, &s->training_stage);
+		if (!SDL_strcasecmp(name, "place"))
+		{
+			if (!SDL_strcasecmp(value, "start") || !SDL_strcasecmp(value, "boss"))
+			{
+				s->training_point = !SDL_strcasecmp(value, "boss");
+				return true;
+			}
+			return false;
+		}
+		if (!SDL_strcasecmp(name, "ship"))
+			return parse_int(value, 0, 2, &s->training_ship);
+		if (!SDL_strcasecmp(name, "style"))
+		{
+			if (!SDL_strcasecmp(value, "shot") || !SDL_strcasecmp(value, "laser"))
+			{
+				s->training_laser = !SDL_strcasecmp(value, "laser");
+				return true;
+			}
+			return false;
+		}
+		if (!SDL_strcasecmp(name, "power"))
+			return parse_int(value, 0, 4, &s->training_power);
+		if (!SDL_strcasecmp(name, "max_bombs"))
+			return parse_bool(value, &s->training_max_bombs);
+		if (!SDL_strcasecmp(name, "retry_on_miss"))
+			return parse_bool(value, &s->training_retry);
+		return false;
+	}
 	if (!SDL_strcasecmp(section, "hotkeys"))
 	{
 		for (int hotkey = 0; hotkey < HOTKEYS; hotkey++)
@@ -550,6 +584,20 @@ const char *settings_save(const settings *s, const char *path)
 	fprintf(file, "enabled = %s\n", bool_text(s->sound));
 	fputs("; 0 to 100\n", file);
 	fprintf(file, "volume = %d\n\n", s->volume);
+
+	fputs("[training]\n", file);
+	fputs("; the main menu's TRAINING: the stage, 0-11 (1-1 ... 1-6, 2-1 ... 2-6), and the place in it (start or boss)\n",
+		file);
+	fprintf(file, "stage = %d\n", s->training_stage);
+	fprintf(file, "place = %s\n", s->training_point ? "boss" : "start");
+	fputs("; the ship, 0-2 (types A, B, C), and its style (shot or laser)\n", file);
+	fprintf(file, "ship = %d\n", s->training_ship);
+	fprintf(file, "style = %s\n", s->training_laser ? "laser" : "shot");
+	fputs("; the power, 0-4 (levels 1-4, 4 MAX: the shot and the laser both); max_bombs: 6 bombs, else 3\n", file);
+	fprintf(file, "power = %d\n", s->training_power);
+	fprintf(file, "max_bombs = %s\n", bool_text(s->training_max_bombs));
+	fputs("; a miss: back to the place at once\n", file);
+	fprintf(file, "retry_on_miss = %s\n\n", bool_text(s->training_retry));
 
 	fputs("[hotkeys]\n", file);
 	fputs("; the board's reset (keys, then the gamepad's buttons, either player's)\n", file);

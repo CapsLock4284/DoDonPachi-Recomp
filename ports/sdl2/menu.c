@@ -45,7 +45,7 @@
 #define STICK_DEAD   16000
 #define CHEAT_ROWS   16                 /* the cheats page's: as many shown at a time, scrolled with the choice */
 
-enum { PAGE_MAIN, PAGE_CONTROLS, PAGE_GRAPHICS, PAGE_GAME, PAGE_CHEATS, PAGE_FRONT };
+enum { PAGE_MAIN, PAGE_CONTROLS, PAGE_GRAPHICS, PAGE_GAME, PAGE_CHEATS, PAGE_FRONT, PAGE_TRAINING };
 enum { NAV_NONE, NAV_UP, NAV_DOWN, NAV_LEFT, NAV_RIGHT, NAV_CHOOSE, NAV_BACK, NAV_CLOSE };
 
 enum
@@ -58,6 +58,9 @@ enum
 	ITEM_START_GAME, ITEM_SETTINGS,   /* the main menu's */
 	ITEM_MAIN_MENU,               /* the options': the game left, the main menu */
 	ITEM_FRONT_AT_START,          /* the game options': the main menu as the program starts */
+	ITEM_TRAINING,                /* the main menu's: the training page */
+	ITEM_T_STAGE, ITEM_T_POINT, ITEM_T_SHIP, ITEM_T_STYLE, ITEM_T_POWER, ITEM_T_BOMBS, ITEM_T_RETRY, ITEM_T_START,
+	ITEM_RETRY_TRAINING, ITEM_TRAINING_MENU,    /* a training game's options */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -69,7 +72,9 @@ static const char *const item_labels[] = {
 	"QUIT TO DESKTOP", "RESET TO DEFAULTS", "BACK", "GRAPHICS", "SCALING", "SMOOTHING", "SCANLINES", "VSYNC",
 	"ROTATE", "STICK DEADZONE", "SAVE STATE", "LOAD STATE", "GAME OPTIONS", "CHEATS", "SLOWDOWN", "CRT",
 	"STATE SLOT", "FILTER", "C BUTTON AUTO FIRE", "INPUT TIMING", "FREE PLAY", "SAVE HIGH SCORES", "SKIP WARNING",
-	"FPS METER", "RENDERER", "SIDE PANELS", "START GAME", "SETTINGS", "MAIN MENU", "MAIN MENU AT START"
+	"FPS METER", "RENDERER", "SIDE PANELS", "START GAME", "SETTINGS", "MAIN MENU", "MAIN MENU AT START",
+	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
+	"RETRY TRAINING", "TRAINING MENU"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -79,6 +84,8 @@ static const char *const action_labels[ACTIONS] = {
 static menu_host host;
 static bool open, just_closed;
 static bool front;                      /* the main menu is up, or its SETTINGS (the game not started) */
+static int training_pending;            /* START TRAINING: frames until the game is run there (LOADING... first) */
+static int training_failed;             /* frames "COULD NOT REACH IT" is still shown */
 static int page, selected, player;
 static int items[128], item_count;
 static int capture = -1;                /* the action waiting for its key or button, or -1 */
@@ -119,7 +126,7 @@ static void build_items(void)
 	item_count = 0;
 	if (page == PAGE_FRONT)
 	{
-		static const int front_items[] = { ITEM_START_GAME, ITEM_SETTINGS, ITEM_QUIT };
+		static const int front_items[] = { ITEM_START_GAME, ITEM_TRAINING, ITEM_SETTINGS, ITEM_QUIT };
 
 		add_items(front_items, sizeof(front_items) / sizeof(front_items[0]));
 	}
@@ -129,6 +136,22 @@ static void build_items(void)
 		static const int settings_items[] = { ITEM_VOLUME, ITEM_GAME, ITEM_GRAPHICS, ITEM_CONTROLS, ITEM_BACK };
 
 		add_items(settings_items, sizeof(settings_items) / sizeof(settings_items[0]));
+	}
+	else if (page == PAGE_TRAINING)
+	{
+		static const int training_items[] = { ITEM_T_STAGE, ITEM_T_POINT, ITEM_T_SHIP, ITEM_T_STYLE, ITEM_T_POWER,
+			ITEM_T_BOMBS, ITEM_T_RETRY, ITEM_T_START, ITEM_BACK };
+
+		add_items(training_items, sizeof(training_items) / sizeof(training_items[0]));
+	}
+	else if (page == PAGE_MAIN && host.in_training && host.in_training())
+	{
+		/* (a training game's: its place again and its page; no RESET or save states: the training is its own save
+		   state, F5 / F8 still there) */
+		static const int training_game_items[] = { ITEM_RESUME, ITEM_RETRY_TRAINING, ITEM_TRAINING_MENU, ITEM_VOLUME,
+			ITEM_GAME, ITEM_GRAPHICS, ITEM_CONTROLS, ITEM_MAIN_MENU, ITEM_QUIT };
+
+		add_items(training_game_items, sizeof(training_game_items) / sizeof(training_game_items[0]));
 	}
 	else if (page == PAGE_MAIN)
 	{
@@ -262,6 +285,27 @@ static void change(int item, int step, bool wrap)
 	case ITEM_FRONT_AT_START:
 		in_use->main_menu = file->main_menu = !in_use->main_menu;
 		break;
+	case ITEM_T_STAGE:
+		in_use->training_stage = file->training_stage = cycle(in_use->training_stage, 12, step, wrap);
+		break;
+	case ITEM_T_POINT:
+		in_use->training_point = file->training_point = !in_use->training_point;
+		break;
+	case ITEM_T_SHIP:
+		in_use->training_ship = file->training_ship = cycle(in_use->training_ship, 3, step, wrap);
+		break;
+	case ITEM_T_STYLE:
+		in_use->training_laser = file->training_laser = !in_use->training_laser;
+		break;
+	case ITEM_T_POWER:
+		in_use->training_power = file->training_power = cycle(in_use->training_power, 5, step, wrap);
+		break;
+	case ITEM_T_BOMBS:
+		in_use->training_max_bombs = file->training_max_bombs = !in_use->training_max_bombs;
+		break;
+	case ITEM_T_RETRY:
+		in_use->training_retry = file->training_retry = !in_use->training_retry;
+		break;
 	case ITEM_HIGH_SCORES:
 		in_use->save_high_scores = file->save_high_scores = !in_use->save_high_scores;
 		break;
@@ -372,6 +416,15 @@ static void to_page(int to)
 /* back to the page before, on the entry that opened this one */
 static void back(void)
 {
+	if (page == PAGE_TRAINING)
+	{
+		/* (back to the main menu, on TRAINING) */
+		page = PAGE_FRONT;
+		build_items();
+		for (selected = 0; selected < item_count - 1 && items[selected] != ITEM_TRAINING; selected++)
+			;
+		return;
+	}
 	if (page == PAGE_MAIN && front)
 	{
 		/* (the main menu's SETTINGS: back to the main menu, on SETTINGS) */
@@ -405,6 +458,21 @@ static void choose(int item)
 		break;
 	case ITEM_SETTINGS:
 		to_page(PAGE_MAIN);
+		break;
+	case ITEM_TRAINING:
+		to_page(PAGE_TRAINING);
+		break;
+	case ITEM_T_START:
+		training_failed = 0;
+		training_pending = 2;    /* (LOADING... on the screen first: menu_draw runs it a frame later) */
+		break;
+	case ITEM_RETRY_TRAINING:
+		host.retry_training();
+		close_menu();
+		break;
+	case ITEM_TRAINING_MENU:
+		host.main_menu();
+		menu_open_training();
 		break;
 	case ITEM_MAIN_MENU:
 		host.main_menu();
@@ -598,6 +666,15 @@ void menu_open_front(void)
 	page = PAGE_FRONT;
 	build_items();
 	selected = 0;    /* (on START GAME) */
+}
+
+void menu_open_training(void)
+{
+	menu_open_front();
+	page = PAGE_TRAINING;
+	build_items();
+	for (selected = 0; selected < item_count - 1 && items[selected] != ITEM_T_START; selected++)
+		;    /* (on START TRAINING: again at once) */
 }
 
 bool menu_in_front(void)
@@ -879,6 +956,30 @@ static void item_value(int item, char *out, size_t size)
 	case ITEM_FRONT_AT_START:
 		snprintf(out, size, "%s", s->main_menu ? "ON" : "OFF");
 		break;
+	case ITEM_T_STAGE:
+		snprintf(out, size, "%d-%d", s->training_stage / 6 + 1, s->training_stage % 6 + 1);
+		break;
+	case ITEM_T_POINT:
+		snprintf(out, size, "%s", s->training_point ? "BOSS" : "START");
+		break;
+	case ITEM_T_SHIP:
+		snprintf(out, size, "TYPE-%c", 'A' + s->training_ship);
+		break;
+	case ITEM_T_STYLE:
+		snprintf(out, size, "%s", s->training_laser ? "LASER" : "SHOT");
+		break;
+	case ITEM_T_POWER:
+		if (s->training_power >= 4)
+			snprintf(out, size, "MAX");
+		else
+			snprintf(out, size, "%d", s->training_power + 1);
+		break;
+	case ITEM_T_BOMBS:
+		snprintf(out, size, "%s", s->training_max_bombs ? "6 (MAX)" : "3");
+		break;
+	case ITEM_T_RETRY:
+		snprintf(out, size, "%s", s->training_retry ? "ON" : "OFF");
+		break;
 	case ITEM_HIGH_SCORES:
 		snprintf(out, size, "%s", s->save_high_scores ? "ON" : "OFF");
 		break;
@@ -992,8 +1093,8 @@ static int cheats_first(int *total)
 
 /* ---- the main menu: the title over a dark sky, its entries ---- */
 
-/* the bee (the game's own sprite, from the player's ROM set: a frame of its flight, 32 x 32) at (x, y), turned as the
-   picture is; its colours made here (the game's palette is not set up before it runs): gold, brighter for its
+/* the bee (the game's own sprite, from the player's ROM set: a frame of its flight, 32 x 32) at (x, y), head up; its
+   colours made here (the game's palette is not set up before it runs): gold, brighter for its
    lower pens, as the bee's own palette goes */
 #define BEE_CODE 0x4496u
 
@@ -1004,7 +1105,7 @@ static void put_bee(uint32_t *out, int x, int y)
 	for (int row = 0; row < 32; row++)
 		for (int column = 0; column < 32; column++)
 		{
-			const uint32_t pixel = (BEE_CODE << 8) + (uint32_t)((31 - row) * 32 + column);
+			const uint32_t pixel = (BEE_CODE << 8) + (uint32_t)((31 - column) * 32 + (31 - row));
 			const uint8_t byte = rom_set.sprites[(pixel >> 1) & (rom_set_region_size(CAVE_ROM_SPRITES) - 1u)];
 			const unsigned pen = (pixel & 1u) ? (byte & 15u) : (byte >> 4);
 			uint32_t colour;
@@ -1119,6 +1220,18 @@ static void draw_front(uint32_t *out)
 
 void menu_draw(const uint32_t *game, uint32_t *out)
 {
+	if (training_pending > 0 && --training_pending == 0)
+	{
+		/* (the LOADING... frame is on the screen: the game run to the place now, a few seconds) */
+		if (host.training())
+		{
+			front = false;
+			close_menu();    /* (the game is at the place: it goes on from there) */
+			memcpy(out, game, sizeof(uint32_t) * PICTURE_W * PICTURE_H);
+			return;
+		}
+		training_failed = 240;
+	}
 	if (page == PAGE_FRONT)
 	{
 		draw_front(out);
@@ -1142,6 +1255,19 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 		put_centre(out, PANEL_TOP + 1, "GRAPHICS", GOLD);
 	else if (page == PAGE_GAME)
 		put_centre(out, PANEL_TOP + 1, "GAME OPTIONS", GOLD);
+	else if (page == PAGE_TRAINING)
+	{
+		put_centre(out, PANEL_TOP + 1, "TRAINING", GOLD);
+		if (training_pending > 0)
+			put_centre(out, PANEL_TOP + 26, "LOADING...", CYAN);
+		else if (training_failed > 0)
+		{
+			training_failed--;
+			put_centre(out, PANEL_TOP + 26, "COULD NOT REACH IT", CYAN);
+		}
+		else
+			put_centre(out, PANEL_TOP + 26, "NO HIGH SCORES IN TRAINING", GREY);
+	}
 	else if (page == PAGE_CHEATS)
 	{
 		put_centre(out, PANEL_TOP + 1, "CHEATS", GOLD);
@@ -1180,7 +1306,8 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 				continue;    /* (scrolled out of the list) */
 			if ((item == ITEM_QUIT && !(index > 0 && items[index - 1] == ITEM_MAIN_MENU)) || item == ITEM_MAIN_MENU
 					|| item == ITEM_BACK || item == ITEM_FAST_FORWARD_KEY || item == ITEM_DEADZONE
-					|| item == ITEM_SCALE || item == ITEM_SAVE_STATE || item == ITEM_GAME || item == ITEM_CHEATS)
+					|| item == ITEM_SCALE || item == ITEM_SAVE_STATE || item == ITEM_GAME || item == ITEM_CHEATS
+					|| item == ITEM_T_START || (item == ITEM_VOLUME && index > 0 && items[index - 1] == ITEM_TRAINING_MENU))
 				y += page == PAGE_CONTROLS ? 6 : 8;    /* (a gap before them) */
 			if (chosen)
 				put_char_y(out, PANEL_LEFT + 1, y, '>', GOLD);

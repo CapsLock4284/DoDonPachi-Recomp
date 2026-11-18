@@ -60,6 +60,7 @@
 #include "menu.h"
 #include "paths.h"
 #include "rom_drop.h"
+#include "training.h"
 #include "scaler.h"
 #include "settings.h"
 #include "window_icon.h"
@@ -90,6 +91,8 @@ static char settings_path[1024];
 static SDL_Window *window;
 static int running = 1;
 static bool fast_forwarding;
+static bool training_on;     /* a training game (training.h): the main menu's TRAINING, until a reset or the main
+                                menu */
 static bool state_loaded;    /* this game went back to a save state, or had a cheat on: its scores are not kept
                                 (until the next game: hiscore.h) */
 static bool reset_asked;    /* a reset asked for this frame (the look-ahead's state would undo it: look_ahead) */
@@ -235,6 +238,7 @@ static void hotkeys(void)
 				free_play_reset();
 				hiscore_reset();
 				widgets_reset();
+				training_on = false;
 				state_loaded = false;
 				crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 				menu_notice("RESET");
@@ -1039,6 +1043,7 @@ static void menu_reset(void)
 	free_play_reset();
 	hiscore_reset();
 	widgets_reset();
+	training_on = false;
 	state_loaded = false;
 	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 	menu_notice("RESET");
@@ -1054,9 +1059,69 @@ static void menu_main_menu(void)
 	free_play_reset();
 	hiscore_reset();
 	widgets_reset();
+	training_on = false;
 	state_loaded = false;
 	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 	memset(picture, 0, sizeof(picture));
+}
+
+/* ---- training (training.h): the game run to a place of the player's choosing, a save state there ---- */
+
+static program_state *training_state;    /* the place: RETRY TRAINING, and a miss with retry_on_miss, go back to it */
+static int training_lives_seen;           /* player 1's lives as last seen (a miss: fewer) */
+static int training_retry_frames;         /* a miss seen: frames until the game goes back to the place */
+
+/* the game as it is, shown and heard from here (a state put back, or the place reached) */
+static void training_shown(void)
+{
+	free_play_reset();
+	video_latch_sprites();
+	draw_picture();
+	if (audio)
+		audio_restart();
+	cave_sound_drop();
+	training_lives_seen = training_lives();
+	training_retry_frames = 0;
+}
+
+static bool menu_training(void)
+{
+	const training_setup setup = { options.training_stage, options.training_point, options.training_ship,
+		options.training_laser, options.training_power, options.training_max_bombs };
+	const char *problem;
+
+	menu_main_menu();    /* (the board reset: training_prepare runs it from there) */
+	problem = training_prepare(&setup);
+	if (problem)
+	{
+		fprintf(stderr, "training, %s: %s\n", training_name(&setup), problem);
+		menu_main_menu();
+		return false;
+	}
+	program_state_free(training_state);
+	training_state = program_state_save();
+	training_on = true;
+	state_loaded = true;    /* (no high score or stage best from a training game) */
+	crash_log_not_replayable("a training game (the game run to its place unrecorded)");
+	reset_asked = false;    /* (the reset came with the way there) */
+	training_shown();
+	menu_notice(training_name(&setup));
+	return true;
+}
+
+static bool menu_in_training(void)
+{
+	return training_on;
+}
+
+static void menu_retry_training(void)
+{
+	if (!training_state)
+		return;
+	program_state_load(training_state);
+	hiscore_state_loaded();
+	training_shown();
+	menu_notice("RETRY");
 }
 
 static void menu_test_mode(void)
@@ -1276,6 +1341,9 @@ int main(int argc, char **argv)
 		menu.state_slot = menu_state_slot;
 		menu.state_used = menu_state_used;
 		menu.main_menu = menu_main_menu;
+		menu.training = menu_training;
+		menu.in_training = menu_in_training;
+		menu.retry_training = menu_retry_training;
 		menu_init(&menu);
 		if (options.main_menu)
 			menu_open_front();    /* (the main menu first: the game waits at its start until START GAME) */
@@ -1397,6 +1465,17 @@ int main(int argc, char **argv)
 					hiscore_game_not_kept();    /* (the table as the file has it: none of that game's scores) */
 				}
 				spend(SPENT_RUN, run_began);
+			}
+			if (training_on && options.training_retry)
+			{
+				/* RETRY ON MISS: a life lost, the place again a second later (the miss seen first) */
+				const int lives = training_lives();
+
+				if (lives < training_lives_seen && training_retry_frames == 0)
+					training_retry_frames = 58;
+				training_lives_seen = lives;
+				if (training_retry_frames > 0 && --training_retry_frames == 0)
+					menu_retry_training();
 			}
 			{
 				const Uint64 look_began = SDL_GetPerformanceCounter();
