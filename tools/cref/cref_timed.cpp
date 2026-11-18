@@ -21,12 +21,18 @@
  *                compares them)
  *      --hashes  a line per VBLANK, "vblank lagged hash"
  *      --play    the inputs of tests/slowdown_check's player (by the VBLANK: coins, Start, firing, sweeping)
+ *      INVINCIBLE=1 (environment, with --play): player 1 kept from harm from VBLANK 2,500 on (the time without harm after
+ *                a life, $102CCA, held at $80 as the inputs are set): the player goes through both loops, the same in
+ *                tests/slowdown_check with INVINCIBLE=1
  *    For finding where the port goes another way (environment):
  *      DUMPFRAME=N    the board's memories at game frame N's wait, in mame_dump.bin (the port's: port_dump.bin)
  *      TRACE_FRAME=N  every instruction of game frame N's work, in mame_trace.txt (the port's, built from
  *                     tools/decompile.py --trace: tests/slowdown_check_trace; tests/trace_compare.py lines them up)
  *      DUMP_AT=ADDR   with TRACE_FRAME: the memories as the frame first comes to ADDR, and D0, D1, A6 there
  *      DEBUG_JUMPS=1  where the computed jumps tools/call_tables.py lists by hand really go, in jumps.txt
+ *      CYCLELOG=FILE  each game frame's cycle as it comes to its wait, "game_frame cycle" (tests/slowdown_check the
+ *                     same): the first frame whose work took another time
+ *      TRACE_CYCLES=1 with TRACE_FRAME: each instruction's cycle beside its address
  *    The YMZ280B's interrupt (16-11-2026): the run stops at each cycle the chip's interrupt may come by
  *    (cave_sound_event_at) and raises the line there; the chip itself is brought there as the next instruction
  *    begins, after that instruction's accesses, as the decompiled program has it. The chip's and the cause's bit 2
@@ -163,6 +169,8 @@ u16 acknowledge(offs_t address, u16 mem_mask)
 		   harness sets them, its frame coming as the 68000 takes the interrupt) */
 		g_play = false;
 		cave_board.in0 = uint16_t(~player_inputs(cave_board.frame));
+		if (getenv("INVINCIBLE") && cave_board.frame > 2500u)
+			*cave_work_ram_byte(0x102CCAu) = 0x80u;    /* (player 1's time without harm after a life: held) */
 	}
 	if (g_waiting && ((address >> 1) & 7) == 1 && cave_board.vblank_irq)
 	{
@@ -211,6 +219,11 @@ void on_instruction(offs_t pc)
 		/* (the work done: from where the last wait ended to here) */
 		g_waiting = true;
 		g_last_busy = int64_t(now() - g_work_began);
+		{
+			static FILE *cycles = getenv("CYCLELOG") ? std::fopen(getenv("CYCLELOG"), "w") : nullptr;
+			if (cycles)
+				std::fprintf(cycles, "%" PRIu64 " %" PRIu64 "\n", g_game_frames + 1u, uint64_t(now()));
+		}
 		g_game_frames++;
 		if (getenv("DUMPFRAME") && g_game_frames == std::strtoull(getenv("DUMPFRAME"), nullptr, 10))
 			cave_dump("mame_dump.bin");
@@ -232,7 +245,10 @@ void on_instruction(offs_t pc)
 	if (g_trace)
 	{
 		static bool dumped;
-		std::fprintf(g_trace, "%06X\n", unsigned(pc & 0xFFFFFFu));
+		if (getenv("TRACE_CYCLES"))
+			std::fprintf(g_trace, "%06X %" PRIu64 "\n", unsigned(pc & 0xFFFFFFu), uint64_t(now()));
+		else
+			std::fprintf(g_trace, "%06X\n", unsigned(pc & 0xFFFFFFu));
 		if (!dumped && getenv("DUMP_AT") && (pc & 0xFFFFFFu) == std::strtoul(getenv("DUMP_AT"), nullptr, 16))
 		{
 			dumped = true;

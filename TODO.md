@@ -8,7 +8,24 @@
 - [x] `--check` clean: all 1,650 routines translate (DoDonPachi's own calls added: the records' callbacks, the stage routines, a movem with A7).
 - [x] The C builds against Cave68kSDK (all 1,662 routines; tests/build.sh, include/game_board.h).
 - [x] It boots: the warning screen, the title screen and the attract mode's demo, drawn right (tests/boot.c).
-- [ ] Names: DonPachi's symbols.txt carried over where the code is the same.
+- [x] The whole game checked against MAME's 68000 (owner, 18-11-2026): player 1 kept from harm (INVINCIBLE=1 in
+      tests/slowdown_check and tools/cref/cref_timed: $102CCA, the time without harm after a life, held), both loops to
+      the last boss. The base player (tests/player.h) and the six of tests/players/ (types A, B, C, shot and laser, button
+      C, bombs): 300,000 VBLANKs each, the same at every game frame (270,000-290,000 each), but type B laser's (below).
+      Found and fixed: 02C52C's command 4 (call_tables.py PAST_THE_STUBS: the objects' timed scripts), and the movems
+      with A7 (MOVEM_WITHOUT_SP) 8 cycles short each (their time now the 68000's). The C now built with
+      `decompile.py --checks`: a jump-table value with no case stops the program (invalid_jump, the crash log and the
+      replay), never a silent skip. A sweep with every switch reporting (all players, the attract mode, continues,
+      2 players, the test mode) found no other. Tools: CYCLELOG=FILE (each frame's cycle at its wait, both sides),
+      cref_timed TRACE_CYCLES=1 (each traced instruction's cycle)
+- [ ] **An interrupt over the stack's temporary bytes, as the board has it** (asked the owner): 057A70 (a number to
+      decimal digits) builds its digits below the stack pointer (movea.l A7, A0; move.b Dn, -(A0) x3, clr.b -(A0))
+      and reads them back as a long; an interrupt in between (the YMZ280B's) pushes its PC and status register there
+      on the 68000, and the digits read back are those bytes: a glitch the arcade and MAME show, the port not (the C
+      keeps the bytes in its own variables). Rare: once in about 2 million frames of the checks (type B laser's run,
+      game frame 47,518: 672 cycles more on the board, the game going its own way after). To match it: the runtime
+      counting the interrupts taken and the status register as they came, the C of this routine writing the frame's
+      bytes into its slots when one came between its writes and its read
 - [ ] The Japanese version (`ddonpachj`).
 
 ## The board (in Cave68kSDK)
@@ -57,6 +74,10 @@
       only places things on its own 240 x 320).
 - [ ] The side panels: DoDonPachi's own (owner: the game shows more on its screen than DonPachi did, so the panels
       will differ); later.
+- [ ] **Widget ideas for the side panels** (owner, 18-11-2026):
+  - The power level, 1 to MAX (the game's steps between, the halves the owner expects to find)
+  - The stage's score against the best ever for that stage (a tracker per stage, kept with the high scores)
+  - The board's FPS with the percentage of slowdown (the FPS meter's GAME and BOARD: 100 - GAME / BOARD)
 - [x] The options menu (Escape / View): DonPachi Recomp's, in DoDonPachi's own font (its text layer's 8x8 tiles,
       8 bits a pixel, ASCII as they are): options, game options (slowdown, C button auto-fire, fast forward speed,
       the test mode, cheats), graphics, controls (remapping, both players, the hotkeys). Silent for now (DonPachi
@@ -110,4 +131,6 @@
       board model's timing itself.
 - [ ] The main menu, training, replays, achievements, statistics, side panels, hitbox:
       each reads DonPachi's memory; DoDonPachi's addresses to find.
+- [ ] **The aura overlay, not a priority** (owner, 18-11-2026: "would be cool to see"): DoDonPachi's ship has an aura, a small space around it where enemies take extra damage from its shots. An overlay as DonPachi Recomp's HITBOX shows the ship's hitbox, drawing the aura's range around the ship (an option, off by default; never changing the game). To find: where the game tests an enemy against the aura (its range, from the ship's position in its record at $102C8C, and whether it differs for shot and laser), in the code that adds an enemy's damage
+- [ ] **Update from inside the program** (owner, 18-11-2026; DonPachi Recomp's TODO has the same): the options menu checks for a newer release and installs it, with no download or extracting by hand: GitHub's releases API for the latest tag (WinHTTP on Windows, libcurl on Linux, in the background, when the player asks), the release's zip downloaded and checked (size, SHA-256), unpacked beside the program, the exe swapped on the next start (a running .exe cannot overwrite itself). The player's files stay (settings, EEPROM, high scores, ddonpach.dat). The repository is private: an update from it needs the releases somewhere public (a public releases-only repository, or the repository made public), never a token in the program. After the release package
 - [ ] A release package (tools/make_release.ps1, as DonPachi Recomp's).

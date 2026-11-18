@@ -340,6 +340,11 @@ PAST_THE_STUBS = {
     # type C's pods showed for a frame or two and never fired (owner; found by comparing a type C game, button C held,
     # with the original on MAME's 68000: game frame 2,655, on the ship select screen's demo)
     0x00E008: 0x00E01C,
+    # 02C52C "jsr ($e,PC,D0.w)": the commands of the objects' timed scripts (02C518 reads a time, then a command: 0 the
+    # stub at 02C53C, a byte into the object at A6; 4 the code after it at 02C540, a byte into the record at A5). Missing,
+    # the C skipped command 4 and the 2 bytes it reads, and read the rest of the script wrongly (found by the full-game
+    # comparison with MAME's 68000, player 1 kept from harm: game frame 32,177, in loop 1)
+    0x02C52C: 0x02C540,
 }
 for _jump, _past in PAST_THE_STUBS.items():
     MANUAL[_jump] = (lambda past: lambda: frozenset({past}))(_past)
@@ -351,7 +356,8 @@ MANUAL[0x00B3F6] = lambda: frozenset({0x00B3FA, 0x00B3FE, 0x00B402})
 # DoDonPachi's own: "movem.l D0-D7/A0-A7, -(A7)" at 03D926 and "movem.l (A7)+, D0-D7/A0-A7" at 03D936, around a call.
 # The 68000 does not load A7 from memory in a movem (A7)+ (it ends with the incremented address), so the pop leaves
 # A7 as a pop of the others would: here both have A7 taken out of their lists (15 registers pushed and popped, the
-# same slots), and the core no longer sees "SP set to" a value from memory. (Their cycles are 4 short each)
+# same slots), and the core no longer sees "SP set to" a value from memory. Their time is the 68000's, A7 counted (8
+# cycles each: install())
 MOVEM_WITHOUT_SP = (0x03D926, 0x03D936)
 
 # the routines the stage scripts hand to "jmp (A0)" at 02D9A2 (script command 15 stores one in $10885C): a list
@@ -1029,6 +1035,20 @@ def install():
         return instruction
 
     dis.decode = decode
+
+    # (their time as the 68000's: A7 is moved too, 8 cycles a long; the C's list has it out. Found by the full-game
+    # comparison with MAME's 68000: 8 cycles short at each, game frame 95,147 one round of the wait loop longer, its
+    # random count one more)
+    from m68000 import timing
+    original_base_cycles = timing.base_cycles
+
+    def base_cycles(instruction):
+        cycles = original_base_cycles(instruction)
+        if getattr(instruction, "address", None) in MOVEM_WITHOUT_SP and instruction.mnemonic == "movem":
+            cycles += 8    # (A7, a long)
+        return cycles
+
+    timing.base_cycles = base_cycles
 
     # ---- 1. calls and jumps into tables of stubs ----
 
