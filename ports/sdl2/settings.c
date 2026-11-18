@@ -74,6 +74,8 @@ void settings_defaults(settings *s)
 	memset(s, 0, sizeof(*s));
 	s->version = 0;
 	s->fast_forward_speed = 4;
+	s->skip_warning = true;
+	s->save_high_scores = true;
 	s->free_play = true;
 	s->arcade_timing = false;
 	s->c_button_full_auto = true;
@@ -248,6 +250,10 @@ static bool take(settings *s, const char *section, const char *name, char *value
 		}
 		if (!SDL_strcasecmp(name, "fast_forward_speed"))
 			return parse_int(value, 2, 16, &s->fast_forward_speed);
+		if (!SDL_strcasecmp(name, "skip_warning"))
+			return parse_bool(value, &s->skip_warning);
+		if (!SDL_strcasecmp(name, "save_high_scores"))
+			return parse_bool(value, &s->save_high_scores);
 		if (!SDL_strcasecmp(name, "free_play"))
 			return parse_bool(value, &s->free_play);
 		if (!SDL_strcasecmp(name, "arcade_timing"))
@@ -460,6 +466,13 @@ const char *settings_save(const settings *s, const char *path)
 	fprintf(file, "version = %s\n", s->version == 1 ? "japan" : "world");
 	fputs("; while the fast forward key or button is held ([hotkeys]): the game's frames a frame, 2 to 16\n", file);
 	fprintf(file, "fast_forward_speed = %d\n", s->fast_forward_speed);
+	fputs("; true (the default): the WARNING screen the game shows as it starts (31 seconds) is run at once, unseen\n"
+		"; (the game runs every frame of it, as on the board); false: shown\n", file);
+	fprintf(file, "skip_warning = %s\n", bool_text(s->skip_warning));
+	fputs("; true (the default): the high score table kept in ddonpach.hiscore beside the program (the arcade board\n"
+		"; forgets it when it is switched off); not kept from a game that had a cheat on or went back to a save state\n",
+		file);
+	fprintf(file, "save_high_scores = %s\n", bool_text(s->save_high_scores));
 	fputs("; true (the default): Start drops in the coins a game needs first (the game has no free play of its own;\n"
 		"; its coin sound and credit as on the board); false: coins with the coin key\n", file);
 	fprintf(file, "free_play = %s\n", bool_text(s->free_play));

@@ -81,6 +81,13 @@ setting of its own, so Start drops in the coins a game needs first, then presses
 game runs as on the board (coin sound, credit). On the warning screen the game takes no start: the credit stays for
 the next Start.
 
+High scores are kept in `ddonpach.hiscore` beside the program (the arcade board forgets its table when it is
+switched off). A game that went back to a save state or had a cheat on doesn't count: its scores are dropped when it
+ends. SAVE HIGH SCORES in the game options turns this off.
+
+The 31-second WARNING screen the game shows as it starts is skipped: the port runs its frames at once, unseen (the
+game itself runs every one of them, as on the board). SKIP WARNING in the game options shows it again.
+
 Input lag: each frame is shown as the board shows it, as its VBLANK comes, not a frame later when the game's vblank
 interrupt returns. The port runs on through the next frame from a saved state, keeps its picture and puts the state
 back, so the game itself runs exactly as it would without it (slowdown included). INPUT TIMING in the game options

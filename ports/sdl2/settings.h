@@ -64,6 +64,8 @@ typedef struct
 {
 	/* [game] */
 	int version;                /* the game's version: 0 the World one, 1 the Japanese (the board description's) */
+	bool skip_warning;          /* the start's WARNING screen run unseen, at once (main.c); true by default */
+	bool save_high_scores;      /* the high score table kept in ddonpach.hiscore (hiscore.h); true by default */
 	bool free_play;             /* Start drops in the coins a game needs first (cave/free_play.h); true by default */
 	bool arcade_timing;         /* the picture shown a frame late, as drawn when the vblank interrupt returns (false, the
 	                               default: shown as its VBLANK comes, by the look-ahead: main.c) */

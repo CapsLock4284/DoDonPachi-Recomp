@@ -8,9 +8,9 @@
  *    license:BSD-3-Clause
  *    DonPachi Recomp's window port (ports/sdl2/main.c), cut down to what does not depend on that game's memory: the
  *    window and its video settings (scaling, the CRT look, the pixel-art scalers, rotation), the sound, the controls,
- *    the EEPROM, the save states, fast forward, free play, MAME's cheat files, and the options menu (menu.h: in the
- *    game's own font, its options, game options, graphics, controls and cheats pages). Not yet: the main menu, high
- *    scores, training, replays, achievements, statistics, the side panels, the hitbox.
+ *    the EEPROM, the save states, fast forward, free play, the high scores, MAME's cheat files, and the options menu
+ *    (menu.h: in the game's own font, its options, game options, graphics, controls and cheats pages). Not yet: the
+ *    main menu, training, replays, achievements, statistics, the side panels, the hitbox.
  *
  *    Usage: ddonpach [--settings PATH] [--rom PATH] [--scale N] [--no-sound] [--eeprom PATH] [--cheats FILE]
  *                    [--cheat NAME ...] [--list-cheats]
@@ -47,9 +47,13 @@
  *    The picture: each frame shown as the board shows it, as its VBLANK comes (the look-ahead: look_ahead); [game]
  *    arcade_timing true draws it as the game's vblank interrupt returns, a frame later (as MAME).
  *    Free play ([game] free_play, on by default): Start drops in the coins a game needs (cave/free_play.h).
+ *    High scores: kept in ddonpach.hiscore beside the program (hiscore.h; the game options' SAVE HIGH SCORES, or
+ *          [game] save_high_scores); not saved from a game that had a cheat on or went back to a save state.
+ *    The start's WARNING screen (31 seconds) is run at once, unseen ([game] skip_warning, on by default).
  */
 #include "crash_log.h"
 #include "crt.h"
+#include "hiscore.h"
 #include "menu.h"
 #include "paths.h"
 #include "rom_drop.h"
@@ -82,7 +86,9 @@ static char settings_path[1024];
 static SDL_Window *window;
 static int running = 1;
 static bool fast_forwarding;
-static bool reset_asked;    /* a reset asked for this frame (the look-ahead's state would undo it: main.c's look_ahead) */
+static bool state_loaded;    /* this game went back to a save state, or had a cheat on: its scores are not kept
+                                (until the next game: hiscore.h) */
+static bool reset_asked;    /* a reset asked for this frame (the look-ahead's state would undo it: look_ahead) */
 
 /* ---- the gamepads ---- */
 
@@ -174,6 +180,18 @@ static bool hotkey_down(int hotkey)
 	return false;
 }
 
+/* The board's start: its self-test, then the WARNING screen, typed out and held, about 1,809 frames (31 seconds)
+   after each reset before the attract mode's first picture (the SCORE RANKING). With [game] skip_warning its frames
+   are run unseen, at once (all of them, as the board runs them: the game the same, about 0.15 s). Over when the
+   game's between-games flag ($1017A5 bit 7) is first set; at most WARNING_FRAMES_MOST */
+#define WARNING_FRAMES_MOST 2400
+#define WARNING_FRAMES_AT_ONCE 600    /* (a frame of the window's at most: it answers meanwhile) */
+
+static bool warning_showing(void)
+{
+	return program_frames_since_reset() < WARNING_FRAMES_MOST && !(*cave_work_ram_byte(0x1017A5u) & 0x80u);
+}
+
 /* A hotkey pressed (not held from before): the reset, or the test mode (the service switch held for the player); the
    save states (fast forward is held: the main loop asks hotkey_down) */
 static void hotkeys(void)
@@ -195,6 +213,8 @@ static void hotkeys(void)
 				reset_asked = true;
 				service_held = 0;
 				free_play_reset();
+				hiscore_reset();
+				state_loaded = false;
 				menu_notice("RESET");
 			}
 		}
@@ -401,6 +421,19 @@ static void eeprom_c_button_full_auto(bool on)
 		cave_board.eeprom.words[1] &= (uint16_t)~0x0004u;
 		cave_board.eeprom.words[4] &= (uint16_t)~0x0004u;
 	}
+}
+
+/* each version's own high score table beside the program (hiscore.h) */
+static const char *const hiscore_files[2] = { "ddonpach.hiscore", "ddonpach_jpn.hiscore" };
+
+static void hiscores_open(void)
+{
+	char path[1024];
+	const char *problem;
+
+	snprintf(path, sizeof(path), "%s%s", paths_folder(), hiscore_files[rom_set.version ? 1 : 0]);
+	if ((problem = hiscore_open(path)) != NULL)
+		fprintf(stderr, "%s: %s\n", path, problem);
 }
 
 /* each version's own EEPROM beside the program (the settings' or --eeprom's: the World one's) */
@@ -705,6 +738,8 @@ static void state_action(bool save)
 	}
 	program_state_load(slot_states[state_slot]);
 	free_play_reset();
+	hiscore_state_loaded();    /* (the file's table back: no high score from this game) */
+	state_loaded = true;
 	video_latch_sprites();
 	draw_picture();
 	if (audio)
@@ -732,6 +767,8 @@ static void menu_reset(void)
 	reset_asked = true;
 	service_held = 0;
 	free_play_reset();
+	hiscore_reset();
+	state_loaded = false;
 	menu_notice("RESET");
 }
 
@@ -882,6 +919,7 @@ int main(int argc, char **argv)
 		return 0;
 	}
 	eeprom_open(options.eeprom[0] ? options.eeprom : NULL);
+	hiscores_open();
 	cheats_load(options.cheats);
 	for (int cheat = 0; cheat < cheat_count; cheat++)
 		if ((problem = cheats_enable(options.cheats, cheat_names[cheat])) != NULL)
@@ -1002,7 +1040,8 @@ int main(int argc, char **argv)
 			/* fast forward, while its key or button is held: fast_forward_speed of the game's frames in this one,
 			   the last one shown, no sound */
 			const bool fast = hotkey_down(HOTKEY_FAST_FORWARD);
-			const int frames = fast ? options.fast_forward_speed : 1;
+			const bool skip = options.skip_warning && warning_showing();
+			const int frames = skip ? WARNING_FRAMES_AT_ONCE : fast ? options.fast_forward_speed : 1;
 
 			if (fast != fast_forwarding)
 			{
@@ -1013,15 +1052,25 @@ int main(int argc, char **argv)
 			}
 			for (int count = 0; count < frames; count++)
 			{
+				if (skip && !warning_showing())
+					break;    /* (the warning over: the attract mode's first picture from the next frame on) */
 				read_keys();
 				program_run_frame();
 				cheats_apply();
-				if (fast)
+				if (fast || skip)
 					cave_sound_drop();
 				else
 					audio_queue();
 				video_latch_sprites();    /* (VBLANK: the 013 takes the sprites) */
 				reset_asked = false;      /* (done: the frame began from the reset) */
+				if (cheats_any_on())
+					state_loaded = true;    /* (an assist: the game doesn't count) */
+				hiscore_frame(options.save_high_scores, !state_loaded);
+				if (state_loaded && !cheats_any_on() && hiscore_between_games())
+				{
+					state_loaded = false;      /* (a new game: its scores are kept again) */
+					hiscore_game_not_kept();    /* (the table as the file has it: none of that game's scores) */
+				}
 			}
 			look_ahead();    /* (the picture the board shows now) */
 		}

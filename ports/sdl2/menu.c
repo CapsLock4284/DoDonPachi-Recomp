@@ -51,7 +51,8 @@ enum
 	ITEM_RESUME, ITEM_RESET, ITEM_TEST_MODE, ITEM_FAST_SPEED, ITEM_VOLUME, ITEM_SCALE, ITEM_FULLSCREEN, ITEM_CONTROLS,
 	ITEM_QUIT, ITEM_DEFAULTS, ITEM_BACK, ITEM_GRAPHICS, ITEM_SCALING, ITEM_SMOOTH, ITEM_SCANLINES, ITEM_VSYNC,
 	ITEM_ROTATE, ITEM_DEADZONE, ITEM_SAVE_STATE, ITEM_LOAD_STATE, ITEM_GAME, ITEM_CHEATS, ITEM_SLOWDOWN, ITEM_CRT,
-	ITEM_STATE_SLOT, ITEM_FILTER, ITEM_AUTO_FIRE, ITEM_TIMING, ITEM_FREE_PLAY,
+	ITEM_STATE_SLOT, ITEM_FILTER, ITEM_AUTO_FIRE, ITEM_TIMING, ITEM_FREE_PLAY, ITEM_HIGH_SCORES,
+	ITEM_SKIP_WARNING,
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -62,7 +63,7 @@ static const char *const item_labels[] = {
 	"RESUME", "RESET", "TEST MODE", "FAST FWD SPEED", "VOLUME", "WINDOW SIZE", "FULL SCREEN", "CONTROLS",
 	"QUIT TO DESKTOP", "RESET TO DEFAULTS", "BACK", "GRAPHICS", "SCALING", "SMOOTHING", "SCANLINES", "VSYNC",
 	"ROTATE", "STICK DEADZONE", "SAVE STATE", "LOAD STATE", "GAME OPTIONS", "CHEATS", "SLOWDOWN", "CRT",
-	"STATE SLOT", "FILTER", "C BUTTON AUTO FIRE", "INPUT TIMING", "FREE PLAY"
+	"STATE SLOT", "FILTER", "C BUTTON AUTO FIRE", "INPUT TIMING", "FREE PLAY", "SAVE HIGH SCORES", "SKIP WARNING"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -118,8 +119,8 @@ static void build_items(void)
 	}
 	else if (page == PAGE_GAME)
 	{
-		static const int game_items[] = { ITEM_TIMING, ITEM_FREE_PLAY, ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED,
-			ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
+		static const int game_items[] = { ITEM_TIMING, ITEM_FREE_PLAY, ITEM_HIGH_SCORES, ITEM_SKIP_WARNING,
+			ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
 
 		add_items(game_items, sizeof(game_items) / sizeof(game_items[0]));
 	}
@@ -232,6 +233,12 @@ static void change(int item, int step, bool wrap)
 	{
 	case ITEM_SLOWDOWN:
 		in_use->slowdown = file->slowdown = !in_use->slowdown;    /* (main.c puts it in use: game_program.c) */
+		break;
+	case ITEM_SKIP_WARNING:
+		in_use->skip_warning = file->skip_warning = !in_use->skip_warning;
+		break;
+	case ITEM_HIGH_SCORES:
+		in_use->save_high_scores = file->save_high_scores = !in_use->save_high_scores;
 		break;
 	case ITEM_FREE_PLAY:
 		in_use->free_play = file->free_play = !in_use->free_play;
@@ -765,6 +772,12 @@ static void item_value(int item, char *out, size_t size)
 	{
 	case ITEM_SLOWDOWN:
 		snprintf(out, size, "%s", s->slowdown ? "ON" : "OFF");
+		break;
+	case ITEM_SKIP_WARNING:
+		snprintf(out, size, "%s", s->skip_warning ? "ON" : "OFF");
+		break;
+	case ITEM_HIGH_SCORES:
+		snprintf(out, size, "%s", s->save_high_scores ? "ON" : "OFF");
 		break;
 	case ITEM_FREE_PLAY:
 		snprintf(out, size, "%s", s->free_play ? "ON" : "OFF");

@@ -80,6 +80,14 @@
       title the game may take it 150 frames after the credit. Checked: player 1 from the attract and the title,
       player 2 joining, 2 credits a game; DonPachi's the same as before. With DISCOUNT CONTINUE a continue takes 1:
       free play drops 2, one left over.
-- [ ] The main menu, high scores, training, replays, achievements, statistics, side panels, hitbox:
+- [x] High scores (owner): ports/sdl2/hiscore.c, DonPachi Recomp's with DoDonPachi's table ($1016EA-$10174D: five
+      BCD scores, five names, then five words each: area, ship and style, max hits, continues). The game's HIGH
+      ($101626) and its last digit ($101750: the score's last digit is the continues used) put back from #1. Not
+      kept from a game with a save state or a cheat: the file's table and HIGH put back when it ends (between games:
+      $1017A5 bit 7). Checked: a new #1 entered and saved, put back after a boot (the SCORE RANKING shows it), a
+      save-state game's entry dropped and the HIGH put back, the file untouched.
+- [x] The start's WARNING screen skipped (owner): its 1,809 frames run unseen at once (0.15 s), the game unchanged;
+      SKIP WARNING in the game options.
+- [ ] The main menu, training, replays, achievements, statistics, side panels, hitbox:
       each reads DonPachi's memory; DoDonPachi's addresses to find.
 - [ ] A release package (tools/make_release.ps1, as DonPachi Recomp's).
