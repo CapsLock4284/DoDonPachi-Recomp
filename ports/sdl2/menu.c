@@ -52,7 +52,7 @@ enum
 	ITEM_QUIT, ITEM_DEFAULTS, ITEM_BACK, ITEM_GRAPHICS, ITEM_SCALING, ITEM_SMOOTH, ITEM_SCANLINES, ITEM_VSYNC,
 	ITEM_ROTATE, ITEM_DEADZONE, ITEM_SAVE_STATE, ITEM_LOAD_STATE, ITEM_GAME, ITEM_CHEATS, ITEM_SLOWDOWN, ITEM_CRT,
 	ITEM_STATE_SLOT, ITEM_FILTER, ITEM_AUTO_FIRE, ITEM_TIMING, ITEM_FREE_PLAY, ITEM_HIGH_SCORES,
-	ITEM_SKIP_WARNING, ITEM_FPS, ITEM_RENDERER,
+	ITEM_SKIP_WARNING, ITEM_FPS, ITEM_RENDERER, ITEM_PANELS,
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -64,7 +64,7 @@ static const char *const item_labels[] = {
 	"QUIT TO DESKTOP", "RESET TO DEFAULTS", "BACK", "GRAPHICS", "SCALING", "SMOOTHING", "SCANLINES", "VSYNC",
 	"ROTATE", "STICK DEADZONE", "SAVE STATE", "LOAD STATE", "GAME OPTIONS", "CHEATS", "SLOWDOWN", "CRT",
 	"STATE SLOT", "FILTER", "C BUTTON AUTO FIRE", "INPUT TIMING", "FREE PLAY", "SAVE HIGH SCORES", "SKIP WARNING",
-	"FPS METER", "RENDERER"
+	"FPS METER", "RENDERER", "SIDE PANELS"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -136,7 +136,7 @@ static void build_items(void)
 	else if (page == PAGE_GRAPHICS)
 	{
 		static const int graphics_items[] = { ITEM_SCALING, ITEM_SMOOTH, ITEM_FILTER, ITEM_SCANLINES, ITEM_CRT,
-			ITEM_VSYNC, ITEM_RENDERER, ITEM_FPS, ITEM_ROTATE, ITEM_SCALE, ITEM_FULLSCREEN, ITEM_BACK };
+			ITEM_VSYNC, ITEM_RENDERER, ITEM_FPS, ITEM_PANELS, ITEM_ROTATE, ITEM_SCALE, ITEM_FULLSCREEN, ITEM_BACK };
 
 		add_items(graphics_items, sizeof(graphics_items) / sizeof(graphics_items[0]));
 	}
@@ -322,6 +322,10 @@ static void change(int item, int step, bool wrap)
 	case ITEM_RENDERER:
 		in_use->renderer = file->renderer = cycle(in_use->renderer, RENDERERS, step, wrap);
 		menu_notice("USED FROM THE NEXT START");
+		break;
+	case ITEM_PANELS:
+		in_use->side_panels = file->side_panels = !in_use->side_panels;
+		host.apply_window();    /* (the window wider or narrower for them) */
 		break;
 	case ITEM_ROTATE:
 		in_use->rotate = file->rotate = cycle(in_use->rotate, ROTATIONS, step, wrap);
@@ -866,6 +870,9 @@ static void item_value(int item, char *out, size_t size)
 		break;
 	case ITEM_RENDERER:
 		snprintf(out, size, "%s", settings_renderer_names[s->renderer]);
+		break;
+	case ITEM_PANELS:
+		snprintf(out, size, "%s", s->side_panels ? "ON" : "OFF");
 		break;
 	case ITEM_ROTATE:
 		snprintf(out, size, "%s", s->rotate == ROTATE_NONE ? "OFF" : settings_rotate_names[s->rotate]);

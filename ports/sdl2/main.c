@@ -54,6 +54,7 @@
 #include "crash_log.h"
 #include "crt.h"
 #include "hiscore.h"
+#include "widgets.h"
 #include "menu.h"
 #include "paths.h"
 #include "rom_drop.h"
@@ -223,6 +224,7 @@ static void hotkeys(void)
 				service_held = 0;
 				free_play_reset();
 				hiscore_reset();
+				widgets_reset();
 				state_loaded = false;
 				crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 				menu_notice("RESET");
@@ -444,6 +446,11 @@ static void hiscores_open(void)
 	snprintf(path, sizeof(path), "%s%s", paths_folder(), hiscore_files[rom_set.version ? 1 : 0]);
 	if ((problem = hiscore_open(path)) != NULL)
 		fprintf(stderr, "%s: %s\n", path, problem);
+	/* (and the stages' best scores, the side panels': widgets.h) */
+	snprintf(path, sizeof(path), "%s%s", paths_folder(), rom_set.version ? "ddonpach_jpn.stages" : "ddonpach.stages");
+	if ((problem = widgets_open(path)) != NULL)
+		fprintf(stderr, "%s: %s\n", path, problem);
+	widgets_reset();
 }
 
 /* each version's own EEPROM beside the program (the settings' or --eeprom's: the World one's) */
@@ -527,10 +534,65 @@ static void present(void)
 /* ---- the picture in the window ([video]: scaling, smoothing, the pixel-art filter, scanlines or the CRT look,
    rotation) ---- */
 
-/* the picture's size on the screen, in the game's pixels: 240 x 320, or 320 x 240 turned for a monitor on its side */
+/* the side panels (widgets.h): on as the settings have them, and never with the picture turned (a monitor on its
+   side has no room beside it). Their width, in the game's pixels, is worked out from the screen's shape as each
+   picture is shown: WIDGET_W at least, wider to fill a wider screen. The game's picture is never changed by them:
+   it stays the arcade's 240 x 320, at the same scale, between them */
+static uint32_t panel_pixels[2][WIDGET_MAX_W * WIDGET_H];
+static SDL_Texture *panel_textures[2];
+static int panel_width = WIDGET_W;
+
+static bool panels_shown(void)
+{
+	return options.side_panels && options.rotate == ROTATE_NONE;
+}
+
+/* the picture's size on the screen, in the game's pixels: 240 x 320, or 320 x 240 turned for a monitor on its side
+   (with the panels and their gaps beside it, when they are shown) */
 static int shown_width(void)
 {
+	if (panels_shown())
+		return VIDEO_HEIGHT + 2 * (panel_width + WIDGET_GAP);
 	return options.rotate == ROTATE_NONE ? VIDEO_HEIGHT : VIDEO_WIDTH;
+}
+
+/* the panels' width for a screen of out_w x out_h: the scale is the picture's (the most the height allows, or the
+   width with the narrowest panels), then the panels take the width left over at that scale */
+static int panel_width_for(int out_w, int out_h)
+{
+	const float least = (float)(VIDEO_HEIGHT + 2 * (WIDGET_W + WIDGET_GAP));
+	float scale = (float)out_h / (float)VIDEO_WIDTH;
+	int width;
+
+	if (options.scaling == VIDEO_STRETCH)
+		return WIDGET_W;    /* (stretched to the whole window anyway) */
+	if ((float)out_w / least < scale)
+		scale = (float)out_w / least;
+	if (options.scaling == VIDEO_INTEGER && scale >= 1.0f)
+		scale = (float)(int)scale;
+	if (scale <= 0.0f)
+		return WIDGET_W;
+	width = ((int)((float)out_w / scale) - VIDEO_HEIGHT) / 2 - WIDGET_GAP;
+	return width < WIDGET_W ? WIDGET_W : width > WIDGET_MAX_W ? WIDGET_MAX_W : width;
+}
+
+/* the panels drawn at (x, y), the picture's top left with them, at the picture's scale; the picture's own place and
+   width returned */
+static void draw_panels(float *x, float y, float *w, float scale_x, float scale_y)
+{
+	const SDL_Rect source = { 0, 0, panel_width, WIDGET_H };
+	const SDL_FRect left = { *x, y, (float)panel_width * scale_x, WIDGET_H * scale_y };
+	const SDL_FRect right = { *x + *w - (float)panel_width * scale_x, y, (float)panel_width * scale_x, WIDGET_H * scale_y };
+
+	widgets_draw(panel_pixels[0], panel_pixels[1], panel_width);
+	for (int side = 0; side < 2; side++)
+	{
+		SDL_UpdateTexture(panel_textures[side], &source, panel_pixels[side], panel_width * (int)sizeof(uint32_t));
+		SDL_SetTextureScaleMode(panel_textures[side], options.smooth ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+		SDL_RenderCopyF(renderer, panel_textures[side], &source, side ? &right : &left);
+	}
+	*x += (float)(panel_width + WIDGET_GAP) * scale_x;
+	*w = VIDEO_HEIGHT * scale_x;
 }
 
 static int shown_height(void)
@@ -607,6 +669,8 @@ static void show_picture(const uint32_t *pixels)
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 	SDL_GetRendererOutputSize(renderer, &out_w, &out_h);
+	if (panels_shown())
+		panel_width = panel_width_for(out_w, out_h);
 	scale_x = (float)out_w / (float)shown_width();
 	scale_y = (float)out_h / (float)shown_height();
 	if (options.scaling != VIDEO_STRETCH)
@@ -623,6 +687,13 @@ static void show_picture(const uint32_t *pixels)
 	{
 		x = (float)(int)x;    /* (whole pixels: every game pixel the same size) */
 		y = (float)(int)y;
+	}
+	if (panels_shown() && panel_textures[0] && panel_textures[1])
+		draw_panels(&x, y, &w, scale_x, scale_y);
+	else if (panels_shown())
+	{
+		x += (float)(panel_width + WIDGET_GAP) * scale_x;    /* (no textures for them: their place left black) */
+		w = VIDEO_HEIGHT * scale_x;
 	}
 	cx = x + w / 2.0f;
 	cy = y + h / 2.0f;
@@ -957,6 +1028,7 @@ static void menu_reset(void)
 	service_held = 0;
 	free_play_reset();
 	hiscore_reset();
+	widgets_reset();
 	state_loaded = false;
 	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 	menu_notice("RESET");
@@ -1155,6 +1227,10 @@ int main(int argc, char **argv)
 		return 1;
 	}
 	SDL_SetTextureScaleMode(texture, options.smooth ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+	for (int side = 0; side < 2; side++)
+		if (!(panel_textures[side] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
+				WIDGET_MAX_W, WIDGET_H)))
+			fprintf(stderr, "side panels: %s\n", SDL_GetError());    /* (their place left black then) */
 	if (SDL_RenderSetVSync(renderer, options.vsync ? 1 : 0) != 0)
 		fprintf(stderr, "vsync: %s\n", SDL_GetError());
 	program_after_vblank = after_vblank;
@@ -1273,6 +1349,7 @@ int main(int argc, char **argv)
 				crash_log_frame();
 				program_run_frame();
 				meter_board_frame();
+				widgets_frame(!state_loaded && !cheats_any_on() && options.slowdown);    /* (the side panels) */
 				cheats_apply();
 				if (fast || skip)
 					cave_sound_drop();

@@ -79,12 +79,25 @@
       the whole frame's scalers), an option off by default, in Cave68kSDK's video.c for every game on the board.
       Later perhaps: replacement art packs, a GPU shader pipeline; a wider picture is a judgment call (the game
       only places things on its own 240 x 320).
-- [ ] The side panels: DoDonPachi's own (owner: the game shows more on its screen than DonPachi did, so the panels
-      will differ); later.
-- [ ] **Widget ideas for the side panels** (owner, 18-11-2026):
-  - The power level, 1 to MAX (the game's steps between, the halves the owner expects to find)
-  - The stage's score against the best ever for that stage (a tracker per stage, kept with the high scores)
-  - The board's FPS with the percentage of slowdown (the FPS meter's GAME and BOARD: 100 - GAME / BOARD)
+- [x] **The side panels, DoDonPachi's own** (18-11-2026; `ports/sdl2/widgets.c`, GRAPHICS > SIDE PANELS,
+      `[video] side_panels`, on by default): as wide as the screen leaves room for (owner: DonPachi's left black at
+      the sides of a 16:9 screen): main.c works the width out from the screen's shape, WIDGET_W (120) to 256 game
+      pixels, at the picture's own scale; the game's picture is never changed (owner: it must stay the arcade's).
+      Each widget is laid out for any width. The game's memory they read is listed in widgets.h (found by
+      watching whole games of the test players). Checked with `tests/panels_shot` (pictures of the panels beside
+      the game at 120, 156 and 251 wide) and the port itself (SDL's offscreen driver).
+- [x] **Widget ideas for the side panels** (owner, 18-11-2026):
+  - [x] The power level, 1 to MAX: DoDonPachi keeps two levels, 0-4 each ($102CAC the style's own weapon, $102CAE
+        the other): a power-up raises both, so there are no halves; a life lost takes the first down one and the
+        second back to 0. Shown as two rows of five (SHOT, LASER: LV 1-4, MAX)
+  - [x] The stage's score against the best ever for that stage (`ddonpach.stages`: the 12 stages of both loops,
+        from clean games; a stage after a continue doesn't count)
+  - [x] The board's FPS with the percentage of slowdown (over the last second, this stage, this game)
+  - [x] **The high score chase** (owner, 18-11-2026): the score against #5 of the table, then #4 once passed, up to
+        #1; a line in each place's colour on the graph where it was passed
+- [ ] Side panel ideas still open: the lives; the hit counter's chain (the GP gauge's DoDonPachi equivalent);
+      the boss's health; the stage's progress (its scroll position); the run's statistics (bombs used, misses by
+      stage); the high score chase and the stage bests per ship and style
 - [x] The options menu (Escape / View): DonPachi Recomp's, in DoDonPachi's own font (its text layer's 8x8 tiles,
       8 bits a pixel, ASCII as they are): options, game options (slowdown, C button auto-fire, fast forward speed,
       the test mode, cheats), graphics, controls (remapping, both players, the hotkeys). Silent for now (DonPachi

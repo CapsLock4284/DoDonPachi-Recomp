@@ -93,6 +93,7 @@ void settings_defaults(settings *s)
 	s->vsync = false;
 	s->renderer = 0;
 	s->show_fps = false;
+	s->side_panels = true;
 	s->rotate = ROTATE_NONE;
 	s->sound = true;
 	s->volume = 100;
@@ -313,6 +314,8 @@ static bool take(settings *s, const char *section, const char *name, char *value
 			return (s->renderer = name_of(value, settings_renderer_names, RENDERERS)) >= 0 || (s->renderer = 0, false);
 		if (!SDL_strcasecmp(name, "show_fps"))
 			return parse_bool(value, &s->show_fps);
+		if (!SDL_strcasecmp(name, "side_panels"))
+			return parse_bool(value, &s->side_panels);
 		if (!SDL_strcasecmp(name, "rotate"))
 			return (s->rotate = name_of(value, settings_rotate_names, ROTATIONS)) >= 0
 				|| (s->rotate = ROTATE_NONE, false);
@@ -529,6 +532,10 @@ const char *settings_save(const settings *s, const char *path)
 		"; board's frames run a second (57.55), WINDOW the pictures shown, LATE the frames the PC ran late in that\n"
 		"; second, WORK the milliseconds a frame takes the PC\n", file);
 	fprintf(file, "show_fps = %s\n", bool_text(s->show_fps));
+	fputs("; the panels beside the picture on a wide screen: the ship's power and bombs, the board's speed and slowdown\n"
+		"; (left); the score chasing the high score table, its graph, this stage against its best (right). As wide as\n"
+		"; the screen leaves room for; the game's picture is never changed by them. Not with the picture rotated\n", file);
+	fprintf(file, "side_panels = %s\n", bool_text(s->side_panels));
 	fputs("; none, right or left: the picture turned for a monitor on its side (TATE)\n", file);
 	fprintf(file, "rotate = %s\n", settings_rotate_names[s->rotate]);
 	fputc('\n', file);

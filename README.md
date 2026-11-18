@@ -8,8 +8,8 @@ a model of Cave's 68000 board. It is the second game of the family, after
 **Status: early, playable.** The whole program translates to C, builds on Cave68kSDK and plays in a window with
 its sound, and it runs exactly as the original does on MAME's 68000 core, slowdown and all (checked frame by frame
 over 150,000 VBLANKs). The window port is DonPachi Recomp's, cut down for now: its options menu (Escape, or the
-gamepad's View button), and none of DonPachi Recomp's extras yet (training, replays, high scores, achievements, side
-panels).
+gamepad's View button), high scores kept, and its own side panels; none of DonPachi Recomp's other extras yet
+(training, replays, achievements).
 
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
 `ddonpachj`. No ROMs, and nothing extracted from them, are part of this repository.
@@ -94,6 +94,21 @@ board's frames run (57.55 a second, the arcade's rate: fewer means the PC can't 
 shown; LATE, the frames the PC ran late; and WORK, a frame's milliseconds on average and at most.
 While the meter is on, each second is also written to `ddonpach_fps.log` beside the program, with the settings,
 the renderer, and the time each part of a frame takes.
+
+Side panels (SIDE PANELS in the graphics options, `side_panels` in `ddonpach.ini`; on by default) fill the screen
+beside the picture. The game's picture is never changed by them: it stays the arcade's 240 x 320, at the same scale,
+and the panels only take the black space at its sides (as wide as the screen leaves room for: wider on a 16:9 or
+21:9 screen than on a 16:10 one). Not with the picture rotated.
+- Left: the ship and its style; its shot and laser power, 1 to MAX (each power-up raises both by one: four reach
+  MAX; a life lost takes the style's own weapon down one and the other back to 1); the bombs; and the board's
+  speed: the game's frames a second over the last second (the board's 57.55, less its frames of slowdown), the
+  slowdown now, this stage and this game.
+- Right: the stage and the score, and the high score table chased one place at a time: #5 first, then #4 once it
+  is passed, up to #1 ("NEXT #3", the score, and how much more it takes). The graph shows the score through the
+  game against the place being chased (the dashed line at the top); each place passed leaves a line in its colour
+  where it was passed, with its number. Below: this stage's score against the best ever for that stage, and the last
+  stage finished ("NEW BEST!"). The stages' best scores are kept in `ddonpach.stages` beside the program, from clean
+  games only (no cheat, no save state, the slowdown on); a stage after a continue doesn't count either.
 
 If the game stops or crashes, it says so in a message box, and leaves two files beside the program: `ddonpach.log`
 (what happened and where) and `ddonpach_crash_DATE_TIME.inp`, the inputs since the last reset. The game is the same

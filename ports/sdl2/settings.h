@@ -89,6 +89,7 @@ typedef struct
 	bool vsync;
 	int renderer;               /* settings_renderer_names: 0 auto (Direct3D 12 on Windows), or the one asked for (main.c;
 	                               used from the next start) */
+	bool side_panels;          /* the side panels (widgets.h) beside the picture: not with it turned */
 	bool show_fps;              /* the FPS meter over the picture's corner (main.c; F9) */
 	int rotate;                 /* ROTATE_NONE, ROTATE_RIGHT (90 degrees clockwise), ROTATE_LEFT */
 	/* [sound] */

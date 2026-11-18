@@ -1,0 +1,783 @@
+/**
+ *    Name:        widgets.c
+ *    Description: the side panels (widgets.h)
+ *    Version:     0.1.0 (draft)
+ *    Created:     18-11-2026
+ *
+ *    license:BSD-3-Clause
+ *    The font is the game's text layer, as the options menu's (menu.c: rom_set.layer[2], 8x8 tiles of 8 bits a pixel,
+ *    ASCII, pens 1-5 a shade, 15 the outline), here also twice as large. Every panel is laid out for any width from
+ *    WIDGET_W to WIDGET_MAX_W: text against the panel's sides or centred, bars and the graph as wide as it is.
+ *    The stages' file: "DDSTGB01", then 12 scores (little-endian longs, as the game counts the score: without its last
+ *    digit), area 1-1 ... 1-6, 2-1 ... 2-6; 0 none yet.
+ */
+#include "widgets.h"
+#include "paths.h"
+
+#include "cave/machine.h"
+#include "cave/program.h"
+#include "cave/rom_set.h"
+
+#include <ctype.h>
+#include <stdio.h>
+#include <string.h>
+
+#define BACKGROUND  0x0A0A14u
+#define HEADER      0x14142Au
+#define FRAME       0x2A2A44u
+#define GOLD        0xFFC83Cu
+#define WHITE       0xF0F0F0u
+#define GREY        0x8C8C9Cu
+#define DIM         0x40404Cu
+#define ORANGE      0xFF7A1Eu
+#define CYAN        0x6CD8FFu
+#define GREEN       0x5CE05Cu
+#define YELLOW      0xFFE040u
+#define RED         0xFF4040u
+#define MAGENTA     0xFF5CE0u
+#define FILL        0x2E4A82u   /* the graph's area under the score */
+
+/* the high score table's places as the graph marks them: #1 ... #5 */
+static const uint32_t rank_colours[5] = { GOLD, MAGENTA, ORANGE, GREEN, CYAN };
+
+/* ---- the game's memory ---- */
+
+#define SCORE       0x10161Eu   /* ($101622 player 2's) */
+#define TABLE       0x1016EAu
+#define NO_GAME     0x1017A5u   /* bit 7: the attract mode or the title */
+#define SHIP        0x101754u   /* ($101758 player 2's) */
+#define STYLE       0x101756u   /* ($10175A) */
+#define RECORD      0x102C8Cu   /* (+$40 player 2's: the power and bombs below too) */
+#define OWN_POWER   0x102CACu
+#define OTHER_POWER 0x102CAEu
+#define BOMBS       0x102CB0u
+#define STAGE       0x101978u
+#define LOOP        0x10197Au
+#define PLAYER_STEP 0x40u
+#define MAX_POWER   4u
+#define STAGES      6           /* in a loop */
+#define AREAS       12
+
+static unsigned byte_at(uint32_t address)
+{
+	return *cave_work_ram_byte(address);
+}
+
+static unsigned word(uint32_t address)
+{
+	return byte_at(address) << 8 | byte_at(address + 1u);
+}
+
+static uint32_t bcd_long(uint32_t address)
+{
+	uint32_t value = 0;
+
+	for (uint32_t at = 0; at < 4u; at++)
+	{
+		const unsigned bcd = byte_at(address + at);
+
+		value = value * 100u + (bcd >> 4) * 10u + (bcd & 15u);
+	}
+	return value;
+}
+
+static bool attract_seen;      /* the attract mode (or the title) seen since the reset: before it, the game's memory
+                                   is still being set up (its warning) */
+
+static bool in_game(void)
+{
+	return attract_seen && !(byte_at(NO_GAME) & 0x80u);
+}
+
+static uint32_t score_of(int player)
+{
+	return bcd_long(SCORE + 4u * (unsigned)player);
+}
+
+static bool player_in(int player)
+{
+	return (word(RECORD + PLAYER_STEP * (unsigned)player) & 0x8000u) || score_of(player) != 0;
+}
+
+/* the player the panels follow: player 1, or player 2 playing alone */
+static int followed(void)
+{
+	return !player_in(0) && player_in(1) ? 1 : 0;
+}
+
+/* the area being played, 0-11 (loop * 6 + stage), or -1 (between the loops, the ending) */
+static int area_now(void)
+{
+	const unsigned stage = word(STAGE), loop = word(LOOP);
+
+	return stage < STAGES && loop < 2u ? (int)(loop * STAGES + stage) : -1;
+}
+
+/* ---- the board's speed: its frames, and those of slowdown (the game's frame not done in time) ---- */
+
+#define SECOND_FRAMES 58        /* the board's frames in about a second (57.55 a second) */
+
+static struct
+{
+	bool lagged[SECOND_FRAMES];
+	int at, filled, lagged_now;
+	unsigned stage_frames, stage_lagged, game_frames, game_lagged;
+} speed;
+
+static void speed_frame(bool lagged, bool counting)
+{
+	if (speed.filled == SECOND_FRAMES)
+		speed.lagged_now -= speed.lagged[speed.at];
+	else
+		speed.filled++;
+	speed.lagged[speed.at] = lagged;
+	speed.lagged_now += lagged;
+	speed.at = (speed.at + 1) % SECOND_FRAMES;
+	if (counting)
+	{
+		speed.stage_frames++;
+		speed.stage_lagged += lagged;
+		speed.game_frames++;
+		speed.game_lagged += lagged;
+	}
+}
+
+/* ---- the stages' best scores (the file) ---- */
+
+static const char stages_magic[8] = { 'D', 'D', 'S', 'T', 'G', 'B', '0', '1' };
+static char stages_path[1024];
+static uint32_t best[AREAS];
+
+const char *widgets_open(const char *path)
+{
+	FILE *file;
+	uint8_t data[sizeof(stages_magic) + 4 * AREAS];
+
+	memset(best, 0, sizeof(best));
+	if (path)
+		snprintf(stages_path, sizeof(stages_path), "%s", path);
+	else
+		snprintf(stages_path, sizeof(stages_path), "%sddonpach.stages", paths_folder());
+	if (!(file = fopen(stages_path, "rb")))
+		return NULL;
+	if (fread(data, 1, sizeof(data), file) != sizeof(data) || memcmp(data, stages_magic, sizeof(stages_magic)))
+	{
+		fclose(file);
+		return "not a DoDonPachi stage scores file: started again (and saved over it)";
+	}
+	fclose(file);
+	for (int area = 0; area < AREAS; area++)
+	{
+		const uint8_t *const at = data + sizeof(stages_magic) + 4 * area;
+
+		best[area] = (uint32_t)at[0] | (uint32_t)at[1] << 8 | (uint32_t)at[2] << 16 | (uint32_t)at[3] << 24;
+	}
+	return NULL;
+}
+
+static void stages_save(void)
+{
+	FILE *const file = fopen(stages_path, "wb");
+	uint8_t data[sizeof(stages_magic) + 4 * AREAS];
+
+	if (!file)
+		return;
+	memcpy(data, stages_magic, sizeof(stages_magic));
+	for (int area = 0; area < AREAS; area++)
+	{
+		uint8_t *const at = data + sizeof(stages_magic) + 4 * area;
+
+		at[0] = (uint8_t)best[area];
+		at[1] = (uint8_t)(best[area] >> 8);
+		at[2] = (uint8_t)(best[area] >> 16);
+		at[3] = (uint8_t)(best[area] >> 24);
+	}
+	fwrite(data, 1, sizeof(data), file);
+	fclose(file);
+}
+
+/* ---- the run: the stage being played, the graph, the high scores chased ---- */
+
+#define POINTS  512             /* the graph's points kept (two become one when it is full) */
+#define MARKS   32
+
+static struct
+{
+	bool on;                    /* a game seen from its start (the panels show the last one through the attract) */
+	int player;
+	/* the stage */
+	int area;                   /* -1: none */
+	uint32_t stage_start;       /* the score as it began */
+	bool stage_counts;          /* clean all through, from its start, no continue */
+	int last_area;              /* the last stage finished: its score, and the best before it */
+	uint32_t last_score, last_best;
+	bool last_new, last_counted;
+	/* the graph */
+	uint32_t table[5];          /* the high score table as the game began */
+	int chasing;                /* the place chased: 4 (#5) ... 0 (#1), -1 all passed */
+	uint32_t points[POINTS];
+	int count;
+	unsigned interval, frames;  /* the game's frames a point, and those since the last */
+	int passed_at[5];           /* the point where each place was passed (-1 not yet) */
+	int stage_marks[MARKS], mark_count;
+	uint32_t last_score_seen;
+} run;
+
+static bool was_in_game;
+
+void widgets_reset(void)
+{
+	memset(&run, 0, sizeof(run));
+	run.area = run.last_area = -1;
+	for (int place = 0; place < 5; place++)
+		run.passed_at[place] = -1;
+	memset(&speed, 0, sizeof(speed));
+	attract_seen = was_in_game = false;
+}
+
+static void run_begin(void)
+{
+	memset(&run, 0, sizeof(run));
+	run.area = run.last_area = -1;
+	speed.stage_frames = speed.stage_lagged = speed.game_frames = speed.game_lagged = 0;
+	run.on = true;
+	run.player = followed();
+	for (int place = 0; place < 5; place++)
+	{
+		run.table[place] = bcd_long(TABLE + 4u * (unsigned)place);
+		run.passed_at[place] = -1;
+	}
+	run.chasing = 4;
+	run.interval = 4;
+}
+
+static void graph_point(uint32_t score)
+{
+	if (run.count == POINTS)
+	{
+		for (int at = 0; at < POINTS / 2; at++)
+			run.points[at] = run.points[2 * at + 1];
+		run.count = POINTS / 2;
+		run.interval *= 2;
+		for (int place = 0; place < 5; place++)
+			if (run.passed_at[place] >= 0)
+				run.passed_at[place] /= 2;
+		for (int mark = 0; mark < run.mark_count; mark++)
+			run.stage_marks[mark] /= 2;
+	}
+	run.points[run.count++] = score;
+}
+
+static void stage_begin(int area, uint32_t score, bool clean)
+{
+	run.area = area;
+	run.stage_start = score;
+	run.stage_counts = clean;
+	speed.stage_frames = speed.stage_lagged = 0;
+	if (run.count > 0 && run.mark_count < MARKS)
+		run.stage_marks[run.mark_count++] = run.count;
+}
+
+static void stage_end(uint32_t score)
+{
+	const int area = run.area;
+	const uint32_t made = score - run.stage_start;
+
+	run.last_area = area;
+	run.last_score = made;
+	run.last_best = best[area];
+	run.last_counted = run.stage_counts;
+	run.last_new = run.stage_counts && made > best[area];
+	if (run.last_new)
+	{
+		best[area] = made;
+		stages_save();
+	}
+}
+
+void widgets_frame(bool clean)
+{
+	const bool lagged = program_frame_lagged();
+
+	if (!lagged && (byte_at(NO_GAME) & 0x80u))
+		attract_seen = true;
+	if (!in_game())
+	{
+		/* (the last game's panels stay through the attract mode) */
+		was_in_game = false;
+		run.area = -1;
+		speed_frame(lagged, false);
+		return;
+	}
+	if (!was_in_game)
+		run_begin();    /* (a game begins) */
+	was_in_game = true;
+	speed_frame(lagged, true);
+	if (lagged)
+		return;    /* (the game's memory is half way through its frame: looked at again next) */
+	{
+		const int player = run.player = followed();
+		const uint32_t score = score_of(player);
+		const int area = area_now();
+
+		if (score < run.last_score_seen)
+		{
+			/* a continue (the score starts again from 0): this stage doesn't count, and is measured from here */
+			run.stage_start = score;
+			run.stage_counts = false;
+		}
+		run.last_score_seen = score;
+		if (!clean)
+			run.stage_counts = false;
+		if (area != run.area)
+		{
+			if (run.area >= 0 && (area == run.area + 1 || area == -1))
+				stage_end(score);    /* (finished: on to the next, or between the loops, or the ending) */
+			if (area >= 0)
+				stage_begin(area, score, clean);
+			else
+				run.area = -1;
+		}
+		while (run.chasing >= 0 && score > run.table[run.chasing])
+			run.passed_at[run.chasing--] = run.count;
+		if (++run.frames >= run.interval)
+		{
+			run.frames = 0;
+			graph_point(score);
+		}
+	}
+}
+
+/* ---- drawing on a panel ---- */
+
+typedef struct
+{
+	uint32_t *pixels;
+	int w;
+} panel;
+
+static void dot(panel *p, int x, int y, uint32_t colour)
+{
+	if (x >= 0 && x < p->w && y >= 0 && y < WIDGET_H)
+		p->pixels[y * p->w + x] = colour;
+}
+
+static void box(panel *p, int x0, int y0, int x1, int y1, uint32_t colour)
+{
+	for (int y = y0; y < y1; y++)
+		for (int x = x0; x < x1; x++)
+			dot(p, x, y, colour);
+}
+
+static void outline(panel *p, int x0, int y0, int x1, int y1, uint32_t colour)
+{
+	box(p, x0, y0, x1, y0 + 1, colour);
+	box(p, x0, y1 - 1, x1, y1, colour);
+	box(p, x0, y0, x0 + 1, y1, colour);
+	box(p, x1 - 1, y0, x1, y1, colour);
+}
+
+static uint32_t shade(uint32_t colour, int percent)
+{
+	return ((colour >> 16 & 255u) * (uint32_t)percent / 100u) << 16 | ((colour >> 8 & 255u) * (uint32_t)percent / 100u) << 8
+		| (colour & 255u) * (uint32_t)percent / 100u;
+}
+
+/* a tile's pen at (tx, ty): as menu.c reads the layer */
+static unsigned tile_pen(const uint8_t *tile, int tx, int ty)
+{
+	const uint8_t *const pair = &tile[ty * 8 + (tx >> 1) * 2];
+	const unsigned shift = (tx & 1) ? 0u : 4u;
+
+	return (unsigned)((pair[1] >> shift & 15u) << 4 | (pair[0] >> shift & 15u));
+}
+
+static void put_char(panel *p, int x, int y, char ch, uint32_t colour, int size)
+{
+	static const int pens[16] = { 0, 100, 92, 84, 76, 68, 60, 60, 60, 60, 60, 60, 60, 60, 60, -1 };
+	const int code = toupper((unsigned char)ch);
+	const uint8_t *tile;
+
+	if (code <= 0x20 || code >= 0x60 || !rom_set.layer[2])
+		return;
+	tile = rom_set.layer[2] + code * 64;
+	for (int i = 0; i < 8; i++)          /* (the tiles lie turned: a row is a column) */
+		for (int j = 0; j < 8; j++)
+		{
+			const unsigned pen = tile_pen(tile, 7 - j, i);
+
+			if (pen)
+				box(p, x + i * size, y + j * size, x + (i + 1) * size, y + (j + 1) * size,
+					pen >= 16 ? shade(colour, 60) : pens[pen] < 0 ? 0x101018u : shade(colour, pens[pen]));
+		}
+}
+
+static int text_width(const char *text, int size)
+{
+	return (int)strlen(text) * 8 * size;
+}
+
+static void put_text(panel *p, int x, int y, const char *text, uint32_t colour, int size)
+{
+	for (; *text; text++, x += 8 * size)
+		put_char(p, x, y, *text, colour, size);
+}
+
+static void put_centre(panel *p, int y, const char *text, uint32_t colour, int size)
+{
+	put_text(p, (p->w - text_width(text, size)) / 2, y, text, colour, size);
+}
+
+static void put_right(panel *p, int y, const char *text, uint32_t colour, int size)
+{
+	put_text(p, p->w - 8 - text_width(text, size), y, text, colour, size);
+}
+
+static void line(panel *p, int x0, int y0, int x1, int y1, uint32_t colour)
+{
+	const int dx = x1 > x0 ? x1 - x0 : x0 - x1, dy = y1 > y0 ? y1 - y0 : y0 - y1;
+	const int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+	int error = dx - dy;
+
+	for (;;)
+	{
+		dot(p, x0, y0, colour);
+		if (x0 == x1 && y0 == y1)
+			break;
+		if (2 * error > -dy)
+		{
+			error -= dy;
+			x0 += sx;
+		}
+		if (2 * error < dx)
+		{
+			error += dx;
+			y0 += sy;
+		}
+	}
+}
+
+/* a score as the game shows it (its last digit, the continues, left as 0), with commas when they fit in 'room' */
+static void score_text(char *out, size_t size, uint32_t value, int room)
+{
+	char digits[16], grouped[24];
+	int length, at = 0;
+
+	snprintf(digits, sizeof(digits), "%lu0", (unsigned long)value);
+	if (value == 0)
+		snprintf(digits, sizeof(digits), "0");
+	length = (int)strlen(digits);
+	for (int i = 0; i < length; i++)
+	{
+		grouped[at++] = digits[i];
+		if ((length - 1 - i) % 3 == 0 && i < length - 1)
+			grouped[at++] = ',';
+	}
+	grouped[at] = '\0';
+	snprintf(out, size, "%s", text_width(grouped, 1) <= room ? grouped : digits);
+}
+
+static void frame_panel(panel *p, const char *title)
+{
+	box(p, 0, 0, p->w, WIDGET_H, BACKGROUND);
+	outline(p, 0, 0, p->w, WIDGET_H, FRAME);
+	box(p, 1, 1, p->w - 1, 15, HEADER);
+	put_centre(p, 4, title, GOLD, 1);
+}
+
+static void section(panel *p, int y, const char *title)
+{
+	box(p, 8, y + 3, p->w - 8, y + 4, FRAME);
+	box(p, (p->w - text_width(title, 1)) / 2 - 4, y, (p->w + text_width(title, 1)) / 2 + 4, y + 8, BACKGROUND);
+	put_centre(p, y, title, GREY, 1);
+}
+
+/* 'count' cells across the panel, 'filled' of them lit */
+static void pips(panel *p, int y, int height, int count, int filled, uint32_t colour, uint32_t last_colour)
+{
+	const int room = p->w - 16, gap = 3, cell = (room - gap * (count - 1)) / count;
+	const int left = 8 + (room - (cell * count + gap * (count - 1))) / 2;
+
+	for (int at = 0; at < count; at++)
+	{
+		const int x = left + at * (cell + gap);
+
+		if (at < filled)
+			box(p, x, y, x + cell, y + height, at == count - 1 ? last_colour : colour);
+		else
+			outline(p, x, y, x + cell, y + height, DIM);
+	}
+}
+
+/* a bar across the panel, 'part' of it filled */
+static void bar(panel *p, int y, float part, uint32_t colour)
+{
+	const int room = p->w - 16;
+	int filled = (int)(part * (float)(room - 2) + 0.5f);
+
+	if (filled < 0)
+		filled = 0;
+	if (filled > room - 2)
+		filled = room - 2;
+	outline(p, 8, y, p->w - 8, y + 8, GREY);
+	box(p, 9, y + 1, 9 + filled, y + 7, colour);
+}
+
+/* ---- the left panel: the player, the board's speed ---- */
+
+static void draw_power(panel *p, int y, const char *name, unsigned level, bool showing)
+{
+	char text[8];
+
+	put_text(p, 8, y, name, showing ? WHITE : DIM, 1);
+	if (level >= MAX_POWER)
+		snprintf(text, sizeof(text), "MAX");
+	else
+		snprintf(text, sizeof(text), "LV %u", level + 1u);
+	put_right(p, y, text, !showing ? DIM : level >= MAX_POWER ? GOLD : WHITE, 1);
+	pips(p, y + 10, 6, (int)MAX_POWER + 1, showing ? (int)level + 1 : 0, ORANGE, GOLD);
+}
+
+static void draw_percent(panel *p, int y, const char *name, unsigned lagged, unsigned frames)
+{
+	char text[16];
+
+	put_text(p, 8, y, name, GREY, 1);
+	if (frames)
+		snprintf(text, sizeof(text), "%u%%", (lagged * 100u + frames / 2u) / frames);
+	else
+		snprintf(text, sizeof(text), "-");
+	put_right(p, y, text, WHITE, 1);
+}
+
+static void draw_left(panel *p)
+{
+	static const char *const ships[3] = { "TYPE-A", "TYPE-B", "TYPE-C" };
+	static const uint32_t ship_colours[3] = { RED, CYAN, GREEN };
+	const bool showing = run.on && in_game();
+	const unsigned step = PLAYER_STEP * (unsigned)run.player;
+	const unsigned ship = word(SHIP + 4u * (unsigned)run.player) % 3u;
+	const bool laser = word(STYLE + 4u * (unsigned)run.player) == 1u;
+	const unsigned own = word(OWN_POWER + step), other = word(OTHER_POWER + step);
+	const unsigned bombs = byte_at(BOMBS + step), most = byte_at(BOMBS + step + 1u);
+	char text[32];
+
+	frame_panel(p, run.player ? "2P" : "1P");
+	/* the ship and its style */
+	put_text(p, 8, 22, showing ? ships[ship] : "------", showing ? ship_colours[ship] : DIM, 1);
+	put_right(p, 22, showing ? (laser ? "LASER" : "SHOT") : "", WHITE, 1);
+	/* the power: the style's own weapon first */
+	section(p, 40, "POWER");
+	draw_power(p, 54, laser ? "LASER" : "SHOT", showing ? own : 0u, showing);
+	draw_power(p, 78, laser ? "SHOT" : "LASER", showing ? other : 0u, showing);
+	/* the bombs */
+	put_text(p, 8, 102, "BOMBS", showing ? WHITE : DIM, 1);
+	snprintf(text, sizeof(text), "%u/%u", showing ? bombs : 0u, showing ? most : 0u);
+	put_right(p, 102, text, showing ? WHITE : DIM, 1);
+	pips(p, 112, 6, most >= 3u && most <= 6u ? (int)most : 3, showing ? (int)bombs : 0, YELLOW, YELLOW);
+
+	/* the board's speed: the game's frames a second now (the board's 57.55, less its frames of slowdown in the last
+	   second), and the slowdown now, this stage and this game */
+	section(p, 134, "BOARD");
+	{
+		const double rate = 1000000.0 / (double)CAVE_FRAME_USEC;
+		const int frames = speed.filled ? speed.filled : 1;
+		const double game_rate = rate * (double)(frames - speed.lagged_now) / (double)frames;
+		const unsigned percent = (unsigned)(speed.lagged_now * 100 + frames / 2) / (unsigned)frames;
+
+		snprintf(text, sizeof(text), "%.1f", game_rate);
+		put_text(p, 8, 148, text, percent == 0 ? GREEN : percent < 25 ? YELLOW : RED, 2);
+		put_text(p, 8 + text_width(text, 2) + 4, 156, "FPS", GREY, 1);
+		snprintf(text, sizeof(text), "OF %.2f", rate);
+		put_right(p, 170, text, DIM, 1);
+		put_text(p, 8, 184, "SLOWDOWN", GREY, 1);
+		snprintf(text, sizeof(text), "%u%%", percent);
+		put_right(p, 184, text, WHITE, 1);
+		bar(p, 194, (float)percent / 100.0f, percent < 25 ? YELLOW : RED);
+		draw_percent(p, 210, "THIS STAGE", showing ? speed.stage_lagged : 0u, showing ? speed.stage_frames : 0u);
+		draw_percent(p, 222, "THIS GAME", run.on ? speed.game_lagged : 0u, run.on ? speed.game_frames : 0u);
+	}
+}
+
+/* ---- the right panel: the score chasing the high scores, its graph, this stage ---- */
+
+#define GRAPH_TOP    88
+#define GRAPH_HEIGHT 90
+
+static void draw_graph(panel *p, uint32_t score)
+{
+	const int left = 8, width = p->w - 16, bottom = GRAPH_TOP + GRAPH_HEIGHT;
+	const int count = run.count;
+	uint32_t top = run.chasing >= 0 ? run.table[run.chasing] : score;
+
+	if (!run.on)
+	{
+		box(p, left, GRAPH_TOP, left + width, bottom, 0x000000u);
+		outline(p, left - 1, GRAPH_TOP - 1, left + width + 1, bottom + 1, FRAME);
+		return;
+	}
+
+	for (int at = 0; at < count; at++)
+		if (run.points[at] > top)
+			top = run.points[at];
+	if (top == 0)
+		top = 1;
+	box(p, left, GRAPH_TOP, left + width, bottom, 0x000000u);
+	outline(p, left - 1, GRAPH_TOP - 1, left + width + 1, bottom + 1, FRAME);
+	/* (the points: one a column while they fit, then the columns share them out) */
+	{
+		int previous_y = -1;
+
+		for (int column = 0; column < width; column++)
+		{
+			const int at = count <= width ? column : (int)((long)column * count / width);
+			int height, y;
+
+			if (at >= count)
+				break;
+			height = (int)((double)run.points[at] / (double)top * (GRAPH_HEIGHT - 1));
+			y = bottom - 1 - height;
+			box(p, left + column, y, left + column + 1, bottom, FILL);
+			if (previous_y >= 0)
+				line(p, left + column - 1, previous_y, left + column, y, WHITE);
+			previous_y = y;
+		}
+	}
+	/* the stages' beginnings: faint marks along the bottom */
+	for (int mark = 0; mark < run.mark_count; mark++)
+	{
+		const int column = count <= width ? run.stage_marks[mark] : (int)((long)run.stage_marks[mark] * width / count);
+
+		box(p, left + column, bottom - 4, left + column + 1, bottom, GREY);
+	}
+	/* the places: the one chased as a dashed line at its score (the graph's top), those passed as their level
+	   (dotted) and a line in their colour where they were passed */
+	for (int place = 4; place >= 0; place--)
+	{
+		const uint32_t colour = rank_colours[place];
+		const int y = bottom - 1 - (int)((double)run.table[place] / (double)top * (GRAPH_HEIGHT - 1));
+		if (run.passed_at[place] >= 0)
+		{
+			const int column = count <= width ? run.passed_at[place] : (int)((long)run.passed_at[place] * width / count);
+
+			for (int x = left; x < left + width; x += 4)
+				dot(p, x, y, shade(colour, 70));
+			box(p, left + column, GRAPH_TOP, left + column + 1, bottom, colour);
+			/* (its number beside the line, each place on a row of its own: passed together, they don't cover each
+			   other) */
+			put_char(p, left + column + 2 > left + width - 8 ? left + column - 9 : left + column + 2,
+				GRAPH_TOP + 1 + 9 * (4 - place), (char)('1' + place), colour, 1);
+		}
+		else if (place == run.chasing)
+			for (int x = left; x < left + width; x += 6)
+				box(p, x, y, x + 3, y + 1, colour);
+	}
+}
+
+static void draw_right(panel *p)
+{
+	const bool showing = run.on;
+	const uint32_t score = showing ? score_of(run.player) : 0u;
+	const int room = p->w - 16;
+	char text[40], value[32];
+
+	frame_panel(p, "SCORE");
+	/* the stage */
+	if (showing && run.area >= 0)
+		snprintf(text, sizeof(text), "STAGE %d-%d", run.area / STAGES + 1, run.area % STAGES + 1);
+	else
+		snprintf(text, sizeof(text), "STAGE -");
+	put_text(p, 8, 22, text, showing ? WHITE : DIM, 1);
+	/* the score, and the next place chased: how much more it takes */
+	score_text(value, sizeof(value), score, room);
+	put_right(p, 36, value, showing ? WHITE : DIM, 1);
+	if (!showing)
+		put_text(p, 8, 50, "NO GAME", DIM, 1);
+	else if (run.chasing >= 0)
+	{
+		const uint32_t colour = rank_colours[run.chasing];
+
+		snprintf(text, sizeof(text), "NEXT #%d", run.chasing + 1);
+		put_text(p, 8, 50, text, colour, 1);
+		score_text(value, sizeof(value), run.table[run.chasing], room);
+		if (text_width(value, 1) + text_width(text, 1) + 8 <= room)
+			put_right(p, 50, value, colour, 1);    /* (beside it when there is room, below it when not) */
+		else
+			put_right(p, 60, value, colour, 1);
+		put_text(p, 8, 72, "TO GO", GREY, 1);
+		score_text(value, sizeof(value), run.table[run.chasing] - score, room - 48);
+		put_right(p, 72, value, WHITE, 1);
+	}
+	else
+	{
+		put_centre(p, 60, "PAST #1!", GOLD, 1);
+	}
+	draw_graph(p, score);
+
+	/* this stage against the best for it */
+	section(p, 186, "THIS STAGE");
+	if (showing && run.area >= 0)
+	{
+		const uint32_t made = score - run.stage_start, best_now = best[run.area];
+
+		score_text(value, sizeof(value), made, room);
+		put_right(p, 200, value, WHITE, 1);
+		put_text(p, 8, 212, "BEST", GREY, 1);
+		if (best_now)
+		{
+			score_text(value, sizeof(value), best_now, room - 40);
+			put_right(p, 212, value, GREY, 1);
+			bar(p, 224, (float)made / (float)best_now, made > best_now ? GOLD : GREEN);
+			if (made > best_now)
+			{
+				score_text(value, sizeof(value), made - best_now, room - 8);
+				snprintf(text, sizeof(text), "+%s", value);
+				put_right(p, 236, text, GOLD, 1);
+			}
+			else
+			{
+				score_text(value, sizeof(value), best_now - made, room - 48);
+				put_text(p, 8, 236, "TO GO", GREY, 1);
+				put_right(p, 236, value, WHITE, 1);
+			}
+		}
+		else
+			put_right(p, 212, "-", DIM, 1);
+		if (!run.stage_counts)
+			put_centre(p, 250, "NOT RECORDED", RED, 1);
+	}
+	/* the last stage finished */
+	section(p, 268, "LAST STAGE");
+	if (run.on && run.last_area >= 0)
+	{
+		snprintf(text, sizeof(text), "%d-%d", run.last_area / STAGES + 1, run.last_area % STAGES + 1);
+		put_text(p, 8, 282, text, GREY, 1);
+		score_text(value, sizeof(value), run.last_score, room - 32);
+		put_right(p, 282, value, run.last_new ? GOLD : WHITE, 1);
+		if (run.last_new)
+			put_centre(p, 296, "NEW BEST!", GOLD, 1);
+		else if (!run.last_counted)
+			put_centre(p, 296, "NOT RECORDED", DIM, 1);
+		else if (run.last_best)
+		{
+			score_text(value, sizeof(value), run.last_best, room - 40);
+			put_text(p, 8, 296, "BEST", DIM, 1);
+			put_right(p, 296, value, DIM, 1);
+		}
+	}
+}
+
+void widgets_draw(uint32_t *left, uint32_t *right, int width)
+{
+	panel p;
+
+	if (width < WIDGET_W)
+		width = WIDGET_W;
+	if (width > WIDGET_MAX_W)
+		width = WIDGET_MAX_W;
+	p.w = width;
+	p.pixels = left;
+	draw_left(&p);
+	p.pixels = right;
+	draw_right(&p);
+}
