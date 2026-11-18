@@ -42,6 +42,13 @@ void hiscore_game_not_kept(void);
    changes may go into the file (not in a game that had a cheat on or went back to a save state) */
 void hiscore_frame(bool enabled, bool saving);
 
+/* The file's table as the game's bytes (HISCORE_TABLE_SIZE), or NULL with no file: what goes back after a boot */
+#define HISCORE_TABLE_SIZE 100
+const unsigned char *hiscore_table(void);
+
+/* The table to put back, given (tests/replay_crash: a run's inputs played again), not from a file; nothing saved */
+void hiscore_use_table(const unsigned char *table);
+
 /* No game is being played (the attract mode, the title): the byte at $1017A5 is $80 then, 0 in a game */
 bool hiscore_between_games(void);
 

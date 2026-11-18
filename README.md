@@ -95,6 +95,11 @@ shown; LATE, the frames the PC ran late; and WORK, a frame's milliseconds on ave
 While the meter is on, each second is also written to `ddonpach_fps.log` beside the program, with the settings,
 the renderer, and the time each part of a frame takes.
 
+If the game stops or crashes, it says so in a message box, and leaves two files beside the program: `ddonpach.log`
+(what happened and where) and `ddonpach_crash_DATE_TIME.inp`, the inputs since the last reset. The game is the same
+from the same inputs, so the run can be played again up to the crash (`tests/replay_crash`); send both. The log of
+the run before is kept as `ddonpach_previous.log`.
+
 Input lag: each frame is shown as the board shows it, as its VBLANK comes, not a frame later when the game's vblank
 interrupt returns. The port runs on through the next frame from a saved state, keeps its picture and puts the state
 back, so the game itself runs exactly as it would without it (slowdown included). INPUT TIMING in the game options

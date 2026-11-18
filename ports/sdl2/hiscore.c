@@ -14,8 +14,6 @@
 #include "cave/machine.h"
 #include "cave/program.h"
 
-#include <SDL.h>
-
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -92,6 +90,19 @@ void hiscore_reset(void)
 	restored = false;
 }
 
+const unsigned char *hiscore_table(void)
+{
+	return have_file ? file_data : NULL;
+}
+
+void hiscore_use_table(const unsigned char *table)
+{
+	path[0] = '\0';
+	have_file = table != NULL;
+	if (table)
+		memcpy(file_data, table, TABLE_SIZE);
+}
+
 bool hiscore_between_games(void)
 {
 	return (*cave_work_ram_byte(NO_GAME) & 0x80u) != 0;
@@ -104,6 +115,8 @@ static void save(const uint8_t *table)
 	memcpy(file_data, table, TABLE_SIZE);
 	have_file = true;
 	memcpy(saved, table, TABLE_SIZE);
+	if (!path[0])
+		return;    /* (a table given, not a file's) */
 	if (!(file = fopen(path, "wb")))
 	{
 		fprintf(stderr, "%s: could not be written\n", path);

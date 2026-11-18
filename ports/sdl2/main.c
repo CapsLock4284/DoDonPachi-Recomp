@@ -216,6 +216,7 @@ static void hotkeys(void)
 				free_play_reset();
 				hiscore_reset();
 				state_loaded = false;
+				crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 				menu_notice("RESET");
 			}
 		}
@@ -917,6 +918,7 @@ static void state_action(bool save)
 	program_state_load(slot_states[state_slot]);
 	free_play_reset();
 	hiscore_state_loaded();    /* (the file's table back: no high score from this game) */
+	crash_log_not_replayable("a save state was put back");
 	state_loaded = true;
 	video_latch_sprites();
 	draw_picture();
@@ -947,6 +949,7 @@ static void menu_reset(void)
 	free_play_reset();
 	hiscore_reset();
 	state_loaded = false;
+	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 	menu_notice("RESET");
 }
 
@@ -1015,7 +1018,7 @@ int main(int argc, char **argv)
 		char log_path[1100];
 
 		snprintf(log_path, sizeof(log_path), "%sddonpach.log", paths_folder());
-		crash_log_start(log_path);
+		crash_log_start(log_path, paths_folder());
 	}
 	cave_board_describe(&cave_board_ddonpach);
 	/* the settings file, then the command line over it */
@@ -1098,6 +1101,8 @@ int main(int argc, char **argv)
 	}
 	eeprom_open(options.eeprom[0] ? options.eeprom : NULL);
 	hiscores_open();
+	/* (the run's inputs kept from its first frame) */
+	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 	cheats_load(options.cheats);
 	for (int cheat = 0; cheat < cheat_count; cheat++)
 		if ((problem = cheats_enable(options.cheats, cheat_names[cheat])) != NULL)
@@ -1216,7 +1221,10 @@ int main(int argc, char **argv)
 			goto pace;
 		}
 		if (program_slowdown() != options.slowdown)
+		{
 			program_set_slowdown(options.slowdown);    /* (changed in the menu) */
+			crash_log_not_replayable("the slowdown setting changed");
+		}
 		hotkeys();
 		{
 			/* fast forward, while its key or button is held: fast_forward_speed of the game's frames in this one,
@@ -1240,6 +1248,7 @@ int main(int argc, char **argv)
 
 				read_keys();
 				picture_wanted = options.arcade_timing && count == frames - 1;
+				crash_log_frame();
 				program_run_frame();
 				meter_board_frame();
 				cheats_apply();
@@ -1250,7 +1259,10 @@ int main(int argc, char **argv)
 				video_latch_sprites();    /* (VBLANK: the 013 takes the sprites) */
 				reset_asked = false;      /* (done: the frame began from the reset) */
 				if (cheats_any_on())
+				{
 					state_loaded = true;    /* (an assist: the game doesn't count) */
+					crash_log_not_replayable("a cheat was on");
+				}
 				hiscore_frame(options.save_high_scores, !state_loaded);
 				if (state_loaded && !cheats_any_on() && hiscore_between_games())
 				{
@@ -1289,6 +1301,7 @@ pace:
 			next = (now > next + 4u * period) ? now + period : next + period;
 		}
 	}
+	crash_log_finish();
 	eeprom_keep(true);
 	for (int slot = 0; slot < STATE_SLOTS; slot++)
 		program_state_free(slot_states[slot]);

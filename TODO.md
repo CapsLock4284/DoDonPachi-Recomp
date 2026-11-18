@@ -97,6 +97,14 @@
       was the cost (4.1 ms a frame on average, 13.5 at most; twice a frame before the look-ahead drew only its own).
       Cave68kSDK's video.c: the layers in one pass, the sprites clipped once: 1.1 ms (identical pictures, every frame
       of 14,000, both games). The meter's log (ddonpach_fps.log) times each part of a frame.
+- [x] Crash in stage 3 (owner's report; the attract mode too, at its frame 8,436): "the code keeps a stack the C does
+      not have, at 02C5C2". 02C5B8 keeps a long for each of its objects on the stack (pushed in one loop, popped into
+      the objects last first in the next: all read before any written); the translation followed the stack 2 places
+      deep. tools/call_tables.py MORE_DEPTHS gives it 16 (its callers: 10 and 9 objects).
+- [x] The crash log (owner): a message box; ddonpach.log kept from the run before (ddonpach_previous.log); the inputs
+      since the reset written at a stop or crash (ddonpach_crash_DATE_TIME.inp, crash_log.h), played again by
+      tests/replay_crash (the same EEPROM, slowdown, high score table put back). Not replayable after a save state, a
+      cheat or a change of the slowdown setting (the log says so).
 - [ ] The slowdown against the real MAME (owner's report): our checks compare MAME's 68000 core on the SDK's board
       model; a recording of MAME's own ddonpach (its frames of slowdown over a known input run) would check the
       board model's timing itself.

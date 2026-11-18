@@ -483,6 +483,16 @@ MAX_STACK_COPIES = 512   # blocks one function may get copied before the core's 
 MAX_DEPTHS = 2           # places of the stack one block may be reached with: 02FFCE runs its players' code twice (dbra D7)
                          # and only player 2's pushes A5; a static pass goes round again and again, one push deeper each
                          # time. A third place is a way the game never goes (lost_stack())
+# More places for the routines that keep a list on the stack: {the function's entry: (places for its blocks, {a
+# block: places for it})}. 02C5B8 pushes a long for each of its objects (D6 + 1 of them: 10 from 02918C, 9 from
+# 02B442, both constants), read from where the table at A4 says, and pops them back into the objects last first:
+# all read before any is written (an object's new value may be read from another's). With 2 places it stopped the
+# program at its second object (owner's report: stage 3 near its start; the attract mode at its frame 8,436). Its
+# push loop (02C5C2) gets the 11 places 10 objects reach; the pop loop and what follows, the places the push loop's
+# ends lead to (13). In such a function a way that pops above where the function began (more than it pushed: the
+# static pass running the pop loop on past the pushes) is one the game never goes: it ends there (lost_stack()),
+# not followed on through more places, which would use up the places the game's own ways need.
+MORE_DEPTHS = {0x02C5B8: (16, {0x02C5C2: 11})}
 
 
 def first_int(label):
@@ -891,7 +901,9 @@ def stack_slots(function):
                 if base not in original or len(copies) >= MAX_STACK_COPIES:
                     raise stack.StackError(f"{function.name}: SP {start[successor]} and {sp} meet at {successor}")
                 places = {start[base]} | {place for (copied, place) in copies if copied == base}
-                if len(places) >= MAX_DEPTHS:
+                more = MORE_DEPTHS.get(first_int(function.entry))
+                limit = more[1].get(first_int(base), more[0]) if more else MAX_DEPTHS
+                if len(places) >= limit or (more and sp > 0):
                     lost_label = ("lost", first_int(base), len(copies) + 1)
                     where = first_int(base)
                     lost = ir.Effect("lost_stack", (ir.const(where & 0xFFFFFF),))

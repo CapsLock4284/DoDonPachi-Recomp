@@ -6,6 +6,7 @@
      cref_timed --rom ddonpach.zip --frames 18000 --play --waits mame_waits.txt
      slowdown_check 18000
      python3 tests/slowdown_compare.py mame_waits.txt slowdown_waits.txt
+   NOPLAY=1: no inputs (the attract mode, as cref_timed without --play).
    DUMPFRAME=N: the board's memories at game frame N's wait in port_dump.bin (cref_timed's: mame_dump.bin) */
 #include "cave/boards.h"
 #include "cave/machine.h"
@@ -75,7 +76,7 @@ int main(int argc, char **argv)
 		if (!arrived && cave_board.frame > 1u)
 			lagged++;
 		arrived = false;
-		cave_board.in0 = (uint16_t)~player_inputs(cave_board.frame);
+		cave_board.in0 = (uint16_t)~(getenv("NOPLAY") ? 0u : player_inputs(cave_board.frame));
 	}
 	if (waits)
 		fclose(waits);
