@@ -520,9 +520,10 @@ const char *settings_save(const settings *s, const char *path)
 	fprintf(file, "filter = %s\n", scaler_key(s->filter));
 	fputs("; true: no tearing, the picture waits for the monitor (a little more delay); false: the least delay\n", file);
 	fprintf(file, "vsync = %s\n", bool_text(s->vsync));
-	fputs("; auto (SDL's choice), direct3d (Direct3D 9), direct3d11, direct3d12, opengl or software: how the picture\n"
-		"; reaches the screen. Each can take Windows a different time to show (the FPS log names the one in use);\n"
-		"; one the PC lacks falls back to another. Used from the next start\n", file);
+	fputs("; auto, direct3d (Direct3D 9), direct3d11, direct3d12, opengl or software: how the picture reaches the\n"
+		"; screen (the FPS log names the one in use; one the PC lacks falls back to another). auto: direct3d12 on\n"
+		"; Windows, the quickest to show (about 1.5 ms after the frame is done; direct3d in a borderless window waits\n"
+		"; for Windows' compositor, about 27 ms). Used from the next start\n", file);
 	fprintf(file, "renderer = %s\n", settings_renderer_names[s->renderer]);
 	fputs("; the FPS meter (F9 too): GAME the game's own frames a second (fewer in the arcade's slowdown), BOARD the\n"
 		"; board's frames run a second (57.55), WINDOW the pictures shown, LATE the frames the PC ran late in that\n"

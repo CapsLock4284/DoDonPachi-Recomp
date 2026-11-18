@@ -106,6 +106,26 @@ press two frames later, on the board as in MAME. INPUT TIMING in the game option
 - FAST (the default): one frame less. The port runs on through the next frame from a saved state, shows its
   picture and puts the state back, so the game itself runs exactly as it would without it (slowdown included).
 
+The display adds its own delay after that. GRAPHICS > RENDERER chooses how the picture reaches the screen
+(`[video] renderer`). Measured with PresentMon on the owner's PC (60 Hz monitor, vsync off, 20 seconds each,
+about 1,100 frames), from the finished frame to the screen:
+
+| Setup | How Windows shows it | Finished frame to screen (median) | 95th percentile |
+|---|---|---|---|
+| direct3d, borderless (SDL's own choice) | through the compositor | 26.7 ms | 34.1 ms |
+| direct3d11, borderless or exclusive | waits for the monitor's refresh | 10.4 ms | 18.5 ms |
+| direct3d, exclusive | straight to the screen | 1.6 ms | 1.8 ms |
+| opengl, borderless | straight to the screen | 1.4 ms | 1.5 ms |
+| **direct3d12, borderless** (the default on Windows: auto) | straight to the screen | **1.4 ms** | 2.4 ms |
+
+- direct3d (Direct3D 9) in a window: Windows' compositor copies each picture before it is shown.
+- direct3d11: past the compositor, but it waits for the monitor's refresh as if vsync were on; SDL's exclusive
+  full screen changes nothing for it.
+- direct3d12 and opengl: straight to the screen in borderless full screen, as quick as exclusive full screen
+  without its slow switching.
+
+With vsync off the picture can tear (a line where two frames meet); VSYNC ON stops that for a little delay.
+
 ## Running it headless
 
 For the checks (Linux or MSYS2; the board from `runtime/`, the C from `src/`):

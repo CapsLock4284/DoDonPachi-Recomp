@@ -107,12 +107,13 @@
       from the read_keys that takes it, the board's exactly; FAST: 1 (one better). Both keys (left, shot), at 3
       places in the game. The port adds the PC's own work before the picture is shown (2.7 ms a frame on the owner's
       PC, the board's blanking 2.0 ms) and what Windows and the monitor add after the present.
-- [ ] The display's own delay (after the present): the owner's PC uses SDL's "direct3d" renderer (Direct3D 9) in
+- [x] The display's own delay (after the present): the owner's PC uses SDL's "direct3d" renderer (Direct3D 9) in
       borderless full screen, which Windows' compositor (DWM) may hold up to a refresh before the monitor shows it.
       To look at: Direct3D 11 (flip model: "independent flip" in borderless full screen skips the compositor) or
       exclusive full screen, checked with PresentMon (its present mode and latency). The [video] renderer setting
-      (GRAPHICS > RENDERER: auto, direct3d, direct3d11, direct3d12, opengl, software) is in; still to do: the
-      PresentMon runs on the owner's PC, then the best one made the default
+      (GRAPHICS > RENDERER: auto, direct3d, direct3d11, direct3d12, opengl, software) is in, and auto is now
+      direct3d12 on Windows: PresentMon on the owner's PC (borderless, vsync off) showed it 1.4 ms from present to
+      screen against 27 ms for direct3d (README). Done
 - [ ] Look-ahead for input latency, "better than arcade" (owner; an option, after the exact check above): predictive
       emulation, as rollback in fighting games
       (RetroArch calls it run-ahead). Each frame: the game kept (program_state_save), run on 1-2 frames with the

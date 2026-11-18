@@ -87,7 +87,7 @@ typedef struct
 	int crt;                    /* the arcade monitor's look (crt.h): 0 off, 1 light, 2 full (its own lines then) */
 	int filter;                 /* the pixel-art scaler over the picture (scaler.h's SCALER_...): not with the CRT look */
 	bool vsync;
-	int renderer;               /* settings_renderer_names: 0 auto (SDL's choice), or the one asked for (main.c;
+	int renderer;               /* settings_renderer_names: 0 auto (Direct3D 12 on Windows), or the one asked for (main.c;
 	                               used from the next start) */
 	bool show_fps;              /* the FPS meter over the picture's corner (main.c; F9) */
 	int rotate;                 /* ROTATE_NONE, ROTATE_RIGHT (90 degrees clockwise), ROTATE_LEFT */

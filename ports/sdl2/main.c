@@ -1130,8 +1130,18 @@ int main(int argc, char **argv)
 	}
 	if (window && options.fullscreen && options.exclusive)
 		set_fullscreen();    /* (exclusive: at the desktop's mode, not the window's size) */
-	if (options.renderer > 0)    /* (the one asked for; SDL falls back to another if it can't make it) */
-		SDL_SetHint(SDL_HINT_RENDER_DRIVER, settings_renderer_names[options.renderer]);
+	{
+		/* the one asked for (SDL falls back to another if it can't make it). auto: on Windows Direct3D 12, which
+		   PresentMon showed reaching the screen on its own ("independent flip", 1.4 ms after the present on the
+		   owner's PC); SDL's own choice there, Direct3D 9, goes through the compositor (27 ms) */
+		const char *driver = options.renderer > 0 ? settings_renderer_names[options.renderer] : NULL;
+#ifdef _WIN32
+		if (!driver)
+			driver = "direct3d12";
+#endif
+		if (driver)
+			SDL_SetHint(SDL_HINT_RENDER_DRIVER, driver);
+	}
 	renderer = window ? SDL_CreateRenderer(window, -1,
 		options.renderer == RENDERERS - 1 ? SDL_RENDERER_SOFTWARE : SDL_RENDERER_ACCELERATED) : NULL;
 	if (!renderer)
