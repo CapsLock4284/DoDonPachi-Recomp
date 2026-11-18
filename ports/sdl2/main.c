@@ -1102,6 +1102,7 @@ static bool menu_training(void)
 	training_state = program_state_save();
 	training_on = true;
 	state_loaded = true;    /* (no high score or stage best from a training game) */
+	widgets_game_begun();
 	crash_log_not_replayable("a training game (the game run to its place unrecorded)");
 	reset_asked = false;    /* (the reset came with the way there) */
 	training_shown();

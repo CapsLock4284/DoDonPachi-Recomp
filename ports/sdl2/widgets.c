@@ -46,6 +46,9 @@ static const uint32_t rank_colours[5] = { GOLD, MAGENTA, ORANGE, GREEN, CYAN };
 #define SCORE       0x10161Eu   /* ($101622 player 2's) */
 #define TABLE       0x1016EAu
 #define NO_GAME     0x1017A5u   /* bit 7: the attract mode or the title */
+#define GAME_MODE   0x1017A6u   /* 0xB the ship select, 7 playing, 8 the continue's count down (4 the ranking after a
+                                   game over, and the title: a game can start from there, the ship select next, without
+                                   the attract mode between) */
 #define SHIP        0x101754u   /* ($101758 player 2's) */
 #define STYLE       0x101756u   /* ($10175A) */
 #define RECORD      0x102C8Cu   /* (+$40 player 2's: the power and bombs below too) */
@@ -85,12 +88,15 @@ static uint32_t bcd_long(uint32_t address)
 	return value;
 }
 
-static bool attract_seen;      /* the attract mode (or the title) seen since the reset: before it, the game's memory
-                                   is still being set up (its warning) */
+static bool attract_seen;      /* the attract mode, the title or the ship select seen since the reset: before it, the
+                                   game's memory is still being set up (its warning) */
 
+/* a game being played: from the ship select to its last game over (its continues' count downs in it) */
 static bool in_game(void)
 {
-	return attract_seen && !(byte_at(NO_GAME) & 0x80u);
+	const unsigned mode = word(GAME_MODE);
+
+	return attract_seen && (mode == 7u || mode == 8u);
 }
 
 static uint32_t score_of(int player)
@@ -232,6 +238,12 @@ static struct
 
 static bool was_in_game;
 
+void widgets_game_begun(void)
+{
+	attract_seen = true;
+	was_in_game = false;
+}
+
 void widgets_reset(void)
 {
 	memset(&run, 0, sizeof(run));
@@ -308,8 +320,10 @@ void widgets_frame(bool clean)
 {
 	const bool lagged = program_frame_lagged();
 
-	if (!lagged && (byte_at(NO_GAME) & 0x80u))
+	if (!lagged && ((byte_at(NO_GAME) & 0x80u) || word(GAME_MODE) == 0xBu))
 		attract_seen = true;
+	if (!lagged && word(GAME_MODE) == 0xBu)
+		was_in_game = false;    /* (the ship select: a new game, its own run, whether the attract mode came first or not) */
 	if (!in_game())
 	{
 		/* (the last game's panels stay through the attract mode) */

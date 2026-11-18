@@ -49,7 +49,9 @@ const unsigned char *hiscore_table(void);
 /* The table to put back, given (tests/replay_crash: a run's inputs played again), not from a file; nothing saved */
 void hiscore_use_table(const unsigned char *table);
 
-/* No game is being played (the attract mode, the title): the byte at $1017A5 is $80 then, 0 in a game */
+/* No game is being played (the attract mode, the title: the byte at $1017A5 is $80 then, 0 in a game), or a new one
+   is beginning (the ship select, $1017A6 = $B: a game can start from the ranking after a game over, without the
+   attract mode between) */
 bool hiscore_between_games(void);
 
 #endif

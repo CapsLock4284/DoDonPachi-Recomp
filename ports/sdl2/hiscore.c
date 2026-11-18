@@ -25,6 +25,7 @@
                                        it, in 044BBE) */
 #define CONTINUES   0x101744u       /* the table's: #1's continues (a word) */
 #define NO_GAME     0x1017A5u       /* $80 in the attract mode and on the title, 0 in a game */
+#define GAME_MODE   0x1017A6u       /* 0xB the ship select */
 
 static const char magic[8] = { 'D', 'D', 'H', 'I', 'S', 'C', '0', '1' };
 
@@ -105,7 +106,9 @@ void hiscore_use_table(const unsigned char *table)
 
 bool hiscore_between_games(void)
 {
-	return (*cave_work_ram_byte(NO_GAME) & 0x80u) != 0;
+	/* (or the ship select: a game can start from the ranking after a game over, without the attract mode between) */
+	return (*cave_work_ram_byte(NO_GAME) & 0x80u) != 0 || (*cave_work_ram_byte(GAME_MODE) << 8
+		| *cave_work_ram_byte(GAME_MODE + 1u)) == 0xBu;
 }
 
 static void save(const uint8_t *table)

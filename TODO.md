@@ -100,6 +100,12 @@
         the icon from the bee's own sprite, $4496 in palette $17, at half size)
   - [x] **The high score chase** (owner, 18-11-2026): the score against #5 of the table, then #4 once passed, up to
         #1; a line in each place's colour on the graph where it was passed
+- [x] **Fixed** (owner's playtest, 18-11-2026): a game started from the ranking after a game over (Start pressed
+      there, the attract mode never coming) was taken for the last one going on: its score back to 0 read as a
+      continue, so its stages showed UNRANKED, and the graph and stage list went on from the last game. The game's
+      mode ($1017A6: $B the ship select, 7 playing, 8 the continue's count down, 4 the ranking) now says when a game
+      is on and when a new one begins; the high score file's "a new game" (a tainted game's next) the same. A
+      real continue still makes its stage UNRANKED (its score starts again from 0 part way); the stages after count.
 - [ ] Side panel ideas still open: the lives; the hit counter's chain (the GP gauge's DoDonPachi equivalent);
       the boss's health; the stage's progress (its scroll position); the run's statistics (bombs used, misses by
       stage); the high score chase and the stage bests per ship and style

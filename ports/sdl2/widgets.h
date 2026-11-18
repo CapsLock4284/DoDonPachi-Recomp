@@ -51,6 +51,9 @@ void widgets_frame(bool clean);
 /* Forgets the run (the board was reset) */
 void widgets_reset(void);
 
+/* A game begins where the game is now, its ship select unseen (training's place: the game came there unseen) */
+void widgets_game_begun(void);
+
 /* Both panels, 'width' x WIDGET_H each (WIDGET_W to WIDGET_MAX_W), upright as the player sees them; a row is 'width'
    pixels */
 void widgets_draw(uint32_t *left, uint32_t *right, int width);
