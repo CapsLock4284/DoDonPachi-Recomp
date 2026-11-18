@@ -90,7 +90,7 @@
       the test mode, cheats), graphics, controls (remapping, both players, the hotkeys). Silent for now (DonPachi
       Recomp's menu sounds are that game's samples).
 - [ ] The menu's sounds, from DoDonPachi's own samples (the YMZ280B's).
-- [ ] **Input latency checked against the arcade, exact** (owner, 18-11-2026: "I want this to be exact"): measure,
+- [x] **Input latency checked against the arcade, exact** (owner, 18-11-2026: "I want this to be exact"): measure,
       frame by frame, how many frames pass from a key press to the first picture that answers it, and compare with
       the board. On the board: the inputs are read by the game's code at a known point of its frame (in the vblank
       interrupt or the main loop: find where IN0 is read), and the picture the board shows is the one the 013 and the
@@ -100,6 +100,17 @@
       (cref) and the port, with INPUT TIMING FAST and ARCADE; then the port's own extra from SDL's input and the
       present (the time from the key's event to the present, logged as the FPS log does). The aim: ARCADE timing the
       board's latency exactly, FAST one frame less (the look-ahead), and nothing else added by the port.
+      Done 18-11 (tests/latency_check): the game reads IN0 in its vblank interrupt (level_1_interrupt), as VBLANK
+      starts; read_keys sets the inputs just before that interrupt runs, so the port samples where the board does.
+      A press read at VBLANK N first shows in the picture after VBLANK N+2 on the board (the game moves and fires a
+      frame after it reads, the board shows a frame's work after the next VBLANK): 2 frames. ARCADE: 2 window frames
+      from the read_keys that takes it, the board's exactly; FAST: 1 (one better). Both keys (left, shot), at 3
+      places in the game. The port adds the PC's own work before the picture is shown (2.7 ms a frame on the owner's
+      PC, the board's blanking 2.0 ms) and what Windows and the monitor add after the present.
+- [ ] The display's own delay (after the present): the owner's PC uses SDL's "direct3d" renderer (Direct3D 9) in
+      borderless full screen, which Windows' compositor (DWM) may hold up to a refresh before the monitor shows it.
+      To look at: Direct3D 11 (flip model: "independent flip" in borderless full screen skips the compositor) or
+      exclusive full screen, checked with PresentMon (its present mode and latency); a [video] renderer setting
 - [ ] Look-ahead for input latency, "better than arcade" (owner; an option, after the exact check above): predictive
       emulation, as rollback in fighting games
       (RetroArch calls it run-ahead). Each frame: the game kept (program_state_save), run on 1-2 frames with the

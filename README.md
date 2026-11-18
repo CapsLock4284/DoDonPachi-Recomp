@@ -100,10 +100,11 @@ If the game stops or crashes, it says so in a message box, and leaves two files 
 from the same inputs, so the run can be played again up to the crash (`tests/replay_crash`); send both. The log of
 the run before is kept as `ddonpach_previous.log`.
 
-Input lag: each frame is shown as the board shows it, as its VBLANK comes, not a frame later when the game's vblank
-interrupt returns. The port runs on through the next frame from a saved state, keeps its picture and puts the state
-back, so the game itself runs exactly as it would without it (slowdown included). INPUT TIMING in the game options
-(ARCADE, or `arcade_timing = true`) turns it off.
+Input latency (measured with `tests/latency_check`): the game reads the controls as each VBLANK starts and shows a
+press two frames later, on the board as in MAME. INPUT TIMING in the game options chooses:
+- ARCADE (`arcade_timing = true`): exactly the board's two frames.
+- FAST (the default): one frame less. The port runs on through the next frame from a saved state, shows its
+  picture and puts the state back, so the game itself runs exactly as it would without it (slowdown included).
 
 ## Running it headless
 

@@ -479,9 +479,8 @@ const char *settings_save(const settings *s, const char *path)
 	fputs("; true (the default): Start drops in the coins a game needs first (the game has no free play of its own;\n"
 		"; its coin sound and credit as on the board); false: coins with the coin key\n", file);
 	fprintf(file, "free_play = %s\n", bool_text(s->free_play));
-	fputs("; false (the default): each frame shown as the board shows it, as its VBLANK comes, a frame sooner than\n"
-		"; drawing it when the game's vblank interrupt returns (true: a frame more of input lag). The game runs the\n"
-		"; same either way\n", file);
+	fputs("; true: the arcade's input latency exactly (a press shows two frames after the game reads it, as on the\n"
+		"; board); false (the default): one frame less (the look-ahead). The game runs the same either way\n", file);
 	fprintf(file, "arcade_timing = %s\n", bool_text(s->arcade_timing));
 	fputs("; true: button C is the game's own auto-fire (the test mode's \"C BUTTON FULL-AUTO\", set in the EEPROM\n"
 		"; as the game starts); false: as the test mode has it\n", file);
