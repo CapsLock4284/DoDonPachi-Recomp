@@ -111,11 +111,16 @@
       each frame (IN0, or IN1 when the panel follows player 2), so what the game reads. The bees' section a little
       tighter for the room (at 120 wide: the bees in two rows, the controls under them). Checked on pictures
       (`tests/panels_shot` at 120, 156 and 251 wide: the stick and SHOT lit as the test player holds them)
-- [ ] **Bullet count with the slowdown** (owner, 18-11-2026): on the left panel, under the slowdown, the enemy
-      bullets on screen now, and a small graph of the count over the last seconds beside the slowdown's, so the
-      player sees why the game slows down. The bullets: the records at $106CB6 ($40 each) that func_0057EE tests
-      (the same table as the bullet hitboxes'): the count of those in play each frame (their in-play flag and the
-      table's length to find, from the routine that makes them); read only, the game not changed
+- [x] **Bullet count with the slowdown** (owner, 18-11-2026): on the left panel's BOARD section, under the FPS: the
+      slowdown now, BULLETS (the enemies' bullets on screen), and a graph of the last 5 seconds (288 board frames,
+      the newest at the right): a bar for the bullets (the most in a column's frames), red where a frame was slowed,
+      gold where not, against the most in that time (40 at least, to 20s). It replaces the slowdown's bar; "OF
+      57.55" beside the FPS where the panel is wide enough. The bullets: the records at $106CB6, $40 each, 245 of
+      them (to $10A9F6; func_0057EE tests the first 225 in loop 1, all in loop 2), +0 bit 15 in play (the slots
+      not in play keep their old positions); counted on the frames that aren't slowed (the memory half way through
+      a frame otherwise). Checked: each counted bullet marked on the picture lands on one (114 in 1-2's boss fight);
+      the table at $10A9F6 ($20 each, 160, tested after them with the ship's box moved) is not the bullets. Found
+      with it: the slowdown isn't only bullets (1-2: 33% slowed with 9 on screen, a crowd of tanks and explosions)
 - [ ] **MAYBE: the second loop's qualification** (owner, 18-11-2026: maybe): whether this game can still reach loop 2
       ("LOOP 2: ON TRACK, 1 MORE MISS ALLOWED"), from the game's own rule (the lives lost and bombs used in loop 1, a
       continue; to read from the code that decides it at 1-6's end, not from memory), and the true last boss's own

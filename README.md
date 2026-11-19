@@ -148,7 +148,9 @@ and the panels only take the black space at its sides (as wide as the screen lea
 - Left: the ship and its style; its shot and laser power, 1 to MAX (each power-up raises both by one: four reach
   MAX; a life lost takes the style's own weapon down one and the other back to 1); the bombs; and the board's
   speed: the game's frames a second over the last second (the board's 57.55, less its frames of slowdown), the
-  slowdown now, this stage and this game; the stage's 13 bees, each greyed until it is taken (in its own
+  slowdown now, the enemies' bullets on screen, and a graph of the last 5 seconds (a bar for the bullets, red
+  where the game slowed down: it shows what slows it, bullets or a crowd of enemies), the slowdown this stage and
+  this game; the stage's 13 bees, each greyed until it is taken (in its own
   colours then), with the count ("9/13"); and the controls, as DonPachi Recomp's: the stick (a 3 x 3, the way it
   points lit) and the S, B and C buttons, lit while held, as the board is given them each frame.
 - Right: the stage and the score, and the high score table chased one place at a time: #5 first, then #4 once it

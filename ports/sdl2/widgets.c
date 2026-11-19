@@ -152,6 +152,42 @@ static void speed_frame(bool lagged, bool counting)
 	}
 }
 
+/* ---- the enemies' bullets on screen, and the last seconds of them with the slowdown ---- */
+
+#define BULLETS_AT    0x106CB6u   /* the bullets' records (func_0057EE tests them against the ship): +0 bit 15 in play */
+#define BULLET_SLOTS  245         /* ($40 each, to $10A9F6; loop 1 tests the first 225, loop 2 all) */
+#define HISTORY       288         /* the board's frames the graph shows: 5 seconds */
+
+static struct
+{
+	uint8_t bullets[HISTORY];
+	bool lagged[HISTORY];
+	int at, filled, now;
+} history;
+
+static int bullets_now(void)
+{
+	int count = 0;
+
+	for (uint32_t slot = 0; slot < BULLET_SLOTS; slot++)
+		if (*(const uint16_t *)cave_work_ram_at(BULLETS_AT + slot * 0x40u, 2) & 0x8000u)
+			count++;
+	return count;
+}
+
+/* a board frame: its bullets (a frame of slowdown: the last count, the game's memory being half way through its
+   frame) and whether it was slowed */
+static void history_frame(bool lagged)
+{
+	if (!lagged)
+		history.now = bullets_now();
+	history.bullets[history.at] = (uint8_t)history.now;
+	history.lagged[history.at] = lagged;
+	history.at = (history.at + 1) % HISTORY;
+	if (history.filled < HISTORY)
+		history.filled++;
+}
+
 /* ---- the stages' best scores (the file) ---- */
 
 static const char stages_magic[8] = { 'D', 'D', 'S', 'T', 'G', 'B', '0', '1' };
@@ -345,6 +381,7 @@ void widgets_frame(bool clean)
 		attract_seen = true;
 	if (!lagged && word(GAME_MODE) == 0xBu)
 		was_in_game = false;    /* (the ship select: a new game, its own run, whether the attract mode came first or not) */
+	history_frame(lagged);
 	if (!in_game())
 	{
 		/* (the last game's panels stay through the attract mode) */
@@ -564,20 +601,6 @@ static void pips(panel *p, int y, int height, int count, int filled, uint32_t co
 	}
 }
 
-/* a bar across the panel, 'part' of it filled */
-static void bar(panel *p, int y, float part, uint32_t colour)
-{
-	const int room = p->w - 16;
-	int filled = (int)(part * (float)(room - 2) + 0.5f);
-
-	if (filled < 0)
-		filled = 0;
-	if (filled > room - 2)
-		filled = room - 2;
-	outline(p, 8, y, p->w - 8, y + 8, GREY);
-	box(p, 9, y + 1, 9 + filled, y + 7, colour);
-}
-
 /* ---- the left panel: the player, the board's speed ---- */
 
 static void draw_power(panel *p, int y, const char *name, unsigned level, bool showing)
@@ -607,6 +630,56 @@ static void draw_percent(panel *p, int y, const char *name, unsigned lagged, uns
 
 static int draw_bees(panel *p);
 static void draw_input(panel *p, int top);
+
+/* The last 5 seconds (the newest at the right): a bar for the bullets on screen, red where the board slowed down
+   (gold where it didn't), against the most there were in that time (40 at least) */
+#define HISTORY_HEIGHT 15
+
+static void draw_history(panel *p, int top)
+{
+	const int columns = p->w - 18;
+	int most = 40;
+
+	outline(p, 8, top, p->w - 8, top + HISTORY_HEIGHT, FRAME);
+	for (int age = 0; age < history.filled; age++)
+	{
+		const int value = history.bullets[(history.at - 1 - age + HISTORY) % HISTORY];
+
+		if (value > most)
+			most = value;
+	}
+	most = (most + 19) / 20 * 20;
+	for (int column = 0; column < columns; column++)
+	{
+		/* (the frames this column stands for: the oldest at the left) */
+		const int first = column * HISTORY / columns, last = (column + 1) * HISTORY / columns;
+		int bullets = 0, height;
+		bool lagged = false, seen = false;
+
+		for (int frame = first; frame < last; frame++)
+		{
+			const int age = HISTORY - 1 - frame;
+
+			if (age >= history.filled)
+				continue;
+			{
+				const int at = (history.at - 1 - age + HISTORY) % HISTORY;
+
+				seen = true;
+				if (history.bullets[at] > bullets)
+					bullets = history.bullets[at];
+				lagged = lagged || history.lagged[at];
+			}
+		}
+		if (!seen)
+			continue;
+		height = (bullets * (HISTORY_HEIGHT - 2) + most - 1) / most;
+		if (lagged && height < 2)
+			height = 2;    /* (a slowed frame shows, whatever its bullets) */
+		box(p, 9 + column, top + HISTORY_HEIGHT - 1 - height, 10 + column, top + HISTORY_HEIGHT - 1,
+			lagged ? RED : shade(GOLD, 70));
+	}
+}
 
 static void draw_left(panel *p)
 {
@@ -646,12 +719,21 @@ static void draw_left(panel *p)
 		snprintf(text, sizeof(text), "%.1f", game_rate);
 		put_text(p, 8, 148, text, percent == 0 ? GREEN : percent < 25 ? YELLOW : RED, 2);
 		put_text(p, 8 + text_width(text, 2) + 4, 156, "FPS", GREY, 1);
-		snprintf(text, sizeof(text), "OF %.2f", rate);
-		put_right(p, 170, text, DIM, 1);
-		put_text(p, 8, 184, "SLOWDOWN", GREY, 1);
+		{
+			/* (the board's own rate beside it, where the panel is wide enough) */
+			const int used = 8 + text_width(text, 2) + 4 + text_width("FPS", 1);
+
+			snprintf(text, sizeof(text), "OF %.2f", rate);
+			if (used + 8 + text_width(text, 1) <= p->w - 8)
+				put_right(p, 156, text, DIM, 1);
+		}
+		put_text(p, 8, 168, "SLOWDOWN", GREY, 1);
 		snprintf(text, sizeof(text), "%u%%", percent);
-		put_right(p, 184, text, WHITE, 1);
-		bar(p, 194, (float)percent / 100.0f, percent < 25 ? YELLOW : RED);
+		put_right(p, 168, text, percent == 0 ? WHITE : percent < 25 ? YELLOW : RED, 1);
+		put_text(p, 8, 180, "BULLETS", GREY, 1);
+		snprintf(text, sizeof(text), "%d", history.now);
+		put_right(p, 180, text, WHITE, 1);
+		draw_history(p, 191);
 		draw_percent(p, 210, "THIS STAGE", showing ? speed.stage_lagged : 0u, showing ? speed.stage_frames : 0u);
 		draw_percent(p, 222, "THIS GAME", run.on ? speed.game_lagged : 0u, run.on ? speed.game_frames : 0u);
 	}
