@@ -1713,9 +1713,10 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 		put_centre(out, PANEL_TOP + 2, "KEY / GAMEPAD", GREY);
 	}
 	{
-		/* the entries, in pixel lines: 16 apart, the controls page's 12 (it has 18 of them) */
+		/* the entries, in pixel lines: 16 apart, the controls page's and the game options' 12 (18 and 14 of them) */
 		const bool listed = page == PAGE_CHEATS || page == PAGE_REPLAYS || page == PAGE_ACHIEVEMENTS || page == PAGE_STATS;
-		const int step = page == PAGE_CONTROLS ? 12 : listed ? 13 : 16;
+		const int step = page == PAGE_CONTROLS || page == PAGE_GAME ? 12 : listed ? 13 : 16;    /* (the game options:
+		                                                                                          their note above the hints) */
 		int y = (PANEL_TOP + ((page == PAGE_CHEATS || page == PAGE_REPLAYS) && cheats_total == 0 ? 8
 			: page == PAGE_REPLAY_MENU || page == PAGE_DELETE ? 14 : page == PAGE_SAVE_REPLAY ? 9
 			: page == PAGE_UPDATE ? 19 : 4)) * 8;
