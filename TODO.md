@@ -232,6 +232,19 @@
       type A shot's reaches 56 pixels ahead, 16 behind and to the sides). Drawn two frames back (three with arcade
       timing): measured, the ship's sprite against its record. Checked on pictures (headless and the port).
 - [x] **The aura overlay, not a priority** (owner, 18-11-2026: "would be cool to see"): DoDonPachi's ship has an aura, a small space around it where enemies take extra damage from its shots. An overlay as DonPachi Recomp's HITBOX shows the ship's hitbox, drawing the aura's range around the ship (an option, off by default; never changing the game). To find: where the game tests an enemy against the aura (its range, from the ship's position in its record at $102C8C, and whether it differs for shot and laser), in the code that adds an enemy's damage
+- [ ] **Bullet hitboxes** (owner, 18-11-2026; DonPachi Recomp's TODO has the same): beside HITBOX and AURA, the
+      enemies' bullets as the game tests them, so a player sees what can hit the ship and what can't. The bullets
+      are the records at $106CB6 ($40 each) that func_0057EE tests against the ship's box (+$10..+$16 of its record);
+      to find: whether a bullet is a point or has a box of its own (its reach, by its type), the table's length and
+      which records are in play. Drawn from the same frame as the sprites (two frames back, three with arcade timing),
+      as the hitbox. An option (BULLETS, off by default), only drawn over the picture: the game is not changed.
+      Later perhaps the enemies' own boxes (where the ship's shots land)
+- [ ] **Separate volumes for music, sound effects and voices** (owner, 18-11-2026, players asked for it; DonPachi
+      Recomp's TODO has the same): three settings beside VOLUME. The YMZ280B's eight voices play samples from the
+      ROM, each at its own start address: a table of which sample is music, which an effect and which a voice (the
+      samples logged as they start in the menus, the stages and the bosses, then checked by ear) gives each voice its
+      level as it starts, in Cave68kSDK's mix. Only the mix changes: the game, its timing, the chip's interrupt and
+      the slowdown are untouched
 - [x] **Update from inside the program** (owner, 18-11-2026: "ask, then install"; the repository made public for
       it; `ports/sdl2/updater.c`, the same file in DonPachi Recomp): as the program starts ([game] check_updates,
       CHECK FOR UPDATES in the game options, on by default) GitHub's releases/latest is looked up on a thread
