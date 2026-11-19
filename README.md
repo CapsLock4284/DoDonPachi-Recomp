@@ -14,6 +14,23 @@ own side panels.
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
 `ddonpachj`. No ROMs, and nothing extracted from them, are part of this repository.
 
+## Download and play
+
+1. Get the latest release from [**Releases**](https://github.com/CapsLock4284/DoDonPachi-Recomp/releases/latest):
+   `DoDonPachi-x.y.z-win64.zip` for Windows, `DoDonPachi-x.y.z-linux-x64.tar.gz` for Linux.
+2. **Windows:** unzip it somewhere you can write to (not inside *Program Files*) and run `ddonpach.exe`.
+   Windows may show *"Windows protected your PC"* because the program isn't signed: click **More info → Run anyway**.<br>
+   **Linux:** unpack it (`tar xzf DoDonPachi-x.y.z-linux-x64.tar.gz`) and run `./ddonpach`. It uses the system's SDL2
+   (`sudo apt install libsdl2-2.0-0` on Debian/Ubuntu, `libsdl2-compat` on Ubuntu 25.10 and later, `dnf install SDL2`
+   on Fedora, `pacman -S sdl2` on Arch, if it isn't there already).
+3. On the first run a window asks for the ROM set: drag `ddonpach.zip` onto it. The game extracts what it needs once
+   (`ddonpach.dat`, beside the program); after that the .zip isn't needed. From then on the game offers each new
+   version itself (UPDATE TO V... on the main menu).
+
+The release's `README.txt` has the controls, hotkeys and the list of files the game keeps. What's new in each
+version: [CHANGELOG.md](CHANGELOG.md). Making a release: `tools/make_release.ps1` (Windows) and
+`tools/make_release.sh` (Linux, or WSL), after a Release build; the changelog's section for the version first.
+
 ## How it works
 
 DoDonPachi was built on DonPachi's engine, and much of its code is DonPachi's, moved around and with other
