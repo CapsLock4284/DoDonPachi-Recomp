@@ -232,6 +232,15 @@
       type A shot's reaches 56 pixels ahead, 16 behind and to the sides). Drawn two frames back (three with arcade
       timing): measured, the ship's sprite against its record. Checked on pictures (headless and the port).
 - [x] **The aura overlay, not a priority** (owner, 18-11-2026: "would be cool to see"): DoDonPachi's ship has an aura, a small space around it where enemies take extra damage from its shots. An overlay as DonPachi Recomp's HITBOX shows the ship's hitbox, drawing the aura's range around the ship (an option, off by default; never changing the game). To find: where the game tests an enemy against the aura (its range, from the ship's position in its record at $102C8C, and whether it differs for shot and laser), in the code that adds an enemy's damage
+- [x] **An invincibility cheat** (owner, 18-11-2026: to see every stage before the release, "a very difficult game"):
+      `ports/sdl2/own_cheats.c`, P1 INVINCIBLE and P2 INVINCIBLE on the CHEATS page (cave/cheats.h's own cheats, there
+      without MAME's cheat file; `--cheat "P1 INVINCIBLE"` on the command line). The ship's record's +$3E (byte), the
+      time without harm after a life ($102CCA for player 1, $102D0A for player 2: not 0, the ship isn't hit, counted
+      down; $FF the game's own, left alone), held at $80 while the player is in a game, as the checks' INVINCIBLE=1.
+      Checked: `tests/cheats_check` (the test player with the cheat on as the menu sets it, from the power on: both
+      loops, 2-6's true last boss and the ending, no life lost, in 39 s; without it, 20 lives lost in 1-1's first
+      30,000 VBLANKs), and the port (the ship drawn as without it: the glow every other frame is the laser's aura, as
+      the arcade's)
 - [ ] **Bullet hitboxes** (owner, 18-11-2026; DonPachi Recomp's TODO has the same): beside HITBOX and AURA, the
       enemies' bullets as the game tests them, so a player sees what can hit the ship and what can't. The bullets
       are the records at $106CB6 ($40 each) that func_0057EE tests against the ship's box (+$10..+$16 of its record);

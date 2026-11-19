@@ -64,6 +64,7 @@
 #include "hitbox.h"
 #include "widgets.h"
 #include "menu.h"
+#include "own_cheats.h"
 #include "paths.h"
 #include "replay.h"
 #include "rom_drop.h"
@@ -1434,6 +1435,7 @@ int main(int argc, char **argv)
 		SDL_Quit();
 		return 1;
 	}
+	own_cheats_add();               /* (the port's own: there without the cheat file; before --list-cheats) */
 	if (list_cheats)
 	{
 		printf("the cheats of %s:\n", options.cheats);

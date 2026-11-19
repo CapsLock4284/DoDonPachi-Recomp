@@ -116,6 +116,12 @@ save states, cheats, QUIT TO DESKTOP. Player 2: R F D G, A, S, 2, 6. Everything 
 written beside the program on its first run: the keys and buttons, the window's size, the video (scaling, scanlines, the
 CRT look, the pixel-art scalers, a monitor on its side), the sound's volume, the arcade's slowdown.
 
+Cheats (GAME OPTIONS > CHEATS): the port's own P1 INVINCIBLE and P2 INVINCIBLE (nothing can hit that player's ship:
+the time without harm the game gives after a life, kept up; the ship looks as always), for seeing the whole game. With
+MAME's cheat file for DoDonPachi (`cheats/ddonpach.xml` beside the program, from Pugsy's Cheats; not included) its
+cheats are listed after them. A game with a cheat on counts for nothing: no high scores, stage bests, achievements,
+statistics or replay.
+
 Free play (on by default; FREE PLAY in the game options, `free_play` in `ddonpach.ini`): the game has no free play
 setting of its own, so Start drops in the coins a game needs first, then presses Start until the game takes it. The
 game runs as on the board (coin sound, credit). On the warning screen the game takes no start: the credit stays for
