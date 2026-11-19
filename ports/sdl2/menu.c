@@ -47,6 +47,7 @@
 #define REPEAT_NEXT  5
 #define CAPTURE_FRAMES 345              /* the remapping's wait for a key or button: 6 s */
 #define STICK_DEAD   16000
+#define DIFFICULTY_WORD 4               /* the EEPROM word with the test mode's GAME DIFFICULTY (bits 8-9) */
 #define CHEAT_ROWS   16                 /* the cheats page's: as many shown at a time, scrolled with the choice */
 
 enum { PAGE_MAIN, PAGE_CONTROLS, PAGE_GRAPHICS, PAGE_GAME, PAGE_CHEATS, PAGE_FRONT, PAGE_TRAINING, PAGE_REPLAYS,
@@ -74,6 +75,7 @@ enum
 	ITEM_ACHIEVEMENTS, ITEM_STATISTICS,    /* the main menu's pages */
 	ITEM_UPDATE, ITEM_UPDATE_YES, ITEM_UPDATE_NO,    /* the main menu's, a newer release found (updater.h) */
 	ITEM_CHECK_UPDATES,           /* the game options': the newest release looked up as the program starts */
+	ITEM_DIFFICULTY,              /* the game options': the game's difficulty, the test mode's (in the EEPROM) */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -92,7 +94,7 @@ static const char *const item_labels[] = {
 	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
 	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
 	"STOP REPLAY", "HITBOX", "AURA", "ACHIEVEMENTS", "STATISTICS", "UPDATE", "YES, UPDATE", "NOT NOW",
-	"CHECK FOR UPDATES"
+	"CHECK FOR UPDATES", "DIFFICULTY"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -253,7 +255,7 @@ static void build_items(void)
 	}
 	else if (page == PAGE_GAME)
 	{
-		static const int game_items[] = { ITEM_TIMING, ITEM_HITBOX, ITEM_AURA, ITEM_FREE_PLAY, ITEM_HIGH_SCORES,
+		static const int game_items[] = { ITEM_DIFFICULTY, ITEM_TIMING, ITEM_HITBOX, ITEM_AURA, ITEM_FREE_PLAY, ITEM_HIGH_SCORES,
 			ITEM_SKIP_WARNING, ITEM_FRONT_AT_START, ITEM_CHECK_UPDATES, ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
 
 		for (size_t index = 0; index < sizeof(game_items) / sizeof(game_items[0]); index++)
@@ -419,6 +421,23 @@ static void change(int item, int step, bool wrap)
 		in_use->c_button_full_auto = file->c_button_full_auto = !in_use->c_button_full_auto;
 		host.apply_auto_fire();
 		break;
+	case ITEM_DIFFICULTY:
+	{
+		/* the test mode's GAME DIFFICULTY: EEPROM word 4, bits 8-9 (0 NORMAL, 1 EASY, 2 HARD, 3 VERY HARD), read by
+		   the game at its reset (each stage's base rank, $101968, from its table at 005092); in the order the menu
+		   goes through them: easy, normal, hard, very hard. The EEPROM: kept in its file by main.c */
+		static const unsigned order[4] = { 1u, 0u, 2u, 3u };
+		const unsigned now = cave_board.eeprom.words[DIFFICULTY_WORD] >> 8 & 3u;
+		int at = 0;
+
+		while (order[at] != now)
+			at++;
+		at = (at + (step < 0 ? 3 : 1)) % 4;
+		cave_board.eeprom.words[DIFFICULTY_WORD] =
+			(uint16_t)((cave_board.eeprom.words[DIFFICULTY_WORD] & ~0x0300u) | order[at] << 8);
+		host.apply_auto_fire();    /* (the EEPROM saved now, as the auto-fire's change saves it; that bit as it was) */
+		return;    /* (not a setting of the file's) */
+	}
 	case ITEM_FAST_SPEED:
 	{
 		/* the speeds the menu offers (the file may hold any of 2-16: the next one up or down from it) */
@@ -1283,6 +1302,13 @@ static void item_value(int item, char *out, size_t size)
 	case ITEM_AUTO_FIRE:
 		snprintf(out, size, "%s", s->c_button_full_auto ? "ON" : "OFF");
 		break;
+	case ITEM_DIFFICULTY:
+	{
+		static const char *const names[4] = { "NORMAL", "EASY", "HARD", "VERY HARD" };
+
+		snprintf(out, size, "%s", names[cave_board.eeprom.words[DIFFICULTY_WORD] >> 8 & 3u]);
+		break;
+	}
 	case ITEM_FAST_SPEED:
 		snprintf(out, size, "%dX", s->fast_forward_speed);
 		break;
@@ -1735,7 +1761,7 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 				continue;    /* (scrolled out of the list) */
 			if ((item == ITEM_QUIT && !(index > 0 && items[index - 1] == ITEM_MAIN_MENU)) || item == ITEM_MAIN_MENU
 					|| item == ITEM_BACK || item == ITEM_FAST_FORWARD_KEY || item == ITEM_DEADZONE
-					|| item == ITEM_SCALE || item == ITEM_SAVE_STATE || item == ITEM_GAME || item == ITEM_CHEATS
+					|| item == ITEM_SCALE || item == ITEM_SAVE_STATE || item == ITEM_GAME
 					|| item == ITEM_T_START || (item == ITEM_VOLUME && index > 0 && items[index - 1] == ITEM_TRAINING_MENU))
 				y += page == PAGE_CONTROLS ? 6 : 8;    /* (a gap before them) */
 			if (chosen)
@@ -1750,8 +1776,8 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 		}
 		if (page == PAGE_GAME)
 		{
-			/* (what the chosen entry needs: the auto-fire is read by the game as it starts) */
-			static const char *const note[2] = { "AUTO FIRE CHANGES ON", "F3 RESET OR RESTART" };
+			/* (what the entries need: the difficulty and the auto-fire are read by the game as it starts) */
+			static const char *const note[2] = { "DIFFICULTY, AUTO FIRE:", "ON F3 RESET OR RESTART" };
 
 			for (int line = 0; line < 2; line++)
 				put_text_y(out, (COLUMNS - (int)strlen(note[line])) / 2, y + 6 + line * 10, note[line], GOLD);

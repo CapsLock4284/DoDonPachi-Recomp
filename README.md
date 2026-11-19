@@ -122,6 +122,12 @@ MAME's cheat file for DoDonPachi (`cheats/ddonpach.xml` beside the program, from
 cheats are listed after them. A game with a cheat on counts for nothing: no high scores, stage bests, achievements,
 statistics or replay.
 
+Difficulty (DIFFICULTY in the game options): EASY, NORMAL (the arcade's default), HARD or VERY HARD, the test mode's
+own GAME DIFFICULTY setting, so there is no need to go into the test mode for it. It sets each stage's base rank (how
+hard the enemies' patterns are): EASY keeps it at the lowest all game, NORMAL raises it stage by stage, HARD starts
+higher, VERY HARD at the top from the start. The game reads it as it starts: it takes effect after an F3 reset or a
+restart. It is kept in the EEPROM file (`ddonpach.eeprom`), as the arcade board keeps it; replays keep their own.
+
 Free play (on by default; FREE PLAY in the game options, `free_play` in `ddonpach.ini`): the game has no free play
 setting of its own, so Start drops in the coins a game needs first, then presses Start until the game takes it. The
 game runs as on the board (coin sound, credit). On the warning screen the game takes no start: the credit stays for

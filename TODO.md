@@ -244,20 +244,42 @@
       (training.c's on_pace) and ON PACE in POWER's choices, the menu showing the level it gives ("ON PACE (3)").
       Bombs the same if it makes a difference: the stock and its most (3 to 6: what raises the most, and what bomb
       items do, to read from the code); DonPachi Recomp found it made no difference there
-- [ ] **MAYBE: a novice mode** (owner, 18-11-2026: maybe, not now): an easier game for a loop or both, fewer bullets
-      and/or enemies. In order, safest first:
-      1. the arcade's own difficulty (the test mode's, in the EEPROM) in the game options, as DonPachi Recomp's
-         DIFFICULTY: authentic; what it changes in DoDonPachi to look at first
-      2. a slower game speed (75%, 50%): every bullet where the arcade puts it, only slower; for training too
-      3. fewer bullets: of the bullets fired each frame (the records at $106CB6, +0 bit 15 in play; the side panel
-         counts them), some taken away by a fixed rule (every other one): the patterns thinner, the same shape. To
-         check: bullets that make others or drive an effect; the whole game run with it (tests/cheats_check's way)
-      4. slower bullets: each one's speed halved as it is fired (its speed in the record to find)
-      5. fewer or weaker enemies: the riskiest (the stages are scripted around them: carriers of power-ups and bees,
-         parts of bigger objects, what comes next); weaker (their health) or firing less is safer than taken away
-      Any of them an assist as the cheats: no high scores, stage bests, achievements or statistics, its own name on
-      the screen; replays still in step (a fixed rule, no chance); loop 1 alone or both (GM_LOOP). Fewer bullets
-      also means less slowdown: one more reason it isn't the arcade's game
+- [ ] **Training: a slower speed to choose** (owner, 18-11-2026: "would let players ramp up to full speed for
+      training"): SPEED on the training page (`[training] speed`: 50% to 100% in steps of 10, 100% the arcade's), the
+      board's frames shown more slowly (the frame's period longer in main.c's pacing), so the game itself is the same
+      frame for frame: its slowdown, patterns and timings as they are, only all of them slower. The sound: played
+      slower (lower, as a tape slowed) by resampling the board's output to the longer frame, or kept at its pitch
+      (time-stretched: harder), to choose; the side panel's FPS showing the board's rate as played. The speed shown
+      on the screen while it isn't 100%. Training games don't count for scores already, so nothing else changes
+- [x] **Difficulty in the game options** (owner, 18-11-2026: as DonPachi Recomp's, "an easier way of selecting
+      difficulty without having to get into the test menu"): DIFFICULTY first in GAME OPTIONS (EASY / NORMAL / HARD /
+      VERY HARD), the test mode's GAME DIFFICULTY: EEPROM word 4, bits 8-9 (0 NORMAL, 1 EASY, 2 HARD, 3 VERY HARD,
+      as DonPachi's; found by setting each bit before the boot and reading what the game took: $101294 bits 0-1).
+      What it does: at a game's start the game picks a table by it (rom_005092: 005092-0050C1), each stage's base
+      rank into $101968: EASY 0 in every stage; NORMAL $10, $14 ... $2C; HARD $20, $26 ... $4A; VERY HARD $3F from
+      the start. Read at the reset: the menu's note says F3 or a restart. The EEPROM saved as it changes (as the
+      auto-fire's). Checked: the port (the page, the EEPROM file's word 4 after the change, kept after a restart).
+      The high score table and the stages' bests keep all difficulties together, as the arcade's table does; to
+      keep them apart (DonPachi Recomp's statistics keep a best score for each difficulty), later if wanted
+- [ ] **MAYBE: a novice mode** (owner, 18-11-2026: maybe, not now): an easier game with fewer bullets. The owner's
+      design: a true novice mode plays at the regular speed with fewer bullets, and nothing else changed (to start
+      with, to see how it goes):
+      - fewer bullets: of the bullets fired each frame (the records at $106CB6, +0 bit 15 in play; the side panel
+        counts them), some taken away by a fixed rule (every other one): the patterns thinner, the same shape. To
+        check: bullets that make others or drive an effect; the whole game run with it (tests/cheats_check's way)
+      - its own version, chosen as the World and Japanese versions are (the main menu's VERSION: WORLD / JAPAN /
+        NOVICE, as DonPachi Recomp's VERSION: USA / JAPAN): its own high score table (`ddonpach_novice.hiscore`),
+        stage bests and EEPROM file, never mixed with the arcade game's; a "NOVICE" banner over the game's own
+        SCORE RANKING screen (drawn over the picture by the port, the picture itself the arcade's), and on the
+        side panel while it is played
+      - both loops if the same rule holds through loop 2 (the whole-game check says); loop 1 alone otherwise
+      - replays: the version in the replay's header, the same rule applied in playback (a fixed rule, no chance:
+        in step); achievements and statistics: to decide (kept apart, or not counted)
+      - fewer bullets also means less slowdown (the board less busy): one more reason it is its own version
+      Kept for later, if the fewer bullets aren't enough: slower bullets (each one's speed halved as it is fired),
+      enemies firing less or with less health; enemies taken away is the riskiest (the stages are scripted around
+      them). Separately, the arcade's own difficulty in the game options and the training's slower speed (the
+      entries above) are assists of their own, not the novice mode
 - [x] **Replays** (18-11-2026; `ports/sdl2/replay.c`, on the crash log's recording: crash_log_view): each game, from
       its ship select ($1017A6 = $B) to its end (the mode out of 7/8), asked about at its game over (SAVE THIS GAME'S
       REPLAY?), saved to replays/ as "DDREPLAY": the run from the board's reset (the EEPROM, slowdown, the high score
