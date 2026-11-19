@@ -206,7 +206,17 @@
       (`tests/training_check`: 0.3-4.6 s each on the build machine, the bosses of 1-3 and 2-3 the longest).
       Still to do, as DonPachi Recomp's: a point part way through a stage, the mid-bosses, the difficulty, ON PACE
       power, the true last boss (2-6's second), a quicker way (1-1's boss is waited out)
-- [ ] Replays, achievements, statistics, hitbox:
+- [x] **Replays** (18-11-2026; `ports/sdl2/replay.c`, on the crash log's recording: crash_log_view): each game, from
+      its ship select ($1017A6 = $B) to its end (the mode out of 7/8), asked about at its game over (SAVE THIS GAME'S
+      REPLAY?), saved to replays/ as "DDREPLAY": the run from the board's reset (the EEPROM, slowdown, the high score
+      table put back, each frame's inputs), the game's first frame, and the board's hash every 600 frames. The main
+      menu's REPLAYS: the list (date, stage, score), WATCH, DELETE. Playback: the board reset with the replay's own
+      EEPROM, slowdown and table (the player's back after), the frames before the game run unseen; "THE REPLAY IS OUT
+      OF STEP" if a check differs; STOP REPLAY, a reset or the main menu end it. Checked: `tests/replay_check` (each
+      game of a run recorded from the power on, played back from a reset: in step all the way, the same end) and the
+      port (a game over, YES, the file played back in step). Still to do, as DonPachi Recomp's: names for replays,
+      training attempts as replays, a replay of a game quit part way, pause and frame step in playback
+- [ ] Achievements, statistics, hitbox:
       each reads DonPachi's memory; DoDonPachi's addresses to find.
 - [ ] **The aura overlay, not a priority** (owner, 18-11-2026: "would be cool to see"): DoDonPachi's ship has an aura, a small space around it where enemies take extra damage from its shots. An overlay as DonPachi Recomp's HITBOX shows the ship's hitbox, drawing the aura's range around the ship (an option, off by default; never changing the game). To find: where the game tests an enemy against the aura (its range, from the ship's position in its record at $102C8C, and whether it differs for shot and laser), in the code that adds an enemy's damage
 - [ ] **Update from inside the program** (owner, 18-11-2026; DonPachi Recomp's TODO has the same): the options menu checks for a newer release and installs it, with no download or extracting by hand: GitHub's releases API for the latest tag (WinHTTP on Windows, libcurl on Linux, in the background, when the player asks), the release's zip downloaded and checked (size, SHA-256), unpacked beside the program, the exe swapped on the next start (a running .exe cannot overwrite itself). The player's files stay (settings, EEPROM, high scores, ddonpach.dat). The repository is private: an update from it needs the releases somewhere public (a public releases-only repository, or the repository made public), never a token in the program. After the release package

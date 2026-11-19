@@ -8,8 +8,8 @@ a model of Cave's 68000 board. It is the second game of the family, after
 **Status: early, playable.** The whole program translates to C, builds on Cave68kSDK and plays in a window with
 its sound, and it runs exactly as the original does on MAME's 68000 core, slowdown and all (checked frame by frame
 over 150,000 VBLANKs). The window port is DonPachi Recomp's, cut down for now: its options menu (Escape, or the
-gamepad's View button), a main menu with training, high scores kept, and its own side panels; none of DonPachi
-Recomp's other extras yet (replays, achievements).
+gamepad's View button), a main menu with training and replays, high scores kept, and its own side panels; none of
+DonPachi Recomp's other extras yet (achievements, statistics).
 
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
 `ddonpachj`. No ROMs, and nothing extracted from them, are part of this repository.
@@ -76,7 +76,13 @@ it, and with RETRY ON MISS a miss goes back to it a second later. TRAINING MENU 
 Training games don't count for high scores or the stages' bests. Its choices are kept in `[training]` in
 `ddonpach.ini`.
 
-The main menu comes up as the program starts: START GAME, TRAINING, SETTINGS (the volume, the game options, graphics and
+Replays: every game is recorded as it is played. At its game over the game asks whether to keep its replay (saved
+in `replays/` beside the program, a file of about 14 KB a minute that can be shared); REPLAYS on the main menu lists
+them (the date, how far, the score) to watch or delete. Playback runs from the board's reset as the game did (the
+frames before the game at once, unseen), checking the board as it goes; fast forward works, STOP REPLAY in the
+options ends it. A game with a cheat, a loaded save state or training in it is not recorded.
+
+The main menu comes up as the program starts: START GAME, TRAINING, REPLAYS, SETTINGS (the volume, the game options, graphics and
 controls, before a game) and QUIT TO DESKTOP, with the high score kept. The game waits at its start while it is up,
 and runs from there with START GAME, as the board switched on. MAIN MENU in the options menu leaves the game for it
 (the game reset). MAIN MENU AT START in the game options (`main_menu` in `ddonpach.ini`) turns it off: straight into

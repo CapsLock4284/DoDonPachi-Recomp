@@ -13,6 +13,7 @@
  */
 #include "menu.h"
 #include "hiscore.h"
+#include "replay.h"
 #include "scaler.h"
 
 #include "cave/cheats.h"
@@ -45,7 +46,8 @@
 #define STICK_DEAD   16000
 #define CHEAT_ROWS   16                 /* the cheats page's: as many shown at a time, scrolled with the choice */
 
-enum { PAGE_MAIN, PAGE_CONTROLS, PAGE_GRAPHICS, PAGE_GAME, PAGE_CHEATS, PAGE_FRONT, PAGE_TRAINING };
+enum { PAGE_MAIN, PAGE_CONTROLS, PAGE_GRAPHICS, PAGE_GAME, PAGE_CHEATS, PAGE_FRONT, PAGE_TRAINING, PAGE_REPLAYS,
+	PAGE_REPLAY_MENU, PAGE_DELETE, PAGE_SAVE_REPLAY };
 enum { NAV_NONE, NAV_UP, NAV_DOWN, NAV_LEFT, NAV_RIGHT, NAV_CHOOSE, NAV_BACK, NAV_CLOSE };
 
 enum
@@ -61,10 +63,15 @@ enum
 	ITEM_TRAINING,                /* the main menu's: the training page */
 	ITEM_T_STAGE, ITEM_T_POINT, ITEM_T_SHIP, ITEM_T_STYLE, ITEM_T_POWER, ITEM_T_BOMBS, ITEM_T_RETRY, ITEM_T_START,
 	ITEM_RETRY_TRAINING, ITEM_TRAINING_MENU,    /* a training game's options */
+	ITEM_REPLAYS,                 /* the main menu's: the replays page */
+	ITEM_WATCH, ITEM_DELETE, ITEM_DELETE_YES, ITEM_DELETE_NO,    /* a replay chosen */
+	ITEM_YES, ITEM_NO,            /* a game over: its replay saved? */
+	ITEM_STOP_REPLAY,             /* a replay playing: stopped */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
-	ITEM_CHEAT = 200              /* + a cheat of the cheat file (cave/cheats.h) */
+	ITEM_CHEAT = 200,             /* + a cheat of the cheat file (cave/cheats.h) */
+	ITEM_REPLAY = 1000            /* + a replay of the list (replays[]) */
 };
 
 static const char *const item_labels[] = {
@@ -74,7 +81,8 @@ static const char *const item_labels[] = {
 	"STATE SLOT", "FILTER", "C BUTTON AUTO FIRE", "INPUT TIMING", "FREE PLAY", "SAVE HIGH SCORES", "SKIP WARNING",
 	"FPS METER", "RENDERER", "SIDE PANELS", "START GAME", "SETTINGS", "MAIN MENU", "MAIN MENU AT START",
 	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
-	"RETRY TRAINING", "TRAINING MENU"
+	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
+	"STOP REPLAY"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -99,8 +107,16 @@ static bool is_action(int item)
 
 static bool is_cheat(int item)
 {
-	return item >= ITEM_CHEAT;
+	return item >= ITEM_CHEAT && item < ITEM_REPLAY;
 }
+
+/* ---- the replays page's list (replay.h) ---- */
+
+#define REPLAYS_LISTED 100
+#define REPLAY_ROWS    15               /* shown at a time, scrolled with the choice */
+
+static replay_info replays[REPLAYS_LISTED];
+static int replay_count, replay_chosen;
 
 /* the hotkeys' entries on the controls page */
 static bool is_hotkey_item(int item)
@@ -126,7 +142,7 @@ static void build_items(void)
 	item_count = 0;
 	if (page == PAGE_FRONT)
 	{
-		static const int front_items[] = { ITEM_START_GAME, ITEM_TRAINING, ITEM_SETTINGS, ITEM_QUIT };
+		static const int front_items[] = { ITEM_START_GAME, ITEM_TRAINING, ITEM_REPLAYS, ITEM_SETTINGS, ITEM_QUIT };
 
 		add_items(front_items, sizeof(front_items) / sizeof(front_items[0]));
 	}
@@ -143,6 +159,37 @@ static void build_items(void)
 			ITEM_T_BOMBS, ITEM_T_RETRY, ITEM_T_START, ITEM_BACK };
 
 		add_items(training_items, sizeof(training_items) / sizeof(training_items[0]));
+	}
+	else if (page == PAGE_REPLAYS)
+	{
+		for (int replay = 0; replay < replay_count; replay++)
+			items[item_count++] = ITEM_REPLAY + replay;
+		items[item_count++] = ITEM_BACK;
+	}
+	else if (page == PAGE_REPLAY_MENU)
+	{
+		static const int replay_items[] = { ITEM_WATCH, ITEM_DELETE, ITEM_BACK };
+
+		add_items(replay_items, sizeof(replay_items) / sizeof(replay_items[0]));
+	}
+	else if (page == PAGE_DELETE)
+	{
+		static const int delete_items[] = { ITEM_DELETE_NO, ITEM_DELETE_YES };
+
+		add_items(delete_items, sizeof(delete_items) / sizeof(delete_items[0]));
+	}
+	else if (page == PAGE_SAVE_REPLAY)
+	{
+		static const int question_items[] = { ITEM_YES, ITEM_NO };
+
+		add_items(question_items, sizeof(question_items) / sizeof(question_items[0]));
+	}
+	else if (page == PAGE_MAIN && host.in_replay && host.in_replay())
+	{
+		static const int replay_game_items[] = { ITEM_RESUME, ITEM_STOP_REPLAY, ITEM_VOLUME, ITEM_GRAPHICS,
+			ITEM_MAIN_MENU, ITEM_QUIT };
+
+		add_items(replay_game_items, sizeof(replay_game_items) / sizeof(replay_game_items[0]));
 	}
 	else if (page == PAGE_MAIN && host.in_training && host.in_training())
 	{
@@ -414,8 +461,24 @@ static void to_page(int to)
 }
 
 /* back to the page before, on the entry that opened this one */
+static void replays_page(int at);
+
 static void back(void)
 {
+	if (page == PAGE_REPLAY_MENU || page == PAGE_DELETE)
+	{
+		replays_page(replay_chosen);
+		return;
+	}
+	if (page == PAGE_REPLAYS)
+	{
+		/* (back to the main menu, on REPLAYS) */
+		page = PAGE_FRONT;
+		build_items();
+		for (selected = 0; selected < item_count - 1 && items[selected] != ITEM_REPLAYS; selected++)
+			;
+		return;
+	}
 	if (page == PAGE_TRAINING)
 	{
 		/* (back to the main menu, on TRAINING) */
@@ -461,6 +524,34 @@ static void choose(int item)
 		break;
 	case ITEM_TRAINING:
 		to_page(PAGE_TRAINING);
+		break;
+	case ITEM_REPLAYS:
+		replays_page(0);
+		break;
+	case ITEM_WATCH:
+		if (host.play_replay(replays[replay_chosen].file))
+		{
+			front = false;
+			close_menu();
+		}
+		break;
+	case ITEM_DELETE:
+		to_page(PAGE_DELETE);
+		break;
+	case ITEM_DELETE_YES:
+		menu_notice(replay_delete(replays[replay_chosen].file) ? "REPLAY DELETED" : "IT COULD NOT BE DELETED");
+		replays_page(replay_chosen);
+		break;
+	case ITEM_DELETE_NO:
+		to_page(PAGE_REPLAY_MENU);
+		break;
+	case ITEM_YES:
+	case ITEM_NO:
+		host.keep_replay(item == ITEM_YES);
+		close_menu();
+		break;
+	case ITEM_STOP_REPLAY:
+		host.stop_replay();
 		break;
 	case ITEM_T_START:
 		training_failed = 0;
@@ -532,6 +623,12 @@ static void choose(int item)
 		back();
 		break;
 	default:
+		if (item >= ITEM_REPLAY)
+		{
+			replay_chosen = item - ITEM_REPLAY;
+			to_page(PAGE_REPLAY_MENU);
+			break;
+		}
 		if (is_action(item) || is_hotkey_item(item))
 		{
 			capture = item;
@@ -568,12 +665,22 @@ static void navigate(int nav)
 	case NAV_BACK:
 		if (page == PAGE_FRONT)
 			break;    /* (the main menu stays until a game starts) */
+		if (page == PAGE_SAVE_REPLAY)
+		{
+			choose(ITEM_NO);
+			break;
+		}
 		if (page != PAGE_MAIN || front)
 			back();
 		else
 			close_menu();
 		break;
 	case NAV_CLOSE:
+		if (page == PAGE_SAVE_REPLAY)
+		{
+			choose(ITEM_NO);
+			break;
+		}
 		if (front)
 		{
 			if (page != PAGE_FRONT)
@@ -675,6 +782,34 @@ void menu_open_training(void)
 	build_items();
 	for (selected = 0; selected < item_count - 1 && items[selected] != ITEM_T_START; selected++)
 		;    /* (on START TRAINING: again at once) */
+}
+
+/* the replays page, its list read again, on the replay at 'at' (or the last) */
+static void replays_page(int at)
+{
+	replay_count = replay_list(replays, REPLAYS_LISTED);
+	page = PAGE_REPLAYS;
+	build_items();
+	selected = at < item_count - 1 ? at : item_count - 1;
+	if (selected > 0 && selected >= replay_count && replay_count > 0)
+		selected = replay_count - 1;
+}
+
+void menu_open_replays(void)
+{
+	menu_open_front();
+	replays_page(0);
+}
+
+void menu_ask_save_replay(void)
+{
+	open = true;
+	front = false;
+	page = PAGE_SAVE_REPLAY;
+	selected = 0;
+	capture = -1;
+	held_direction = NAV_NONE;
+	build_items();
 }
 
 bool menu_in_front(void)
@@ -918,6 +1053,14 @@ void menu_put_meter(uint32_t *picture, const char *const *lines, int count)
 
 static const char *item_label(int item)
 {
+	if (item >= ITEM_REPLAY)
+	{
+		/* a replay: its date, "11-18 18:40" */
+		static char date[16];
+
+		snprintf(date, sizeof(date), "%.11s", replays[item - ITEM_REPLAY].date + 5);
+		return date;
+	}
 	if (is_hotkey_item(item))
 	{
 		static const char *const names[] = { "FAST FWD", "SAVE STATE", "LOAD STATE", "PREV SLOT", "NEXT SLOT" };
@@ -945,6 +1088,17 @@ static void item_value(int item, char *out, size_t size)
 	const settings *const s = host.options;
 
 	out[0] = '\0';
+	if (item >= ITEM_REPLAY)
+	{
+		/* its furthest stage and score (the score as the game shows it: its last digit 0) */
+		const replay_info *const r = &replays[item - ITEM_REPLAY];
+
+		if (r->all_clear)
+			snprintf(out, size, "ALL %lu0", (unsigned long)r->score);
+		else
+			snprintf(out, size, "%d-%d %lu0", r->stage / 6 + 1, r->stage % 6 + 1, (unsigned long)r->score);
+		return;
+	}
 	switch (item)
 	{
 	case ITEM_SLOWDOWN:
@@ -1077,14 +1231,15 @@ static void put_hints(uint32_t *out, const char *first, const char *second)
 	put_text_y(out, (COLUMNS - (int)strlen(second)) / 2, y + 11, second, GREY);
 }
 
-/* the first of the cheats shown (the list scrolled to keep the choice in it), and how many there are */
+/* the first of the cheats (or replays) shown (the list scrolled to keep the choice in it), and how many there are */
 static int cheats_first(int *total)
 {
+	const int rows = page == PAGE_REPLAYS ? REPLAY_ROWS : CHEAT_ROWS;
 	const int cheats = item_count - 1, chosen = selected < cheats ? selected : cheats - 1;
-	int first = chosen - CHEAT_ROWS / 2;
+	int first = chosen - rows / 2;
 
-	if (first > cheats - CHEAT_ROWS)
-		first = cheats - CHEAT_ROWS;
+	if (first > cheats - rows)
+		first = cheats - rows;
 	if (first < 0)
 		first = 0;
 	*total = cheats;
@@ -1282,6 +1437,53 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 			put_centre(out, PANEL_TOP + 2, shown, GREY);
 		}
 	}
+	else if (page == PAGE_REPLAYS)
+	{
+		put_centre(out, PANEL_TOP + 1, "REPLAYS", GOLD);
+		cheats_shown = cheats_first(&cheats_total);
+		if (cheats_total == 0)
+		{
+			put_centre(out, PANEL_TOP + 3, "NO REPLAYS YET:", GREY);
+			put_centre(out, PANEL_TOP + 5, "EACH GAME ASKS AT ITS END", GREY);
+		}
+		else if (cheats_total > REPLAY_ROWS)
+		{
+			char shown[32];
+
+			snprintf(shown, sizeof(shown), "%d-%d OF %d", cheats_shown + 1, cheats_shown + REPLAY_ROWS, cheats_total);
+			put_centre(out, PANEL_TOP + 2, shown, GREY);
+		}
+	}
+	else if (page == PAGE_REPLAY_MENU || page == PAGE_DELETE)
+	{
+		/* the replay chosen: its date, ship, how far, its score and length */
+		const replay_info *const r = &replays[replay_chosen];
+		char line[48];
+
+		put_centre(out, PANEL_TOP + 1, page == PAGE_DELETE ? "DELETE THIS REPLAY?" : "REPLAY", GOLD);
+		put_centre(out, PANEL_TOP + 3, r->date, WHITE);
+		snprintf(line, sizeof(line), "TYPE-%c %s", 'A' + r->ship, r->laser ? "LASER" : "SHOT");
+		put_centre(out, PANEL_TOP + 5, line, WHITE);
+		if (r->all_clear)
+			snprintf(line, sizeof(line), "ALL CLEAR");
+		else
+			snprintf(line, sizeof(line), "REACHED %d-%d", r->stage / 6 + 1, r->stage % 6 + 1);
+		put_centre(out, PANEL_TOP + 7, line, WHITE);
+		snprintf(line, sizeof(line), "SCORE %lu0", (unsigned long)r->score);
+		put_centre(out, PANEL_TOP + 9, line, GOLD);
+		{
+			const unsigned seconds = (unsigned)(r->frames * 17376ull / 1000000ull);
+
+			snprintf(line, sizeof(line), "%u:%02u", seconds / 60u, seconds % 60u);
+			put_centre(out, PANEL_TOP + 11, line, GREY);
+		}
+	}
+	else if (page == PAGE_SAVE_REPLAY)
+	{
+		put_centre(out, PANEL_TOP + 1, "GAME OVER", GOLD);
+		put_centre(out, PANEL_TOP + 4, "SAVE THIS GAME'S REPLAY?", WHITE);
+		put_centre(out, PANEL_TOP + 6, "(MAIN MENU > REPLAYS)", GREY);
+	}
 	else
 	{
 		char title[48];
@@ -1292,8 +1494,9 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 	}
 	{
 		/* the entries, in pixel lines: 16 apart, the controls page's 12 (it has 18 of them) */
-		const int step = page == PAGE_CONTROLS ? 12 : page == PAGE_CHEATS ? 13 : 16;
-		int y = (PANEL_TOP + (page == PAGE_CHEATS && cheats_total == 0 ? 6 : 4)) * 8;
+		const int step = page == PAGE_CONTROLS ? 12 : page == PAGE_CHEATS || page == PAGE_REPLAYS ? 13 : 16;
+		int y = (PANEL_TOP + ((page == PAGE_CHEATS || page == PAGE_REPLAYS) && cheats_total == 0 ? 8
+			: page == PAGE_REPLAY_MENU || page == PAGE_DELETE ? 14 : page == PAGE_SAVE_REPLAY ? 9 : 4)) * 8;
 
 		for (int index = 0; index < item_count; index++)
 		{
@@ -1301,8 +1504,8 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 			const bool chosen = index == selected;
 			char value[48];
 
-			if (page == PAGE_CHEATS && index < cheats_total
-					&& (index < cheats_shown || index >= cheats_shown + CHEAT_ROWS))
+			if ((page == PAGE_CHEATS || page == PAGE_REPLAYS) && index < cheats_total
+					&& (index < cheats_shown || index >= cheats_shown + (page == PAGE_REPLAYS ? REPLAY_ROWS : CHEAT_ROWS)))
 				continue;    /* (scrolled out of the list) */
 			if ((item == ITEM_QUIT && !(index > 0 && items[index - 1] == ITEM_MAIN_MENU)) || item == ITEM_MAIN_MENU
 					|| item == ITEM_BACK || item == ITEM_FAST_FORWARD_KEY || item == ITEM_DEADZONE

@@ -50,6 +50,8 @@
  *    High scores: kept in ddonpach.hiscore beside the program (hiscore.h; the game options' SAVE HIGH SCORES, or
  *          [game] save_high_scores); not saved from a game that had a cheat on or went back to a save state.
  *    The start's WARNING screen (31 seconds) is run at once, unseen ([game] skip_warning, on by default).
+ *    Replays: each arcade game recorded (replay.h); at its game over the question whether to keep it (replays/ beside the
+ *          program), played back from the main menu's REPLAYS (fast forward works; STOP REPLAY in the options).
  *    Main menu: as the program starts (START GAME, SETTINGS, QUIT TO DESKTOP; [game] main_menu), and from the options'
  *          MAIN MENU (the game reset); the game waits at its start while it is up, and runs from there with START GAME.
  */
@@ -59,6 +61,7 @@
 #include "widgets.h"
 #include "menu.h"
 #include "paths.h"
+#include "replay.h"
 #include "rom_drop.h"
 #include "training.h"
 #include "scaler.h"
@@ -217,6 +220,8 @@ static bool warning_showing(void)
 
 /* A hotkey pressed (not held from before): the reset, or the test mode (the service switch held for the player); the
    save states (fast forward is held: the main loop asks hotkey_down) */
+static void replay_end(void);
+
 static void hotkeys(void)
 {
 	for (int hotkey = HOTKEY_RESET; hotkey <= HOTKEY_SERVICE_MENU; hotkey++)
@@ -230,6 +235,8 @@ static void hotkeys(void)
 				service_held = SERVICE_MENU_FRAMES;    /* (no reset: the game looks at the switch after its warning) */
 				menu_notice("THE TEST SWITCH HELD");
 			}
+			else if (replay_playing())
+				replay_end();    /* (a replay playing: stopped, the main menu's replays) */
 			else
 			{
 				program_reset();
@@ -241,6 +248,7 @@ static void hotkeys(void)
 				training_on = false;
 				state_loaded = false;
 				crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
+				replay_reset();
 				menu_notice("RESET");
 			}
 		}
@@ -254,6 +262,8 @@ static void hotkeys(void)
 		{
 			if (hotkey == HOTKEY_SLOT_PREVIOUS || hotkey == HOTKEY_SLOT_NEXT)
 				state_slot_hotkey(hotkey == HOTKEY_SLOT_NEXT ? 1 : -1);
+			else if (replay_playing())
+				menu_notice("NO SAVE STATES IN A REPLAY");
 			else
 				state_action(hotkey == HOTKEY_SAVE_STATE);
 		}
@@ -1046,13 +1056,30 @@ static void menu_reset(void)
 	training_on = false;
 	state_loaded = false;
 	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
+	replay_reset();
 	menu_notice("RESET");
 }
 
 /* The options' MAIN MENU: the board reset and kept at its start (it is not run while the main menu is up), the side
    panels' game forgotten; START GAME runs it from there, as the board switched on */
+static bool ask_replay, replay_over;    /* (a game over: the question; a replay at its end: stopped) */
+static bool replay_has_table;           /* the replay playing: its high score table put back after the boot */
+static uint16_t own_eeprom[CAVE_EEPROM_WORDS];    /* the player's own, while a replay plays with its own */
+
+/* a replay playing stopped: the player's EEPROM, slowdown and high score file back (the caller resets the board) */
+static void replay_restore(void)
+{
+	if (!replay_playing())
+		return;
+	replay_stop();
+	memcpy(cave_board.eeprom.words, own_eeprom, sizeof(own_eeprom));
+	program_set_slowdown(options.slowdown);
+	hiscores_open();    /* (the file's table, and its saving, back) */
+}
+
 static void menu_main_menu(void)
 {
+	replay_restore();
 	program_reset();
 	reset_asked = true;
 	service_held = 0;
@@ -1062,6 +1089,7 @@ static void menu_main_menu(void)
 	training_on = false;
 	state_loaded = false;
 	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
+	replay_reset();
 	memset(picture, 0, sizeof(picture));
 }
 
@@ -1123,6 +1151,80 @@ static void menu_retry_training(void)
 	hiscore_state_loaded();
 	training_shown();
 	menu_notice("RETRY");
+}
+
+/* ---- replays (replay.h): each arcade game recorded; saved at its end if the player says yes; played back ---- */
+
+
+static void menu_keep_replay(bool keep)
+{
+	const char *const name = replay_keep(keep);
+
+	if (keep)
+		menu_notice(name ? "REPLAY SAVED" : "THE REPLAY COULD NOT BE SAVED");
+}
+
+/* A replay played: the board reset to its start (its EEPROM, slowdown and high score table; the player's own kept to
+   put back), the frames before its game run at once, unseen; then it plays, a frame at a time */
+static bool menu_play_replay(const char *file)
+{
+	replay_start start;
+	const char *problem;
+	uint16_t in0, in1;
+
+	memcpy(own_eeprom, cave_board.eeprom.words, sizeof(own_eeprom));
+	if ((problem = replay_play(file, &start)) != NULL)
+	{
+		fprintf(stderr, "replay %s: %s\n", file, problem);
+		menu_notice("THE REPLAY COULD NOT BE PLAYED");
+		return false;
+	}
+	program_reset();
+	reset_asked = true;
+	service_held = 0;
+	free_play_reset();
+	widgets_reset();
+	training_on = false;
+	state_loaded = false;
+	memcpy(cave_board.eeprom.words, start.eeprom, sizeof(start.eeprom));
+	program_set_slowdown(start.slowdown);
+	replay_has_table = start.has_table;
+	hiscore_use_table(start.has_table ? start.table : NULL);
+	hiscore_reset();
+	crash_log_reset(start.slowdown, rom_set.version, start.has_table ? start.table : NULL);
+	replay_reset();
+	while (replay_position() < start.game_begins && replay_next(&cave_board.in0, &cave_board.in1))
+	{
+		crash_log_frame();
+		program_run_frame();
+		cave_sound_drop();
+		widgets_frame(false);
+		hiscore_frame(replay_has_table, false);
+		replay_after_playback_frame();
+		reset_asked = false;
+	}
+	(void)in0;
+	(void)in1;
+	video_latch_sprites();
+	draw_picture();
+	if (audio)
+		audio_restart();
+	return true;
+}
+
+static bool menu_in_replay(void)
+{
+	return replay_playing();
+}
+
+/* A replay stopped (its end, STOP REPLAY, a reset): the player's EEPROM, slowdown and high score file back, the board
+   reset, the main menu's replays page up */
+static void replay_end(void)
+{
+	if (!replay_playing())
+		return;
+	menu_main_menu();    /* (replay_restore first) */
+	menu_open_replays();
 }
 
 static void menu_test_mode(void)
@@ -1191,6 +1293,13 @@ int main(int argc, char **argv)
 
 		snprintf(log_path, sizeof(log_path), "%sddonpach.log", paths_folder());
 		crash_log_start(log_path, paths_folder());
+		/* (the replays: their folder beside the program) */
+#ifdef _WIN32
+		snprintf(log_path, sizeof(log_path), "%sreplays\\", paths_folder());
+#else
+		snprintf(log_path, sizeof(log_path), "%sreplays/", paths_folder());
+#endif
+		replay_folder(log_path);
 	}
 	cave_board_describe(&cave_board_ddonpach);
 	/* the settings file, then the command line over it */
@@ -1275,6 +1384,7 @@ int main(int argc, char **argv)
 	hiscores_open();
 	/* (the run's inputs kept from its first frame) */
 	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
+	replay_reset();
 	cheats_load(options.cheats);
 	for (int cheat = 0; cheat < cheat_count; cheat++)
 		if ((problem = cheats_enable(options.cheats, cheat_names[cheat])) != NULL)
@@ -1345,6 +1455,10 @@ int main(int argc, char **argv)
 		menu.training = menu_training;
 		menu.in_training = menu_in_training;
 		menu.retry_training = menu_retry_training;
+		menu.keep_replay = menu_keep_replay;
+		menu.play_replay = menu_play_replay;
+		menu.in_replay = menu_in_replay;
+		menu.stop_replay = replay_end;
 		menu_init(&menu);
 		if (options.main_menu)
 			menu_open_front();    /* (the main menu first: the game waits at its start until START GAME) */
@@ -1415,7 +1529,7 @@ int main(int argc, char **argv)
 			show_picture(menu_picture);
 			goto pace;
 		}
-		if (program_slowdown() != options.slowdown)
+		if (program_slowdown() != options.slowdown && !replay_playing())
 		{
 			program_set_slowdown(options.slowdown);    /* (changed in the menu) */
 			crash_log_not_replayable("the slowdown setting changed");
@@ -1441,13 +1555,24 @@ int main(int argc, char **argv)
 					break;    /* (the warning over: the attract mode's first picture from the next frame on) */
 				const Uint64 run_began = SDL_GetPerformanceCounter();
 
-				read_keys();
+				if (replay_playing())
+				{
+					/* (a replay: its inputs; over at its end) */
+					if (!replay_next(&cave_board.in0, &cave_board.in1))
+					{
+						replay_over = true;
+						break;
+					}
+				}
+				else
+					read_keys();
 				picture_wanted = options.arcade_timing && count == frames - 1;
 				crash_log_frame();
 				program_run_frame();
 				meter_board_frame();
-				widgets_frame(!state_loaded && !cheats_any_on() && options.slowdown);    /* (the side panels) */
-				cheats_apply();
+				widgets_frame(!state_loaded && !cheats_any_on() && options.slowdown && !replay_playing());
+				if (!replay_playing())
+					cheats_apply();    /* (a replay is its inputs alone) */
 				if (fast || skip)
 					cave_sound_drop();
 				else
@@ -1459,13 +1584,38 @@ int main(int argc, char **argv)
 					state_loaded = true;    /* (an assist: the game doesn't count) */
 					crash_log_not_replayable("a cheat was on");
 				}
-				hiscore_frame(options.save_high_scores, !state_loaded);
-				if (state_loaded && !cheats_any_on() && hiscore_between_games())
+				if (replay_playing())
 				{
-					state_loaded = false;      /* (a new game: its scores are kept again) */
-					hiscore_game_not_kept();    /* (the table as the file has it: none of that game's scores) */
+					hiscore_frame(replay_has_table, false);    /* (the table as the recording had it put back) */
+					if (!replay_after_playback_frame())
+						menu_notice("THE REPLAY IS OUT OF STEP");
+				}
+				else
+				{
+					hiscore_frame(options.save_high_scores, !state_loaded);
+					if (state_loaded && !cheats_any_on() && hiscore_between_games())
+					{
+						state_loaded = false;      /* (a new game: its scores are kept again) */
+						hiscore_game_not_kept();    /* (the table as the file has it: none of that game's scores) */
+					}
+					if (replay_after_frame())
+					{
+						ask_replay = true;    /* (a game over: its replay kept or not) */
+						break;
+					}
 				}
 				spend(SPENT_RUN, run_began);
+			}
+			if (replay_over)
+			{
+				replay_over = false;
+				replay_end();
+				menu_notice("END OF THE REPLAY");
+			}
+			else if (ask_replay)
+			{
+				ask_replay = false;
+				menu_ask_save_replay();
 			}
 			if (training_on && options.training_retry)
 			{

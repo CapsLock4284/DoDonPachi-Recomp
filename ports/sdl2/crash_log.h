@@ -42,4 +42,19 @@ void crash_log_not_replayable(const char *why);
 /* The program ends as it should: no crash to write at the exit */
 void crash_log_finish(void);
 
+/* The run as kept so far (replay.h saves a game's replay from it): its frames' inputs (IN0, IN1 of each, active low),
+   how many, the EEPROM as it began (CAVE_EEPROM_WORDS), the slowdown and version, the high score table put back after
+   the boot (100 bytes; has_table false: none), and whether it is its inputs alone */
+typedef struct
+{
+	const uint16_t *frames;
+	uint32_t count;
+	const uint16_t *eeprom;
+	bool slowdown, has_table, replayable;
+	int version;
+	const uint8_t *table;
+} crash_log_run;
+
+void crash_log_view(crash_log_run *out);
+
 #endif

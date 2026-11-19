@@ -92,6 +92,18 @@ void crash_log_finish(void)
 	finished = true;
 }
 
+void crash_log_view(crash_log_run *out)
+{
+	out->frames = run.frames;
+	out->count = run.count;
+	out->eeprom = run.eeprom;
+	out->slowdown = run.slowdown != 0;
+	out->has_table = run.has_table != 0;
+	out->replayable = !run.not_replayable[0] && run.eeprom_taken;
+	out->version = run.version;
+	out->table = run.table;
+}
+
 static void put32(FILE *file, uint32_t value)
 {
 	for (int byte = 0; byte < 4; byte++)

@@ -42,6 +42,10 @@ typedef struct
 	bool (*training)(void);     /* the game run to the training's place (options' [training]): false if it failed */
 	bool (*in_training)(void);  /* a training game is being played */
 	void (*retry_training)(void);   /* back to the training's place */
+	void (*keep_replay)(bool keep);     /* the game just over: its replay saved (true) or let go */
+	bool (*play_replay)(const char *file);    /* a replay played from its start (false: it could not be) */
+	bool (*in_replay)(void);    /* a replay is playing */
+	void (*stop_replay)(void);  /* the replay stopped (the main menu's replays page then up) */
 } menu_host;
 
 void menu_init(const menu_host *host);
@@ -57,6 +61,12 @@ bool menu_in_front(void);
 
 /* The main menu's TRAINING page (from a training game's TRAINING MENU: the game reset first) */
 void menu_open_training(void);
+
+/* The main menu's REPLAYS page (a replay stopped: the game reset first) */
+void menu_open_replays(void);
+
+/* A game is over: "SAVE THIS GAME'S REPLAY?", YES or NO (host.keep_replay), over the paused game */
+void menu_ask_save_replay(void);
 
 /* An event while it is open: true when the menu took it (all are taken while it is open) */
 bool menu_event(const SDL_Event *event);
