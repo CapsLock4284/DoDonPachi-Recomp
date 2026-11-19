@@ -122,6 +122,9 @@ MAME's cheat file for DoDonPachi (`cheats/ddonpach.xml` beside the program, from
 cheats are listed after them. A game with a cheat on counts for nothing: no high scores, stage bests, achievements,
 statistics or replay.
 
+The menus have sounds of the game's own (its ship select's cursor and choice, and a short one for going back), and
+an achievement earned plays the extra life's; at the game's own levels, under VOLUME as the game is.
+
 Difficulty (DIFFICULTY in the game options): EASY, NORMAL (the arcade's default), HARD or VERY HARD, the test mode's
 own GAME DIFFICULTY setting, so there is no need to go into the test mode for it. It sets each stage's base rank (how
 hard the enemies' patterns are): EASY keeps it at the lowest all game, NORMAL raises it stage by stage, HARD starts

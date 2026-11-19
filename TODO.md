@@ -138,9 +138,16 @@
       stage); the high score chase and the stage bests per ship and style
 - [x] The options menu (Escape / View): DonPachi Recomp's, in DoDonPachi's own font (its text layer's 8x8 tiles,
       8 bits a pixel, ASCII as they are): options, game options (slowdown, C button auto-fire, fast forward speed,
-      the test mode, cheats), graphics, controls (remapping, both players, the hotkeys). Silent for now (DonPachi
-      Recomp's menu sounds are that game's samples).
-- [ ] The menu's sounds, from DoDonPachi's own samples (the YMZ280B's).
+      the test mode, cheats), graphics, controls (remapping, both players, the hotkeys). Its sounds: below.
+- [x] **The menu's sounds, from DoDonPachi's own samples** (the YMZ280B's; owner, 18-11-2026: before the first
+      release; `ports/sdl2/ui_sound.c`, as DonPachi Recomp's): MOVE the ship select's cursor ($2F1A68), CHOOSE its
+      choice ($2F2AF1), BACK a short one of the game's ($2F465A), and the achievement pop-up the extra life's
+      ($12960A): the owner's choice, by ear, of eleven the game plays (logged as each of the chip's voices starts:
+      the coin, Start, the ship select, a power-up, a bee, an extra life; decoded to listen to, never kept in the
+      repository). Decoded as the chip does (4-bit ADPCM at the game's frequency $5C, about 16,021 a second), at the
+      game's own level for each, to 48 kHz, and mixed over the game's sound; while the menu has the game paused,
+      over silence at the board's pace. Checked: the port's own sound output recorded (SDL's disk driver): each cursor
+      move, the choice and going back where they were pressed, at the samples' own levels
 - [x] **Input latency checked against the arcade, exact** (owner, 18-11-2026: "I want this to be exact"): measure,
       frame by frame, how many frames pass from a key press to the first picture that answers it, and compare with
       the board. On the board: the inputs are read by the game's code at a known point of its frame (in the vblank

@@ -70,6 +70,7 @@
 #include "rom_drop.h"
 #include "training.h"
 #include "updater.h"
+#include "ui_sound.h"
 #include "scaler.h"
 #include "settings.h"
 #include "window_icon.h"
@@ -431,11 +432,35 @@ static void audio_queue(void)
 		audio_restart();
 	while ((count = cave_sound_take(samples, 2048u)) > 0)
 	{
+		ui_sound_mix(samples, count);    /* (the port's own: the menus', the achievement pop-up's) */
 		if (options.volume < 100)
 			for (unsigned index = 0; index < count; index++)
 				samples[index] = (int16_t)(samples[index] * options.volume / 100);
 		SDL_QueueAudio(audio, samples, (Uint32)(count * sizeof(int16_t)));
 	}
+}
+
+/* the menu's frame, the game paused: its sounds (ui_sound.h) queued, with silence between them, at the board's pace */
+static void audio_menu_frame(void)
+{
+	static uint64_t made;    /* (the output's samples, kept exact from frame to frame) */
+	int16_t samples[2048] = { 0 };
+	unsigned count;
+
+	if (!audio)
+		return;
+	made += (uint64_t)CAVE_SOUND_RATE * CAVE_FRAME_USEC;
+	count = (unsigned)(made / 1000000u);
+	made %= 1000000u;
+	if (count > 2048u)
+		count = 2048u;
+	if (SDL_GetQueuedAudioSize(audio) > audio_bytes(AUDIO_MOST_MS))
+		audio_restart();
+	ui_sound_mix(samples, count);
+	if (options.volume < 100)
+		for (unsigned index = 0; index < count; index++)
+			samples[index] = (int16_t)(samples[index] * options.volume / 100);
+	SDL_QueueAudio(audio, samples, (Uint32)(count * sizeof(int16_t)));
 }
 
 /* ---- the EEPROM's file: loaded before the first frame, saved soon after the game changes it, and at the end ---- */
@@ -1604,6 +1629,7 @@ int main(int argc, char **argv)
 			static uint32_t menu_picture[VIDEO_WIDTH * VIDEO_HEIGHT];
 
 			menu_tick();
+			audio_menu_frame();
 			menu_draw(picture, menu_picture);
 			show_picture(menu_picture);
 			goto pace;
@@ -1696,7 +1722,10 @@ int main(int argc, char **argv)
 				const char *const name = achievements_next_shown();
 
 				if (name && panels_shown())
+				{
 					widgets_toast(name, more);
+					ui_sound_play(UI_SOUND_ACHIEVEMENT);
+				}
 				else if (name)
 				{
 					char text[48];

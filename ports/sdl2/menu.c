@@ -16,6 +16,7 @@
 #include "hiscore.h"
 #include "stats.h"
 #include "updater.h"
+#include "ui_sound.h"
 #include "replay.h"
 #include "scaler.h"
 
@@ -745,6 +746,14 @@ static void navigate(int nav)
 {
 	const int item = items[selected];
 
+	/* (the menu's sounds, ui_sound.h: the cursor's, a choice's, going back's) */
+	if (nav == NAV_UP || nav == NAV_DOWN || nav == NAV_LEFT || nav == NAV_RIGHT)
+		ui_sound_play(UI_SOUND_MOVE);
+	else if (nav == NAV_CHOOSE)
+		ui_sound_play(item == ITEM_BACK || item == ITEM_RESUME || item == ITEM_NO || item == ITEM_DELETE_NO
+			|| item == ITEM_UPDATE_NO ? UI_SOUND_BACK : UI_SOUND_CHOOSE);
+	else if ((nav == NAV_BACK || nav == NAV_CLOSE) && page != PAGE_FRONT)
+		ui_sound_play(UI_SOUND_BACK);
 	switch (nav)
 	{
 	case NAV_UP:
