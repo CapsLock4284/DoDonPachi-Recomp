@@ -605,7 +605,8 @@ static void draw_percent(panel *p, int y, const char *name, unsigned lagged, uns
 	put_right(p, y, text, WHITE, 1);
 }
 
-static void draw_bees(panel *p);
+static int draw_bees(panel *p);
+static void draw_input(panel *p, int top);
 
 static void draw_left(panel *p)
 {
@@ -654,7 +655,7 @@ static void draw_left(panel *p)
 		draw_percent(p, 210, "THIS STAGE", showing ? speed.stage_lagged : 0u, showing ? speed.stage_frames : 0u);
 		draw_percent(p, 222, "THIS GAME", run.on ? speed.game_lagged : 0u, run.on ? speed.game_frames : 0u);
 	}
-	draw_bees(p);
+	draw_input(p, draw_bees(p) + 3);
 }
 
 /* ---- the bees: the stage's 13, each greyed until it is taken ---- */
@@ -729,9 +730,10 @@ static void draw_bee(panel *p, int x, int y, bool taken)
 		}
 }
 
-#define BEES_TOP    240
+#define BEES_TOP    234
 
-static void draw_bees(panel *p)
+/* (the bees' section; its foot, for the controls under it) */
+static int draw_bees(panel *p)
 {
 	const unsigned taken = run.on && run.bee_area >= 0 ? run.bees[run.bee_area] : 0u;
 	/* (as many to a row as fit, 14 pixels apart at least: the bee leaves the sides of its icon clear) */
@@ -754,7 +756,49 @@ static void draw_bees(panel *p)
 		const int in_row = row == rows - 1 ? BEES - row * per_row : per_row;
 		const int left = 8 + (room - ((in_row - 1) * step + BEE_ICON)) / 2;    /* (each row centred) */
 
-		draw_bee(p, left + column * step, BEES_TOP + 24 + row * (BEE_ICON + 1), (unsigned)bee < taken);
+		draw_bee(p, left + column * step, BEES_TOP + 22 + row * BEE_ICON, (unsigned)bee < taken);
+	}
+	return BEES_TOP + 22 + rows * BEE_ICON;
+}
+
+/* ---- the controls (as DonPachi Recomp's): what the board is given, the stick and the three buttons ---- */
+
+#define INPUT_CELL  8           /* the stick's cells, 8 apart (7 wide: a pixel between them) */
+
+static void draw_input(panel *p, int top)
+{
+	const bool showing = run.on && in_game();
+	const uint16_t held = (uint16_t)~(run.player ? cave_board.in1 : cave_board.in0);
+	const uint32_t frame = showing ? GREY : DIM;
+	/* the stick: a 3 x 3 of cells, the one it points to lit */
+	const int dx = held & CAVE_LEFT ? -1 : held & CAVE_RIGHT ? 1 : 0, dy = held & CAVE_UP ? -1 : held & CAVE_DOWN ? 1 : 0;
+	static const struct { uint16_t bit; char name; } buttons[3] = {
+		{ CAVE_BUTTON1, 'S' }, { CAVE_BUTTON2, 'B' }, { CAVE_BUTTON3, 'C' }
+	};
+	/* (the stick and the buttons together centred: 23 + 10 + 3 x 20 + 2 x 4 pixels) */
+	const int left = (p->w - 101) / 2;
+
+	box(p, 8, top, p->w - 8, top + 1, FRAME);
+	for (int row = -1; row <= 1; row++)
+		for (int column = -1; column <= 1; column++)
+		{
+			const int x = left + (column + 1) * INPUT_CELL, y = top + 4 + (row + 1) * INPUT_CELL;
+
+			if (showing && row == dy && column == dx)
+				box(p, x, y, x + INPUT_CELL - 1, y + INPUT_CELL - 1, row == 0 && column == 0 ? GREY : GOLD);
+			else
+				outline(p, x, y, x + INPUT_CELL - 1, y + INPUT_CELL - 1, row == 0 && column == 0 ? DIM : frame);
+		}
+	for (int button = 0; button < 3; button++)
+	{
+		const int x = left + 33 + button * 24, y = top + 9;
+		const bool on = showing && (held & buttons[button].bit);
+
+		if (on)
+			box(p, x, y, x + 20, y + 13, GOLD);
+		else
+			outline(p, x, y, x + 20, y + 13, frame);
+		put_char(p, x + 6, y + 3, buttons[button].name, on ? 0x10101Cu : frame, 1);
 	}
 }
 

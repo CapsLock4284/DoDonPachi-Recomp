@@ -106,6 +106,11 @@
       mode ($1017A6: $B the ship select, 7 playing, 8 the continue's count down, 4 the ranking) now says when a game
       is on and when a new one begins; the high score file's "a new game" (a tainted game's next) the same. A
       real continue still makes its stage UNRANKED (its score starts again from 0 part way); the stages after count.
+- [x] **The input display, as DonPachi Recomp's** (owner, 18-11-2026): at the left panel's foot, under the bees, the
+      stick (3 x 3 cells, the way it points lit) and the S, B and C buttons, lit while held: what the board is given
+      each frame (IN0, or IN1 when the panel follows player 2), so what the game reads. The bees' section a little
+      tighter for the room (at 120 wide: the bees in two rows, the controls under them). Checked on pictures
+      (`tests/panels_shot` at 120, 156 and 251 wide: the stick and SHOT lit as the test player holds them)
 - [ ] Side panel ideas still open: the lives; the hit counter's chain (the GP gauge's DoDonPachi equivalent);
       the boss's health; the stage's progress (its scroll position); the run's statistics (bombs used, misses by
       stage); the high score chase and the stage bests per ship and style
