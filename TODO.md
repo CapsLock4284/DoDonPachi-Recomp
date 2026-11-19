@@ -111,6 +111,23 @@
       each frame (IN0, or IN1 when the panel follows player 2), so what the game reads. The bees' section a little
       tighter for the room (at 120 wide: the bees in two rows, the controls under them). Checked on pictures
       (`tests/panels_shot` at 120, 156 and 251 wide: the stick and SHOT lit as the test player holds them)
+- [ ] **Bullet count with the slowdown** (owner, 18-11-2026): on the left panel, under the slowdown, the enemy
+      bullets on screen now, and a small graph of the count over the last seconds beside the slowdown's, so the
+      player sees why the game slows down. The bullets: the records at $106CB6 ($40 each) that func_0057EE tests
+      (the same table as the bullet hitboxes'): the count of those in play each frame (their in-play flag and the
+      table's length to find, from the routine that makes them); read only, the game not changed
+- [ ] **MAYBE: the second loop's qualification** (owner, 18-11-2026: maybe): whether this game can still reach loop 2
+      ("LOOP 2: ON TRACK, 1 MORE MISS ALLOWED"), from the game's own rule (the lives lost and bombs used in loop 1, a
+      continue; to read from the code that decides it at 1-6's end, not from memory), and the true last boss's own
+      conditions in loop 2 the same way
+- [ ] **MAYBE: a death map** (owner, 18-11-2026: maybe): where each life was lost and each bomb used in a stage, as
+      marks on a bar of the stage's progress (its scroll position, $10198E), kept across games (in a file beside
+      `ddonpach.stages`), so the stages' hard places show
+- [ ] **MAYBE: the next extra life** (owner, 18-11-2026: maybe): the score of the next extend and how far there is to
+      go, from the game's own extend scores (to find, where it gives the life: game_watch.c's "extended" event)
+- [ ] **MAYBE: a hit chain meter** (owner, 18-11-2026: maybe): the live hit count large, the chain's timer draining as
+      a bar, and the best chain this stage and this game ($101842: player 1's MAX HIT; the count and its timer to
+      find)
 - [ ] Side panel ideas still open: the lives; the hit counter's chain (the GP gauge's DoDonPachi equivalent);
       the boss's health; the stage's progress (its scroll position); the run's statistics (bombs used, misses by
       stage); the high score chase and the stage bests per ship and style
