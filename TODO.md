@@ -233,6 +233,31 @@
       (`tests/training_check`: 0.3-4.6 s each on the build machine, the bosses of 1-3 and 2-3 the longest).
       Still to do, as DonPachi Recomp's: a point part way through a stage, the mid-bosses, the difficulty, ON PACE
       power, the true last boss (2-6's second), a quicker way (1-1's boss is waited out)
+- [ ] **Training: ON PACE power and bombs** (owner, 18-11-2026: "so we're not hugely overpowered or underpowered when
+      fighting bosses"), as DonPachi Recomp's POWER: ON PACE: the power a player would have at the place from the
+      power-ups on the way there, not 1 or MAX. In DoDonPachi a power-up raises both weapons a level (the style's own
+      and the other, 0-4 each: GM_OWN_POWER / GM_OTHER_POWER), so ON PACE is a count of the power-ups (P items) before
+      each place: each stage's start, its mid-boss, its boss, from 1-1 on (in loop 2 the power carries over: likely
+      MAX from early on). To find: the power-up items, by logging them as they come out (the item records and the P's
+      sprite; their carriers) in a run that shoots everything (the test player with P1 INVINCIBLE, tests/cheats_check,
+      both loops), and checked against the ship's power as it reaches each place. Then a table as DonPachi Recomp's
+      (training.c's on_pace) and ON PACE in POWER's choices, the menu showing the level it gives ("ON PACE (3)").
+      Bombs the same if it makes a difference: the stock and its most (3 to 6: what raises the most, and what bomb
+      items do, to read from the code); DonPachi Recomp found it made no difference there
+- [ ] **MAYBE: a novice mode** (owner, 18-11-2026: maybe, not now): an easier game for a loop or both, fewer bullets
+      and/or enemies. In order, safest first:
+      1. the arcade's own difficulty (the test mode's, in the EEPROM) in the game options, as DonPachi Recomp's
+         DIFFICULTY: authentic; what it changes in DoDonPachi to look at first
+      2. a slower game speed (75%, 50%): every bullet where the arcade puts it, only slower; for training too
+      3. fewer bullets: of the bullets fired each frame (the records at $106CB6, +0 bit 15 in play; the side panel
+         counts them), some taken away by a fixed rule (every other one): the patterns thinner, the same shape. To
+         check: bullets that make others or drive an effect; the whole game run with it (tests/cheats_check's way)
+      4. slower bullets: each one's speed halved as it is fired (its speed in the record to find)
+      5. fewer or weaker enemies: the riskiest (the stages are scripted around them: carriers of power-ups and bees,
+         parts of bigger objects, what comes next); weaker (their health) or firing less is safer than taken away
+      Any of them an assist as the cheats: no high scores, stage bests, achievements or statistics, its own name on
+      the screen; replays still in step (a fixed rule, no chance); loop 1 alone or both (GM_LOOP). Fewer bullets
+      also means less slowdown: one more reason it isn't the arcade's game
 - [x] **Replays** (18-11-2026; `ports/sdl2/replay.c`, on the crash log's recording: crash_log_view): each game, from
       its ship select ($1017A6 = $B) to its end (the mode out of 7/8), asked about at its game over (SAVE THIS GAME'S
       REPLAY?), saved to replays/ as "DDREPLAY": the run from the board's reset (the EEPROM, slowdown, the high score
