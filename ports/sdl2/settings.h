@@ -69,6 +69,8 @@ typedef struct
 	int version;                /* the game's version: 0 the World one, 1 the Japanese (the board description's) */
 	bool skip_warning;          /* the start's WARNING screen run unseen, at once (main.c); true by default */
 	bool main_menu;             /* the main menu as the program starts (menu.h); true by default */
+	bool hitbox;                /* the ships' hitboxes shown (hitbox.h) */
+	bool aura;                  /* the laser's aura shown (hitbox.h) */
 	bool save_high_scores;      /* the high score table kept in ddonpach.hiscore (hiscore.h); true by default */
 	bool free_play;             /* Start drops in the coins a game needs first (cave/free_play.h); true by default */
 	bool arcade_timing;         /* the arcade's input latency exactly: the picture drawn when the vblank interrupt

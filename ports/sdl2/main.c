@@ -58,6 +58,7 @@
 #include "crash_log.h"
 #include "crt.h"
 #include "hiscore.h"
+#include "hitbox.h"
 #include "widgets.h"
 #include "menu.h"
 #include "paths.h"
@@ -976,6 +977,20 @@ static void meter_log_second(double seconds)
 	fflush(meter_log);
 }
 
+/* The picture with the hitboxes and the aura over it, when they are on (hitbox.h): those of the frame whose sprites
+   the picture has, two frames back (three with arcade timing: the picture drawn as the next frame's interrupt
+   returns) */
+static const uint32_t *with_overlays(const uint32_t *pixels)
+{
+	static uint32_t marked[VIDEO_WIDTH * VIDEO_HEIGHT];
+
+	if (!options.hitbox && !options.aura)
+		return pixels;
+	memcpy(marked, pixels, sizeof(marked));
+	hitbox_draw(marked, options.arcade_timing ? 3 : 2, options.hitbox, options.aura);
+	return marked;
+}
+
 /* The picture with the meter over its corner, when it is on */
 static const uint32_t *with_meter(const uint32_t *pixels)
 {
@@ -1578,6 +1593,7 @@ int main(int argc, char **argv)
 				else
 					audio_queue();
 				video_latch_sprites();    /* (VBLANK: the 013 takes the sprites) */
+				hitbox_record();
 				reset_asked = false;      /* (done: the frame began from the reset) */
 				if (cheats_any_on())
 				{
@@ -1638,7 +1654,7 @@ int main(int argc, char **argv)
 		{
 			const Uint64 show_began = SDL_GetPerformanceCounter();
 
-			show_picture(with_meter(menu_with_notice(picture)));
+			show_picture(with_meter(menu_with_notice(with_overlays(picture))));
 			spend(SPENT_SHOW, show_began);
 		}
 pace:

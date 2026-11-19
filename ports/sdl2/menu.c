@@ -67,6 +67,7 @@ enum
 	ITEM_WATCH, ITEM_DELETE, ITEM_DELETE_YES, ITEM_DELETE_NO,    /* a replay chosen */
 	ITEM_YES, ITEM_NO,            /* a game over: its replay saved? */
 	ITEM_STOP_REPLAY,             /* a replay playing: stopped */
+	ITEM_HITBOX, ITEM_AURA,       /* the game options': the overlays (hitbox.h) */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -82,7 +83,7 @@ static const char *const item_labels[] = {
 	"FPS METER", "RENDERER", "SIDE PANELS", "START GAME", "SETTINGS", "MAIN MENU", "MAIN MENU AT START",
 	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
 	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
-	"STOP REPLAY"
+	"STOP REPLAY", "HITBOX", "AURA"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -209,8 +210,8 @@ static void build_items(void)
 	}
 	else if (page == PAGE_GAME)
 	{
-		static const int game_items[] = { ITEM_TIMING, ITEM_FREE_PLAY, ITEM_HIGH_SCORES, ITEM_SKIP_WARNING,
-			ITEM_FRONT_AT_START, ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
+		static const int game_items[] = { ITEM_TIMING, ITEM_HITBOX, ITEM_AURA, ITEM_FREE_PLAY, ITEM_HIGH_SCORES,
+			ITEM_SKIP_WARNING, ITEM_FRONT_AT_START, ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
 
 		for (size_t index = 0; index < sizeof(game_items) / sizeof(game_items[0]); index++)
 			if (!(front && game_items[index] == ITEM_TEST_MODE))    /* (no game running to hold the switch for) */
@@ -331,6 +332,12 @@ static void change(int item, int step, bool wrap)
 		break;
 	case ITEM_FRONT_AT_START:
 		in_use->main_menu = file->main_menu = !in_use->main_menu;
+		break;
+	case ITEM_HITBOX:
+		in_use->hitbox = file->hitbox = !in_use->hitbox;
+		break;
+	case ITEM_AURA:
+		in_use->aura = file->aura = !in_use->aura;
 		break;
 	case ITEM_T_STAGE:
 		in_use->training_stage = file->training_stage = cycle(in_use->training_stage, 12, step, wrap);
@@ -1109,6 +1116,12 @@ static void item_value(int item, char *out, size_t size)
 		break;
 	case ITEM_FRONT_AT_START:
 		snprintf(out, size, "%s", s->main_menu ? "ON" : "OFF");
+		break;
+	case ITEM_HITBOX:
+		snprintf(out, size, "%s", s->hitbox ? "ON" : "OFF");
+		break;
+	case ITEM_AURA:
+		snprintf(out, size, "%s", s->aura ? "ON" : "OFF");
 		break;
 	case ITEM_T_STAGE:
 		snprintf(out, size, "%d-%d", s->training_stage / 6 + 1, s->training_stage % 6 + 1);

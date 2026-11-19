@@ -76,6 +76,11 @@ it, and with RETRY ON MISS a miss goes back to it a second later. TRAINING MENU 
 Training games don't count for high scores or the stages' bests. Its choices are kept in `[training]` in
 `ddonpach.ini`.
 
+Overlays (HITBOX and AURA in the game options, `hitbox` and `aura` in `ddonpach.ini`; off by default): the ship's
+hitbox as a white glowing dot (the box the game tests the enemies' bullets against: much smaller than the ship),
+and, while the laser is fired, its aura as a light blue box (where the laser hits enemies close up, around the
+ship). Read from the game's own records each frame and drawn over the picture only: the game is not changed.
+
 Replays: every game is recorded as it is played. At its game over the game asks whether to keep its replay (saved
 in `replays/` beside the program, a file of about 14 KB a minute that can be shared); REPLAYS on the main menu lists
 them (the date, how far, the score) to watch or delete. Playback runs from the board's reset as the game did (the
