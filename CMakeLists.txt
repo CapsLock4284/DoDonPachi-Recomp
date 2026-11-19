@@ -104,11 +104,12 @@ if(SDL2_FOUND)
 	add_executable(ddonpach WIN32 ports/sdl2/main.c ports/sdl2/settings.c ports/sdl2/rom_drop.c ports/sdl2/paths.c
 		ports/sdl2/crt.c ports/sdl2/scaler.c ports/sdl2/crash_log.c ports/sdl2/menu.c ports/sdl2/hiscore.c
 		ports/sdl2/widgets.c ports/sdl2/training.c ports/sdl2/replay.c
-		ports/sdl2/hitbox.c)
+		ports/sdl2/hitbox.c ports/sdl2/game_watch.c ports/sdl2/achievements.c ports/sdl2/stats.c ports/sdl2/updater.c)
 	target_link_libraries(ddonpach PRIVATE ddonpach_game ${DDONPACH_SDL2})
 	target_compile_definitions(ddonpach PRIVATE DDONPACH_VERSION="${PROJECT_VERSION}")
 	if(WIN32)
 		target_sources(ddonpach PRIVATE ports/sdl2/icon/ddonpach.rc)    # (the .exe's icon)
+		target_link_libraries(ddonpach PRIVATE winhttp)    # (updater.c: the newest release looked up and downloaded)
 		add_custom_command(TARGET ddonpach POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:SDL2::SDL2> $<TARGET_FILE_DIR:ddonpach>)
 	elseif(UNIX AND NOT APPLE)

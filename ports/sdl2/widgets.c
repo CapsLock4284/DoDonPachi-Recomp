@@ -316,8 +316,29 @@ static void stage_end(uint32_t score)
 	}
 }
 
+/* ---- an achievement earned: a box over the right panel's top ---- */
+
+#define TOAST_FRAMES 230    /* 4 seconds */
+
+static char toast_name[32];
+static int toast_frames, toast_more;
+
+void widgets_toast(const char *name, int more)
+{
+	snprintf(toast_name, sizeof(toast_name), "%s", name);
+	toast_frames = TOAST_FRAMES;
+	toast_more = more;
+}
+
+bool widgets_toast_busy(void)
+{
+	return toast_frames > 0;
+}
+
 void widgets_frame(bool clean)
 {
+	if (toast_frames > 0)
+		toast_frames--;
 	const bool lagged = program_frame_lagged();
 
 	if (!lagged && ((byte_at(NO_GAME) & 0x80u) || word(GAME_MODE) == 0xBu))
@@ -927,6 +948,62 @@ static void draw_right(panel *p)
 	draw_stages(p, score);
 }
 
+static void draw_toast(panel *p)
+{
+	const int top = 18, bottom = 102, w = p->w;
+	/* the frame flashes for its first half second */
+	const uint32_t rim = TOAST_FRAMES - toast_frames < 30 && (TOAST_FRAMES - toast_frames) / 5 % 2 ? WHITE : GOLD;
+	char first[32], second[32] = "";
+
+	box(p, 4, top, w - 4, bottom, HEADER);
+	outline(p, 4, top, w - 4, bottom, rim);
+	outline(p, 6, top + 2, w - 6, bottom - 2, FRAME);
+	{
+		/* a little gold trophy: the cup, its handles, the stem and the base */
+		const int c = w / 2, y = top + 6;
+
+		box(p, c - 5, y, c + 6, y + 6, GOLD);
+		box(p, c - 4, y + 6, c + 5, y + 7, GOLD);
+		box(p, c - 3, y + 7, c + 4, y + 8, GOLD);
+		box(p, c - 8, y + 1, c - 5, y + 2, GOLD);
+		box(p, c - 8, y + 1, c - 7, y + 4, GOLD);
+		box(p, c - 8, y + 3, c - 5, y + 4, GOLD);
+		box(p, c + 6, y + 1, c + 9, y + 2, GOLD);
+		box(p, c + 8, y + 1, c + 9, y + 4, GOLD);
+		box(p, c + 6, y + 3, c + 9, y + 4, GOLD);
+		box(p, c - 3, y + 1, c - 1, y + 5, 0xFFF0A0u);
+		box(p, c, y + 8, c + 1, y + 11, GOLD);
+		box(p, c - 3, y + 11, c + 4, y + 13, GOLD);
+	}
+	put_centre(p, top + 25, "ACHIEVEMENT", GOLD, 1);
+	put_centre(p, top + 35, "UNLOCKED", GOLD, 1);
+	/* the name: on two lines when it is wider than the panel (at its last space that fits) */
+	snprintf(first, sizeof(first), "%s", toast_name);
+	if (text_width(first, 1) > w - 16)
+	{
+		char *space = NULL;
+
+		for (char *at = first; *at && text_width(first, 1) - text_width(at, 1) <= w - 16; at++)
+			if (*at == ' ')
+				space = at;
+		if (space)
+		{
+			snprintf(second, sizeof(second), "%s", space + 1);
+			*space = '\0';
+		}
+	}
+	put_centre(p, top + (second[0] ? 49 : 54), first, WHITE, 1);
+	if (second[0])
+		put_centre(p, top + 59, second, WHITE, 1);
+	if (toast_more > 0)
+	{
+		char more[16];
+
+		snprintf(more, sizeof(more), "+%d MORE", toast_more);
+		put_centre(p, top + 72, more, GREY, 1);
+	}
+}
+
 void widgets_draw(uint32_t *left, uint32_t *right, int width)
 {
 	panel p;
@@ -940,4 +1017,6 @@ void widgets_draw(uint32_t *left, uint32_t *right, int width)
 	draw_left(&p);
 	p.pixels = right;
 	draw_right(&p);
+	if (toast_frames > 0)
+		draw_toast(&p);
 }

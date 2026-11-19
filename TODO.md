@@ -216,7 +216,15 @@
       game of a run recorded from the power on, played back from a reset: in step all the way, the same end) and the
       port (a game over, YES, the file played back in step). Still to do, as DonPachi Recomp's: names for replays,
       training attempts as replays, a replay of a game quit part way, pause and frame step in playback
-- [ ] Achievements, statistics, hitbox:
+- [x] **Achievements and statistics** (18-11-2026; `ports/sdl2/achievements.c`, `stats.c`, on `game_watch.c`:
+      the game's events each frame from its memory, `game_memory.h`): 24 achievements (the stages and loops, one
+      credit, no miss, no bomb, the bees, hit combos 100/500/1000 ($101842, player 1's MAX HIT), scores 10M/50M/100M,
+      full power, 6 bombs, an extra life, two players, every ship, both styles, 5 minutes without dying), a toast on
+      the right panel; the statistics' totals, records, each stage's and each ship's. Checked headless over a whole
+      two-loop game (tests via the test players) and the port's pages. Player 1 only for the lives, the combo and
+      the score (player 2's places to find).
+- [ ] Achievements, statistics: more (DonPachi Recomp's area targets have DoDonPachi equivalents to find: the
+      hidden 1-ups, the true last boss)
       each reads DonPachi's memory; DoDonPachi's addresses to find.
 - [x] **The hitbox and aura overlays** (18-11-2026; `ports/sdl2/hitbox.c`, GAME OPTIONS > HITBOX and AURA): the
       ship's box from its record (+06/+08 the position, +10..+16 the reach: the bullets' test, func_0057EE), and
@@ -224,5 +232,18 @@
       type A shot's reaches 56 pixels ahead, 16 behind and to the sides). Drawn two frames back (three with arcade
       timing): measured, the ship's sprite against its record. Checked on pictures (headless and the port).
 - [x] **The aura overlay, not a priority** (owner, 18-11-2026: "would be cool to see"): DoDonPachi's ship has an aura, a small space around it where enemies take extra damage from its shots. An overlay as DonPachi Recomp's HITBOX shows the ship's hitbox, drawing the aura's range around the ship (an option, off by default; never changing the game). To find: where the game tests an enemy against the aura (its range, from the ship's position in its record at $102C8C, and whether it differs for shot and laser), in the code that adds an enemy's damage
-- [ ] **Update from inside the program** (owner, 18-11-2026; DonPachi Recomp's TODO has the same): the options menu checks for a newer release and installs it, with no download or extracting by hand: GitHub's releases API for the latest tag (WinHTTP on Windows, libcurl on Linux, in the background, when the player asks), the release's zip downloaded and checked (size, SHA-256), unpacked beside the program, the exe swapped on the next start (a running .exe cannot overwrite itself). The player's files stay (settings, EEPROM, high scores, ddonpach.dat). The repository is private: an update from it needs the releases somewhere public (a public releases-only repository, or the repository made public), never a token in the program. After the release package
-- [ ] A release package (tools/make_release.ps1, as DonPachi Recomp's).
+- [x] **Update from inside the program** (owner, 18-11-2026: "ask, then install"; the repository made public for
+      it; `ports/sdl2/updater.c`, the same file in DonPachi Recomp): as the program starts ([game] check_updates,
+      CHECK FOR UPDATES in the game options, on by default) GitHub's releases/latest is looked up on a thread
+      (WinHTTP on Windows, the curl command on Linux); a newer tag with an asset ending "-win64.zip" (Linux
+      "-linux-x64.tar.gz") puts UPDATE TO V... at the top of the main menu; its page asks (YES, UPDATE / NOT NOW),
+      downloads with a percentage, checks the asset's SHA-256 (GitHub's "digest"), unpacks it (the runtime's
+      inflate; .zip and .tar.gz; its top folder left off; no ".." or drive in a name) into update_new/, renames each
+      file it replaces to .old (Windows lets a running .exe be renamed) and moves the new one in (all put back if one
+      fails), then the program saves and closes and starts the new one with the same arguments; the next start
+      deletes the .old files (update_old.txt). The player's files are never in the package. Checked:
+      `tests/updater_check` against DonPachi Recomp's real 0.9.0 release (its JSON, both packages, the install and
+      restart, the clean-up), and the port itself pointed at that release (offscreen: the entry, the question, the
+      download, the install, the restart)
+- [ ] A release package (tools/make_release.ps1, as DonPachi Recomp's): the asset's name must end "-win64.zip"
+      (and "-linux-x64.tar.gz" for Linux) and the release's tag be the version ("v0.2.0"), for the updater to find it.

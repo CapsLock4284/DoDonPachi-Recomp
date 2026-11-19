@@ -8,8 +8,8 @@ a model of Cave's 68000 board. It is the second game of the family, after
 **Status: early, playable.** The whole program translates to C, builds on Cave68kSDK and plays in a window with
 its sound, and it runs exactly as the original does on MAME's 68000 core, slowdown and all (checked frame by frame
 over 150,000 VBLANKs). The window port is DonPachi Recomp's, cut down for now: its options menu (Escape, or the
-gamepad's View button), a main menu with training and replays, high scores kept, and its own side panels; none of
-DonPachi Recomp's other extras yet (achievements, statistics).
+gamepad's View button), a main menu with training, replays, achievements and statistics, high scores kept, and its
+own side panels.
 
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
 `ddonpachj`. No ROMs, and nothing extracted from them, are part of this repository.
@@ -76,6 +76,14 @@ it, and with RETRY ON MISS a miss goes back to it a second later. TRAINING MENU 
 Training games don't count for high scores or the stages' bests. Its choices are kept in `[training]` in
 `ddonpach.ini`.
 
+Achievements (ACHIEVEMENTS on the main menu): 24 goals, from clearing 1-1 to a one-credit clear of both loops,
+a stage without dying or without bombs, all 13 bees, hit combos, scores, full power, an extra life, every ship.
+Each earned is shown over the right side panel ("ACHIEVEMENT UNLOCKED") and kept in `ddonpach.achievements`.
+Statistics (STATISTICS on the main menu): games, continues, play time, stages and loops cleared, deaths, bombs,
+bees, the best score and hit combo, the longest life, the furthest stage, each stage's clears, deaths and best
+bees, each ship's games and best score; kept in `ddonpach.stats`. Both count arcade games only: not training,
+replays, a game with a cheat or a save state, or one with the slowdown off.
+
 Overlays (HITBOX and AURA in the game options, `hitbox` and `aura` in `ddonpach.ini`; off by default): the ship's
 hitbox as a white glowing dot (the box the game tests the enemies' bullets against: much smaller than the ship),
 and, while the laser is fired, its aura as a light blue box (where the laser hits enemies close up, around the
@@ -92,6 +100,14 @@ controls, before a game) and QUIT TO DESKTOP, with the high score kept. The game
 and runs from there with START GAME, as the board switched on. MAIN MENU in the options menu leaves the game for it
 (the game reset). MAIN MENU AT START in the game options (`main_menu` in `ddonpach.ini`) turns it off: straight into
 the game.
+
+Updates: as the program starts it looks up the newest release on GitHub (in the background; the game does not
+wait). If there is a newer one, the main menu shows UPDATE TO V... at its top; choosing it asks first, then
+downloads the release's package (checked against the SHA-256 GitHub gives for it), puts its files in place of the
+program's own (the replaced ones kept as `.old` until the next start) and starts the program again. Your settings,
+high scores, replays, achievements, statistics, EEPROM and the game's data are never touched. CHECK FOR UPDATES in
+the game options (`check_updates` in `ddonpach.ini`) turns the look-up off. The download is WinHTTP on Windows and
+the `curl` command on Linux.
 
 F3 resets the game, F4 holds the service switch for you (the test mode, from the title or the attract mode), Tab
 (LB) fast-forwards, F5 / F8 save and load a state (F6 / F7 choose the slot, of 5), F9 shows the FPS meter, F11 or Alt+Enter

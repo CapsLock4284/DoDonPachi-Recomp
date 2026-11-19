@@ -55,7 +55,10 @@
  *    Main menu: as the program starts (START GAME, SETTINGS, QUIT TO DESKTOP; [game] main_menu), and from the options'
  *          MAIN MENU (the game reset); the game waits at its start while it is up, and runs from there with START GAME.
  */
+#include "achievements.h"
 #include "crash_log.h"
+#include "game_watch.h"
+#include "stats.h"
 #include "crt.h"
 #include "hiscore.h"
 #include "hitbox.h"
@@ -65,6 +68,7 @@
 #include "replay.h"
 #include "rom_drop.h"
 #include "training.h"
+#include "updater.h"
 #include "scaler.h"
 #include "settings.h"
 #include "window_icon.h"
@@ -250,6 +254,7 @@ static void hotkeys(void)
 				state_loaded = false;
 				crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 				replay_reset();
+				game_watch_reset();
 				menu_notice("RESET");
 			}
 		}
@@ -475,6 +480,19 @@ static void hiscores_open(void)
 	snprintf(path, sizeof(path), "%s%s", paths_folder(), rom_set.version ? "ddonpach_jpn.stages" : "ddonpach.stages");
 	if ((problem = widgets_open(path)) != NULL)
 		fprintf(stderr, "%s: %s\n", path, problem);
+	{
+		static bool loaded;
+
+		if (!loaded)
+		{
+			/* (the achievements and statistics: once, as the program starts) */
+			snprintf(path, sizeof(path), "%sddonpach.achievements", paths_folder());
+			achievements_load(path);
+			snprintf(path, sizeof(path), "%sddonpach.stats", paths_folder());
+			stats_load(path);
+			loaded = true;
+		}
+	}
 	widgets_reset();
 }
 
@@ -1072,6 +1090,7 @@ static void menu_reset(void)
 	state_loaded = false;
 	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 	replay_reset();
+	game_watch_reset();
 	menu_notice("RESET");
 }
 
@@ -1105,6 +1124,7 @@ static void menu_main_menu(void)
 	state_loaded = false;
 	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 	replay_reset();
+	game_watch_reset();
 	memset(picture, 0, sizeof(picture));
 }
 
@@ -1208,6 +1228,7 @@ static bool menu_play_replay(const char *file)
 	hiscore_reset();
 	crash_log_reset(start.slowdown, rom_set.version, start.has_table ? start.table : NULL);
 	replay_reset();
+	game_watch_reset();
 	while (replay_position() < start.game_begins && replay_next(&cave_board.in0, &cave_board.in1))
 	{
 		crash_log_frame();
@@ -1277,6 +1298,31 @@ static void menu_apply_auto_fire(void)
 static void menu_quit(void)
 {
 	running = 0;
+}
+
+/* ---- the update (updater.h) ---- */
+
+/* the releases' repository on GitHub, and the end of the package's name for this system (tools/make_release) */
+#ifndef UPDATE_REPOSITORY
+#define UPDATE_REPOSITORY "CapsLock4284/DoDonPachi-Recomp"
+#endif
+#ifdef _WIN32
+#define UPDATE_PACKAGE "-win64.zip"
+#else
+#define UPDATE_PACKAGE "-linux-x64.tar.gz"
+#endif
+
+static bool update_restart;             /* installed: the new program started as this one closes */
+
+/* the update downloaded: its files put in place and the program closed to start again (or the menu says why not) */
+static void menu_install_update(void)
+{
+	stats_save();
+	if (updater_install())
+	{
+		update_restart = true;
+		running = 0;
+	}
 }
 
 static int menu_state_slot(int step)
@@ -1397,9 +1443,24 @@ int main(int argc, char **argv)
 	}
 	eeprom_open(options.eeprom[0] ? options.eeprom : NULL);
 	hiscores_open();
+	{
+		/* the files an update left (.old) deleted; the newest release looked up (on its thread: the game goes on) */
+		char *const base = SDL_GetBasePath();
+
+		if (base)
+		{
+			updater_cleanup(base);
+#ifdef DDONPACH_VERSION
+			if (options.check_updates)
+				updater_check(base, UPDATE_REPOSITORY, UPDATE_PACKAGE, DDONPACH_VERSION);
+#endif
+			SDL_free(base);
+		}
+	}
 	/* (the run's inputs kept from its first frame) */
 	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
 	replay_reset();
+	game_watch_reset();
 	cheats_load(options.cheats);
 	for (int cheat = 0; cheat < cheat_count; cheat++)
 		if ((problem = cheats_enable(options.cheats, cheat_names[cheat])) != NULL)
@@ -1474,6 +1535,7 @@ int main(int argc, char **argv)
 		menu.play_replay = menu_play_replay;
 		menu.in_replay = menu_in_replay;
 		menu.stop_replay = replay_end;
+		menu.install_update = menu_install_update;
 		menu_init(&menu);
 		if (options.main_menu)
 			menu_open_front();    /* (the main menu first: the game waits at its start until START GAME) */
@@ -1586,6 +1648,9 @@ int main(int argc, char **argv)
 				program_run_frame();
 				meter_board_frame();
 				widgets_frame(!state_loaded && !cheats_any_on() && options.slowdown && !replay_playing());
+				game_watch_frame(!state_loaded && !cheats_any_on() && options.slowdown && !replay_playing());
+				achievements_frame(true);
+				stats_frame();
 				if (!replay_playing())
 					cheats_apply();    /* (a replay is its inputs alone) */
 				if (fast || skip)
@@ -1621,6 +1686,22 @@ int main(int argc, char **argv)
 					}
 				}
 				spend(SPENT_RUN, run_began);
+			}
+			if (!widgets_toast_busy())
+			{
+				/* an achievement earned: shown over the right panel (or as a notice, the panels off) */
+				const int more = achievements_waiting() - 1;
+				const char *const name = achievements_next_shown();
+
+				if (name && panels_shown())
+					widgets_toast(name, more);
+				else if (name)
+				{
+					char text[48];
+
+					snprintf(text, sizeof(text), "ACHIEVEMENT: %s", name);
+					menu_notice(text);
+				}
 			}
 			if (replay_over)
 			{
@@ -1674,6 +1755,7 @@ pace:
 			next = (now > next + 4u * period) ? now + period : next + period;
 		}
 	}
+	stats_save();
 	crash_log_finish();
 	eeprom_keep(true);
 	for (int slot = 0; slot < STATE_SLOTS; slot++)
@@ -1682,5 +1764,7 @@ pace:
 		SDL_CloseAudioDevice(audio);
 	scaler_quit();
 	SDL_Quit();
+	if (update_restart && !updater_restart(argv))
+		fprintf(stderr, "updated: the new program could not be started, start it again\n");
 	return 0;
 }

@@ -12,7 +12,10 @@
  *    for the cabinet: a tile's row is the picture's column.
  */
 #include "menu.h"
+#include "achievements.h"
 #include "hiscore.h"
+#include "stats.h"
+#include "updater.h"
 #include "replay.h"
 #include "scaler.h"
 
@@ -47,7 +50,7 @@
 #define CHEAT_ROWS   16                 /* the cheats page's: as many shown at a time, scrolled with the choice */
 
 enum { PAGE_MAIN, PAGE_CONTROLS, PAGE_GRAPHICS, PAGE_GAME, PAGE_CHEATS, PAGE_FRONT, PAGE_TRAINING, PAGE_REPLAYS,
-	PAGE_REPLAY_MENU, PAGE_DELETE, PAGE_SAVE_REPLAY };
+	PAGE_REPLAY_MENU, PAGE_DELETE, PAGE_SAVE_REPLAY, PAGE_ACHIEVEMENTS, PAGE_STATS, PAGE_UPDATE };
 enum { NAV_NONE, NAV_UP, NAV_DOWN, NAV_LEFT, NAV_RIGHT, NAV_CHOOSE, NAV_BACK, NAV_CLOSE };
 
 enum
@@ -68,11 +71,16 @@ enum
 	ITEM_YES, ITEM_NO,            /* a game over: its replay saved? */
 	ITEM_STOP_REPLAY,             /* a replay playing: stopped */
 	ITEM_HITBOX, ITEM_AURA,       /* the game options': the overlays (hitbox.h) */
+	ITEM_ACHIEVEMENTS, ITEM_STATISTICS,    /* the main menu's pages */
+	ITEM_UPDATE, ITEM_UPDATE_YES, ITEM_UPDATE_NO,    /* the main menu's, a newer release found (updater.h) */
+	ITEM_CHECK_UPDATES,           /* the game options': the newest release looked up as the program starts */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
 	ITEM_CHEAT = 200,             /* + a cheat of the cheat file (cave/cheats.h) */
-	ITEM_REPLAY = 1000            /* + a replay of the list (replays[]) */
+	ITEM_REPLAY = 1000,           /* + a replay of the list (replays[]) */
+	ITEM_ACHIEVEMENT = 2000,      /* + an achievement (achievements.h) */
+	ITEM_STAT_LINE = 3000         /* + a line of the statistics page (stats.h) */
 };
 
 static const char *const item_labels[] = {
@@ -83,7 +91,8 @@ static const char *const item_labels[] = {
 	"FPS METER", "RENDERER", "SIDE PANELS", "START GAME", "SETTINGS", "MAIN MENU", "MAIN MENU AT START",
 	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
 	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
-	"STOP REPLAY", "HITBOX", "AURA"
+	"STOP REPLAY", "HITBOX", "AURA", "ACHIEVEMENTS", "STATISTICS", "UPDATE", "YES, UPDATE", "NOT NOW",
+	"CHECK FOR UPDATES"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -100,6 +109,8 @@ static int items[128], item_count;
 static int capture = -1;                /* the action waiting for its key or button, or -1 */
 static int capture_frames;
 static int held_direction, held_frames; /* the gamepads' d-pad and stick, for their repeats */
+static bool update_found;               /* a newer release was found: UPDATE TO ... on the main menu */
+static int update_listed = -1;          /* the updater's state the page's entries were made for */
 
 static bool is_action(int item)
 {
@@ -143,9 +154,27 @@ static void build_items(void)
 	item_count = 0;
 	if (page == PAGE_FRONT)
 	{
-		static const int front_items[] = { ITEM_START_GAME, ITEM_TRAINING, ITEM_REPLAYS, ITEM_SETTINGS, ITEM_QUIT };
+		static const int front_items[] = { ITEM_START_GAME, ITEM_TRAINING, ITEM_REPLAYS, ITEM_ACHIEVEMENTS,
+			ITEM_STATISTICS, ITEM_SETTINGS, ITEM_QUIT };
 
+		if (update_found)
+			items[item_count++] = ITEM_UPDATE;    /* (first: seen at once) */
 		add_items(front_items, sizeof(front_items) / sizeof(front_items[0]));
+		update_listed = update_found;
+	}
+	else if (page == PAGE_UPDATE)
+	{
+		/* (asked; while it downloads and installs, only BACK: the download goes on) */
+		const int state = updater_state();
+
+		if (state == UPDATER_AVAILABLE || state == UPDATER_FAILED)
+		{
+			items[item_count++] = ITEM_UPDATE_YES;
+			items[item_count++] = ITEM_UPDATE_NO;
+		}
+		else
+			items[item_count++] = ITEM_BACK;
+		update_listed = state;
 	}
 	else if (page == PAGE_MAIN && front)
 	{
@@ -165,6 +194,20 @@ static void build_items(void)
 	{
 		for (int replay = 0; replay < replay_count; replay++)
 			items[item_count++] = ITEM_REPLAY + replay;
+		items[item_count++] = ITEM_BACK;
+	}
+	else if (page == PAGE_ACHIEVEMENTS)
+	{
+		for (int index = 0; index < achievements_count(); index++)
+			items[item_count++] = ITEM_ACHIEVEMENT + index;
+		items[item_count++] = ITEM_BACK;
+	}
+	else if (page == PAGE_STATS)
+	{
+		const int lines = stats_lines();
+
+		for (int line = 0; line < lines && item_count < 120; line++)
+			items[item_count++] = ITEM_STAT_LINE + line;
 		items[item_count++] = ITEM_BACK;
 	}
 	else if (page == PAGE_REPLAY_MENU)
@@ -211,7 +254,7 @@ static void build_items(void)
 	else if (page == PAGE_GAME)
 	{
 		static const int game_items[] = { ITEM_TIMING, ITEM_HITBOX, ITEM_AURA, ITEM_FREE_PLAY, ITEM_HIGH_SCORES,
-			ITEM_SKIP_WARNING, ITEM_FRONT_AT_START, ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
+			ITEM_SKIP_WARNING, ITEM_FRONT_AT_START, ITEM_CHECK_UPDATES, ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
 
 		for (size_t index = 0; index < sizeof(game_items) / sizeof(game_items[0]); index++)
 			if (!(front && game_items[index] == ITEM_TEST_MODE))    /* (no game running to hold the switch for) */
@@ -332,6 +375,9 @@ static void change(int item, int step, bool wrap)
 		break;
 	case ITEM_FRONT_AT_START:
 		in_use->main_menu = file->main_menu = !in_use->main_menu;
+		break;
+	case ITEM_CHECK_UPDATES:
+		in_use->check_updates = file->check_updates = !in_use->check_updates;    /* (from the next start) */
 		break;
 	case ITEM_HITBOX:
 		in_use->hitbox = file->hitbox = !in_use->hitbox;
@@ -477,12 +523,24 @@ static void back(void)
 		replays_page(replay_chosen);
 		return;
 	}
-	if (page == PAGE_REPLAYS)
+	if (page == PAGE_REPLAYS || page == PAGE_ACHIEVEMENTS || page == PAGE_STATS)
 	{
-		/* (back to the main menu, on REPLAYS) */
+		/* (back to the main menu, on the entry that opened it) */
+		const int opened_by = page == PAGE_REPLAYS ? ITEM_REPLAYS : page == PAGE_STATS ? ITEM_STATISTICS
+			: ITEM_ACHIEVEMENTS;
+
 		page = PAGE_FRONT;
 		build_items();
-		for (selected = 0; selected < item_count - 1 && items[selected] != ITEM_REPLAYS; selected++)
+		for (selected = 0; selected < item_count - 1 && items[selected] != opened_by; selected++)
+			;
+		return;
+	}
+	if (page == PAGE_UPDATE)
+	{
+		/* (back to the main menu, on UPDATE) */
+		page = PAGE_FRONT;
+		build_items();
+		for (selected = 0; selected < item_count - 1 && items[selected] != ITEM_UPDATE; selected++)
 			;
 		return;
 	}
@@ -534,6 +592,23 @@ static void choose(int item)
 		break;
 	case ITEM_REPLAYS:
 		replays_page(0);
+		break;
+	case ITEM_ACHIEVEMENTS:
+		to_page(PAGE_ACHIEVEMENTS);
+		break;
+	case ITEM_STATISTICS:
+		to_page(PAGE_STATS);
+		break;
+	case ITEM_UPDATE:
+		to_page(PAGE_UPDATE);
+		break;
+	case ITEM_UPDATE_YES:
+		updater_download();    /* (on its thread: the page shows how far it is) */
+		build_items();
+		selected = 0;
+		break;
+	case ITEM_UPDATE_NO:
+		back();
 		break;
 	case ITEM_WATCH:
 		if (host.play_replay(replays[replay_chosen].file))
@@ -630,7 +705,7 @@ static void choose(int item)
 		back();
 		break;
 	default:
-		if (item >= ITEM_REPLAY)
+		if (item >= ITEM_REPLAY && item < ITEM_ACHIEVEMENT)
 		{
 			replay_chosen = item - ITEM_REPLAY;
 			to_page(PAGE_REPLAY_MENU);
@@ -907,6 +982,27 @@ void menu_tick(void)
 
 	if (!open)
 		return;
+	if (updater_state() == UPDATER_AVAILABLE)
+		update_found = true;
+	if (page == PAGE_FRONT && update_listed != update_found)
+	{
+		/* (the check has found a newer release while the main menu was up: its entry added, the choice kept) */
+		const int was = items[selected];
+
+		build_items();
+		for (selected = 0; selected < item_count - 1 && items[selected] != was; selected++)
+			;
+	}
+	if (page == PAGE_UPDATE)
+	{
+		if (updater_state() == UPDATER_READY && host.install_update)
+			host.install_update();    /* (the files put in place and the program closed to start again, or FAILED) */
+		if (update_listed != updater_state())
+		{
+			build_items();
+			selected = 0;
+		}
+	}
 	if (capture >= 0)
 	{
 		if (--capture_frames <= 0)
@@ -1060,7 +1156,11 @@ void menu_put_meter(uint32_t *picture, const char *const *lines, int count)
 
 static const char *item_label(int item)
 {
-	if (item >= ITEM_REPLAY)
+	if (item >= ITEM_STAT_LINE)
+		return stats_label(item - ITEM_STAT_LINE);
+	if (item >= ITEM_ACHIEVEMENT)
+		return achievements_name(item - ITEM_ACHIEVEMENT);
+	if (item >= ITEM_REPLAY && item < ITEM_ACHIEVEMENT)
 	{
 		/* a replay: its date, "11-18 18:40" */
 		static char date[16];
@@ -1087,6 +1187,15 @@ static const char *item_label(int item)
 		name[19] = '\0';
 		return name;
 	}
+	if (item == ITEM_UPDATE)
+	{
+		static char label[40];
+
+		snprintf(label, sizeof(label), "UPDATE TO V%s", updater_latest());
+		return label;
+	}
+	if (item == ITEM_UPDATE_YES && updater_state() == UPDATER_FAILED)
+		return "TRY AGAIN";
 	return is_action(item) ? action_labels[item - ITEM_ACTION] : item_labels[item];
 }
 
@@ -1095,7 +1204,19 @@ static void item_value(int item, char *out, size_t size)
 	const settings *const s = host.options;
 
 	out[0] = '\0';
-	if (item >= ITEM_REPLAY)
+	if (item >= ITEM_STAT_LINE)
+	{
+		const char *const value = stats_value(item - ITEM_STAT_LINE);
+
+		snprintf(out, size, "%s", value ? value : "");
+		return;
+	}
+	if (item >= ITEM_ACHIEVEMENT)
+	{
+		snprintf(out, size, "%s", achievements_date(item - ITEM_ACHIEVEMENT) ? "DONE" : "");
+		return;
+	}
+	if (item >= ITEM_REPLAY && item < ITEM_ACHIEVEMENT)
 	{
 		/* its furthest stage and score (the score as the game shows it: its last digit 0) */
 		const replay_info *const r = &replays[item - ITEM_REPLAY];
@@ -1116,6 +1237,9 @@ static void item_value(int item, char *out, size_t size)
 		break;
 	case ITEM_FRONT_AT_START:
 		snprintf(out, size, "%s", s->main_menu ? "ON" : "OFF");
+		break;
+	case ITEM_CHECK_UPDATES:
+		snprintf(out, size, "%s", s->check_updates ? "ON" : "OFF");
 		break;
 	case ITEM_HITBOX:
 		snprintf(out, size, "%s", s->hitbox ? "ON" : "OFF");
@@ -1247,7 +1371,7 @@ static void put_hints(uint32_t *out, const char *first, const char *second)
 /* the first of the cheats (or replays) shown (the list scrolled to keep the choice in it), and how many there are */
 static int cheats_first(int *total)
 {
-	const int rows = page == PAGE_REPLAYS ? REPLAY_ROWS : CHEAT_ROWS;
+	const int rows = page == PAGE_CHEATS ? CHEAT_ROWS : REPLAY_ROWS;
 	const int cheats = item_count - 1, chosen = selected < cheats ? selected : cheats - 1;
 	int first = chosen - rows / 2;
 
@@ -1360,14 +1484,14 @@ static void draw_front(uint32_t *out)
 	{
 		const bool chosen = index == selected;
 		const char *const label = item_label(items[index]);
-		const int x = (PICTURE_W - (int)strlen(label) * 8) / 2, y = 156 + index * 20;
+		const int x = (PICTURE_W - (int)strlen(label) * 8) / 2, y = 156 + index * (item_count > 7 ? 17 : 20);
 
 		if (chosen)
 		{
 			put_glyph(out, x - 16, y, '>', GOLD, 1);
 			put_glyph(out, x + ((int)strlen(label) + 1) * 8, y, '<', GOLD, 1);
 		}
-		put_centre_y(out, y, label, chosen ? GOLD : WHITE);
+		put_centre_y(out, y, label, chosen ? GOLD : items[index] == ITEM_UPDATE ? CYAN : WHITE);
 	}
 	if (notice_frames > 0)
 	{
@@ -1384,6 +1508,66 @@ static void draw_front(uint32_t *out)
 		put_text_y(out, COLUMNS - (int)strlen(version), PICTURE_H - 10, version, GREY);
 	}
 #endif
+}
+
+/* the update's page: the versions, and what is asked or how far it is */
+static void draw_update(uint32_t *out)
+{
+	const int state = updater_state();
+	char line[64];
+
+	put_centre(out, PANEL_TOP + 1, "UPDATE", GOLD);
+#ifdef DDONPACH_VERSION
+	snprintf(line, sizeof(line), "V%s  >  V%s", DDONPACH_VERSION, updater_latest());
+#else
+	snprintf(line, sizeof(line), "V%s", updater_latest());
+#endif
+	put_centre(out, PANEL_TOP + 3, line, WHITE);
+	if (state == UPDATER_AVAILABLE)
+	{
+		put_centre(out, PANEL_TOP + 6, "DOWNLOAD AND INSTALL IT?", WHITE);
+		put_centre(out, PANEL_TOP + 8, "THE PROGRAM STARTS AGAIN", GREY);
+		put_centre(out, PANEL_TOP + 10, "SETTINGS, SCORES, REPLAYS", GREY);
+		put_centre(out, PANEL_TOP + 12, "AND THE ROM ARE KEPT", GREY);
+		put_centre(out, PANEL_TOP + 14, "(NOTES: GITHUB RELEASES)", GREY);
+	}
+	else if (state == UPDATER_DOWNLOADING || state == UPDATER_READY)
+	{
+		const int percent = state == UPDATER_READY ? 100 : updater_progress();
+		const int left = PANEL_LEFT * 8 + 24, right = (PANEL_RIGHT + 1) * 8 - 24, y = (PANEL_TOP + 9) * 8;
+
+		snprintf(line, sizeof(line), state == UPDATER_READY ? "INSTALLING..." : "DOWNLOADING  %d%%", percent);
+		put_centre(out, PANEL_TOP + 6, line, CYAN);
+		fill(out, left, y, right, y + 8, 0x3C2028u);
+		fill(out, left, y, left + (right - left) * percent / 100, y + 8, GOLD);
+	}
+	else if (state == UPDATER_FAILED)
+	{
+		/* (why, in capitals, broken into lines of the panel's width) */
+		const char *why = updater_problem();
+		int row = PANEL_TOP + 6;
+
+		put_centre(out, row, "IT DID NOT WORK:", GOLD);
+		for (row += 2; *why && row < PANEL_TOP + 15; row++)
+		{
+			size_t length = strlen(why), cut = length;
+
+			if (length > 26)
+			{
+				for (cut = 26; cut > 0 && why[cut] != ' '; cut--)
+					;
+				if (cut == 0)
+					cut = 26;
+			}
+			for (size_t at = 0; at < cut; at++)
+				line[at] = (char)toupper((unsigned char)why[at]);
+			line[cut] = '\0';
+			put_centre(out, row, line, WHITE);
+			why += cut;
+			while (*why == ' ')
+				why++;
+		}
+	}
 }
 
 void menu_draw(const uint32_t *game, uint32_t *out)
@@ -1450,6 +1634,27 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 			put_centre(out, PANEL_TOP + 2, shown, GREY);
 		}
 	}
+	else if (page == PAGE_ACHIEVEMENTS || page == PAGE_STATS)
+	{
+		char title[32];
+
+		if (page == PAGE_ACHIEVEMENTS)
+			snprintf(title, sizeof(title), "ACHIEVEMENTS  %d/%d", achievements_done(), achievements_count());
+		else
+			snprintf(title, sizeof(title), "STATISTICS");
+		put_centre(out, PANEL_TOP + 1, title, GOLD);
+		cheats_shown = cheats_first(&cheats_total);
+		if (page == PAGE_ACHIEVEMENTS && selected < achievements_count())
+		{
+			/* the chosen one: what it asks for, and when it was earned */
+			const char *const date = achievements_date(selected);
+			char line[48];
+
+			put_centre(out, PANEL_TOP + 2, achievements_text(selected), CYAN);
+			snprintf(line, sizeof(line), date ? "EARNED %s" : "NOT YET", date);
+			put_centre(out, PANEL_TOP + 3, line, date ? GOLD : GREY);
+		}
+	}
 	else if (page == PAGE_REPLAYS)
 	{
 		put_centre(out, PANEL_TOP + 1, "REPLAYS", GOLD);
@@ -1497,6 +1702,8 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 		put_centre(out, PANEL_TOP + 4, "SAVE THIS GAME'S REPLAY?", WHITE);
 		put_centre(out, PANEL_TOP + 6, "(MAIN MENU > REPLAYS)", GREY);
 	}
+	else if (page == PAGE_UPDATE)
+		draw_update(out);
 	else
 	{
 		char title[48];
@@ -1507,9 +1714,11 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 	}
 	{
 		/* the entries, in pixel lines: 16 apart, the controls page's 12 (it has 18 of them) */
-		const int step = page == PAGE_CONTROLS ? 12 : page == PAGE_CHEATS || page == PAGE_REPLAYS ? 13 : 16;
+		const bool listed = page == PAGE_CHEATS || page == PAGE_REPLAYS || page == PAGE_ACHIEVEMENTS || page == PAGE_STATS;
+		const int step = page == PAGE_CONTROLS ? 12 : listed ? 13 : 16;
 		int y = (PANEL_TOP + ((page == PAGE_CHEATS || page == PAGE_REPLAYS) && cheats_total == 0 ? 8
-			: page == PAGE_REPLAY_MENU || page == PAGE_DELETE ? 14 : page == PAGE_SAVE_REPLAY ? 9 : 4)) * 8;
+			: page == PAGE_REPLAY_MENU || page == PAGE_DELETE ? 14 : page == PAGE_SAVE_REPLAY ? 9
+			: page == PAGE_UPDATE ? 19 : 4)) * 8;
 
 		for (int index = 0; index < item_count; index++)
 		{
@@ -1517,8 +1726,11 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 			const bool chosen = index == selected;
 			char value[48];
 
-			if ((page == PAGE_CHEATS || page == PAGE_REPLAYS) && index < cheats_total
-					&& (index < cheats_shown || index >= cheats_shown + (page == PAGE_REPLAYS ? REPLAY_ROWS : CHEAT_ROWS)))
+			if (listed && page != PAGE_CHEATS && index < cheats_total
+					&& (index < cheats_shown || index >= cheats_shown + REPLAY_ROWS))
+				continue;    /* (scrolled out of the list) */
+			if (page == PAGE_CHEATS && index < cheats_total
+					&& (index < cheats_shown || index >= cheats_shown + CHEAT_ROWS))
 				continue;    /* (scrolled out of the list) */
 			if ((item == ITEM_QUIT && !(index > 0 && items[index - 1] == ITEM_MAIN_MENU)) || item == ITEM_MAIN_MENU
 					|| item == ITEM_BACK || item == ITEM_FAST_FORWARD_KEY || item == ITEM_DEADZONE
@@ -1527,7 +1739,8 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 				y += page == PAGE_CONTROLS ? 6 : 8;    /* (a gap before them) */
 			if (chosen)
 				put_char_y(out, PANEL_LEFT + 1, y, '>', GOLD);
-			put_text_y(out, PANEL_LEFT + 3, y, item_label(item), chosen ? GOLD : WHITE);
+			put_text_y(out, PANEL_LEFT + 3, y, item_label(item), chosen ? GOLD
+				: item >= ITEM_STAT_LINE && !stats_value(item - ITEM_STAT_LINE) ? CYAN : WHITE);    /* (headings) */
 			item_value(item, value, sizeof(value));
 			if (chosen && capture >= 0)
 				snprintf(value, sizeof(value), "PRESS...");
@@ -1556,6 +1769,8 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 		put_hints(out, "A: CHOOSE   <>: CHANGE", front ? "B: BACK" : "B / VIEW: CLOSE");
 	else if (page == PAGE_CONTROLS)
 		put_centre(out, PANEL_TOP + PANEL_ROWS - 1, "A:CHANGE <>:PLAYER B:BACK", GREY);
+	else if (page == PAGE_UPDATE)
+		put_hints(out, "A: CHOOSE", "B: BACK");
 	else
 		put_hints(out, "A: CHOOSE   <>: CHANGE", "B: BACK");
 }

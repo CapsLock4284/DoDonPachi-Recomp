@@ -54,6 +54,11 @@ void widgets_reset(void);
 /* A game begins where the game is now, its ship select unseen (training's place: the game came there unseen) */
 void widgets_game_begun(void);
 
+/* An achievement earned (achievements.h): "ACHIEVEMENT UNLOCKED" and its name over the right panel's top (never over
+   the game) for 4 seconds; busy while one is shown, so the next waits ('more': waiting after it, "+2 MORE") */
+void widgets_toast(const char *name, int more);
+bool widgets_toast_busy(void);
+
 /* Both panels, 'width' x WIDGET_H each (WIDGET_W to WIDGET_MAX_W), upright as the player sees them; a row is 'width'
    pixels */
 void widgets_draw(uint32_t *left, uint32_t *right, int width);

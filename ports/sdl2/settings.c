@@ -78,6 +78,7 @@ void settings_defaults(settings *s)
 	s->fast_forward_speed = 4;
 	s->skip_warning = true;
 	s->main_menu = true;
+	s->check_updates = true;
 	s->hitbox = false;
 	s->aura = false;
 	s->save_high_scores = true;
@@ -264,6 +265,8 @@ static bool take(settings *s, const char *section, const char *name, char *value
 			return parse_bool(value, &s->skip_warning);
 		if (!SDL_strcasecmp(name, "main_menu"))
 			return parse_bool(value, &s->main_menu);
+		if (!SDL_strcasecmp(name, "check_updates"))
+			return parse_bool(value, &s->check_updates);
 		if (!SDL_strcasecmp(name, "hitbox"))
 			return parse_bool(value, &s->hitbox);
 		if (!SDL_strcasecmp(name, "aura"))
@@ -526,6 +529,10 @@ const char *settings_save(const settings *s, const char *path)
 	fputs("; true (the default): the main menu as the program starts (START GAME, SETTINGS, QUIT TO DESKTOP); false:\n"
 		"; straight into the game, as the board switched on\n", file);
 	fprintf(file, "main_menu = %s\n", bool_text(s->main_menu));
+	fputs("; true (the default): the newest release looked up on GitHub as the program starts; a newer one is offered\n"
+		"; on the main menu (UPDATE TO ...), downloaded and installed only when it is chosen (this file, the scores,\n"
+		"; the replays and the ROM are kept); false: never looked up\n", file);
+	fprintf(file, "check_updates = %s\n", bool_text(s->check_updates));
 	fputs("; the ships' hitboxes shown (a white dot: the box the game tests the bullets against), and the laser's aura\n"
 		"; (a light blue box: where the laser hits enemies close up, while it is fired); only drawn over the picture\n",
 		file);

@@ -69,6 +69,7 @@ typedef struct
 	int version;                /* the game's version: 0 the World one, 1 the Japanese (the board description's) */
 	bool skip_warning;          /* the start's WARNING screen run unseen, at once (main.c); true by default */
 	bool main_menu;             /* the main menu as the program starts (menu.h); true by default */
+	bool check_updates;         /* the newest release looked up as the program starts (updater.h); true by default */
 	bool hitbox;                /* the ships' hitboxes shown (hitbox.h) */
 	bool aura;                  /* the laser's aura shown (hitbox.h) */
 	bool save_high_scores;      /* the high score table kept in ddonpach.hiscore (hiscore.h); true by default */

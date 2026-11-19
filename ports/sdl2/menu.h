@@ -46,6 +46,8 @@ typedef struct
 	bool (*play_replay)(const char *file);    /* a replay played from its start (false: it could not be) */
 	bool (*in_replay)(void);    /* a replay is playing */
 	void (*stop_replay)(void);  /* the replay stopped (the main menu's replays page then up) */
+	void (*install_update)(void);   /* the update downloaded (updater.h): installed and the program closed to start
+	                                   again, or updater_state() FAILED (the menu says why) */
 } menu_host;
 
 void menu_init(const menu_host *host);
