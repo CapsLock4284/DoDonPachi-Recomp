@@ -1234,20 +1234,70 @@ static void training_shown(void)
 	training_retry_frames = 0;
 }
 
+/* the places reached this session, kept (TRAINING_KEPT, the oldest given up first): the same place again (the same
+   choices, and the same EEPROM: the difficulty and the game's settings) is put back at once, not run to again */
+#define TRAINING_KEPT 8
+
+static struct
+{
+	training_setup setup;
+	uint16_t eeprom[CAVE_EEPROM_WORDS];
+	program_state *state;
+	uint64_t used;
+} training_kept[TRAINING_KEPT];
+static uint64_t training_uses;
+
+static bool same_setup(const training_setup *a, const training_setup *b)
+{
+	return a->stage == b->stage && a->point == b->point && a->ship == b->ship && a->laser == b->laser
+		&& a->power == b->power && a->max_bombs == b->max_bombs;
+}
+
 static bool menu_training(void)
 {
 	const training_setup setup = { options.training_stage, options.training_point, options.training_ship,
 		options.training_laser, options.training_power, options.training_max_bombs };
-	const char *problem;
+	const char *problem = NULL;
+	int kept = -1, oldest = 0;
 
 	menu_main_menu();    /* (the board reset: training_prepare runs it from there) */
-	problem = training_prepare(&setup);
-	if (problem)
+	for (int index = 0; index < TRAINING_KEPT; index++)
 	{
-		fprintf(stderr, "training, %s: %s\n", training_name(&setup), problem);
-		menu_main_menu();
-		return false;
+		if (training_kept[index].state && same_setup(&training_kept[index].setup, &setup)
+				&& !memcmp(training_kept[index].eeprom, cave_board.eeprom.words, sizeof(cave_board.eeprom.words)))
+			kept = index;
+		if (training_kept[index].used < training_kept[oldest].used)
+			oldest = index;
 	}
+	if (kept >= 0)
+	{
+		program_state_load(training_kept[kept].state);
+		hiscore_state_loaded();
+	}
+	else
+	{
+		uint16_t eeprom[CAVE_EEPROM_WORDS];
+
+		memcpy(eeprom, cave_board.eeprom.words, sizeof(eeprom));
+		/* (run there as fast as it goes: unheard, and without the arcade's slowdown, which only waits) */
+		cave_sound_quiet = true;
+		program_set_slowdown(false);
+		problem = training_prepare(&setup);
+		cave_sound_quiet = false;
+		program_set_slowdown(options.slowdown);
+		if (problem)
+		{
+			fprintf(stderr, "training, %s: %s\n", training_name(&setup), problem);
+			menu_main_menu();
+			return false;
+		}
+		program_state_free(training_kept[oldest].state);
+		training_kept[oldest].setup = setup;
+		memcpy(training_kept[oldest].eeprom, eeprom, sizeof(eeprom));
+		training_kept[oldest].state = program_state_save();
+		kept = oldest;
+	}
+	training_kept[kept].used = ++training_uses;
 	program_state_free(training_state);
 	training_state = program_state_save();
 	training_on = true;
@@ -1857,6 +1907,8 @@ pace:
 	eeprom_keep(true);
 	for (int slot = 0; slot < STATE_SLOTS; slot++)
 		program_state_free(slot_states[slot]);
+	for (int index = 0; index < TRAINING_KEPT; index++)
+		program_state_free(training_kept[index].state);
 	if (audio)
 		SDL_CloseAudioDevice(audio);
 	scaler_quit();

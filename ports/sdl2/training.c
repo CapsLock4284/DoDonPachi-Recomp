@@ -28,6 +28,7 @@
 #define OTHER_POWER 0x102CAEu
 #define HUD_HIGH    0x101626u   /* the HIGH the game shows (a BCD long) */
 #define HUD_DIGIT   0x101750u   /* its last digit: the continues its holder used, a tile ($100 + them) */
+#define ARRIVAL_GUARD 0xB4u   /* (180 frames: the game counts the guard down a frame at a time) */
 #define ITEMS       0x10A9F6u   /* the items on the screen: 10 records of $20 (+0: $8010 a P, $8012 a bomb; 0 none) */
 #define HUD_SCORE   0x10162Au   /* player 1's score on the HUD: 8 sprites of 8 bytes (+0 the attribute, +2 the code,
                                    $100 + the digit) */
@@ -149,7 +150,17 @@ const char *training_prepare(const training_setup *setup)
 		else if (mode == 7u && select_frames > 0)
 		{
 			playing = true;
-			set_byte(GUARD, 0x80u);    /* (kept from harm on the way: not firing, no points) */
+			set_byte(GUARD, 0x80u);    /* (kept from harm on the way, no points) */
+			if (!sent)
+			{
+				/* 1-1 on the way to another stage: the ship firing at MAX, so its boss goes down in seconds (not
+				   firing, the boss leaves only when its time is out: about 3 minutes of the game's) */
+				set_word(OWN_POWER, TRAINING_MAX_POWER);
+				set_word(OTHER_POWER, TRAINING_MAX_POWER);
+				set_word(SCORE, 0);
+				set_word(SCORE + 2u, 0);
+				held = frame % 4 < 2 ? CAVE_BUTTON1 : 0u;
+			}
 			if (!sent && *cave_work_ram_byte(PHASE) == 3u)
 			{
 				/* 1-1 cleared: the stage before the place's (2-1: 1-6, the loop's end, into the second) */
@@ -235,7 +246,9 @@ const char *training_prepare(const training_setup *setup)
 		set_word(OWN_POWER, (unsigned)power);
 		set_word(OTHER_POWER, (unsigned)power);
 	}
-	set_byte(GUARD, 0u);
+	/* 3 seconds without harm, as the game gives after a life (it counts it down, the ship blinking): what the way
+	   here left on the screen (enemies the unseen run never shot, their bullets) can't take a life as play begins */
+	set_byte(GUARD, ARRIVAL_GUARD);
 	/* the items the way here dropped (the firing on the way to a boss) taken away: the power is the one chosen */
 	for (uint32_t item = 0; item < 10u; item++)
 		set_word(ITEMS + 0x20u * item, 0);

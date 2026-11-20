@@ -261,7 +261,15 @@
       way to stage 5 and 6's bosses now fires at MAX (the score held at 0), its items taken away at the place, and
       the HIGH and its last digit put back as they were at the ship select, their sprites drawn again (the way to 2-6
       passes 2-5's clear: 6,000,000). The other places' frames unchanged. Checked: standing still at each place, no
-      miss in 8 s (1-1 and 2-1: the boss's own fire at 8.2 s), the HIGH 5908065 at 1-5, 2-6 and Hibachi
+      miss in 8 s (1-1 and 2-1: the boss's own fire at 8.2 s), the HIGH 5908065 at 1-5, 2-6 and Hibachi. Still a miss
+      at 1-5 and 2-5 on the owner's PC (another setup: found here with EASY and ship C, a hit at 1.9 s): every place
+      now starts with the game's own guard, $B4 (3 s, counted down a frame at a time, as after a life); checked at
+      every difficulty, ship and style for 1-5 and 2-5, and every place: no miss in 10 s.
+      Loading (owner: slow next to DonPachi): the way there run with cave_sound_quiet and the slowdown off (it only
+      waits; main.c's menu_training), 1-1 flown firing at MAX when it is only the way (its boss down in seconds, not
+      waited out: about 8,600 frames fewer), and the last 8 places reached kept in memory for the session (the same
+      choices and EEPROM: put back at once). Measured here, all 26 places: 74.3 s before, 43.1 s after (a start
+      0.2-1.5 s, a boss 0.5-2.8 s, Hibachi 3.1 s). Firing on the way to every boss was tried: slower (more on screen)
 - [x] **Training: a slower speed to choose** (owner, 18-11-2026: "would let players ramp up to full speed for
       training"). Done 20-11-2026: SPEED on the training page (`[training] speed`, 50-100 in steps of 10), the
       board's frames paced further apart in main.c (game_speed: a training game, the menu closed), so the game is
