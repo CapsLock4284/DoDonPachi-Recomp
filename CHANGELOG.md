@@ -9,7 +9,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
 ### Fixed
 - **Training: a boss place began too late into the fight** in 1-3 to 1-6 and 2-3 to 2-6 (up to 24 seconds in, the
   boss already firing): it began where the stage's scroll ends, which in those stages comes long after the boss.
-  Every boss place now begins at the boss's WARNING, as the boss's music starts.
+  Every boss place now begins at the boss's WARNING, as the boss's music starts. In 1-5, 1-6, 2-5 and 2-6 the
+  enemies the unseen run had left alive were then waiting there, firing as the ship came in (a miss at once): the
+  way to those bosses is now flown firing, as a player would, and the items it drops are taken away. The HIGH on the
+  screen is no longer raised by the way there (2-6's: the second loop's 6,000,000 area bonus).
 - **The SOUND entry in SETTINGS had no ">"** to show it opens a page, as the others do.
 
 ### New

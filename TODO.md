@@ -256,7 +256,12 @@
       Area 7 (stage 6 of loop 1: 2-6's end set as the place's way there), at Hachi (its speech over, 38.6 s in) or at
       the true last boss Hibachi (Hachi shot down on the way: the ship at MAX firing from below its middle, about 17,000
       frames, unseen; then from Hibachi's WARNING, the boss's music again). Checked: each of the 14 boss places reached
-      (1 to 4.7 s of loading here), pictures of each at its first frame and a second after
+      (1 to 4.7 s of loading here), pictures of each at its first frame and a second after. Then (owner: 1-5, 1-6,
+      2-5, 2-6 a miss as they load): the enemies the run had left alive (it never fires) waited at the WARNING; the
+      way to stage 5 and 6's bosses now fires at MAX (the score held at 0), its items taken away at the place, and
+      the HIGH and its last digit put back as they were at the ship select, their sprites drawn again (the way to 2-6
+      passes 2-5's clear: 6,000,000). The other places' frames unchanged. Checked: standing still at each place, no
+      miss in 8 s (1-1 and 2-1: the boss's own fire at 8.2 s), the HIGH 5908065 at 1-5, 2-6 and Hibachi
 - [x] **Training: a slower speed to choose** (owner, 18-11-2026: "would let players ramp up to full speed for
       training"). Done 20-11-2026: SPEED on the training page (`[training] speed`, 50-100 in steps of 10), the
       board's frames paced further apart in main.c (game_speed: a training game, the menu closed), so the game is
