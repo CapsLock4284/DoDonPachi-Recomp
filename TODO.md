@@ -33,7 +33,9 @@
       (interrupt_frames: after each of the 4 writes, if program_interrupts() moved, the slots get the next
       instruction's address). Checked: all 7 full-game runs the same as MAME's 68000 at every frame, type B laser's
       included (290,204 game frames)
-- [ ] The Japanese version (`ddonpachj`).
+- [ ] The Japanese version (`ddonpachj`). When it comes (owner, 20-11-2026, as DonPachi Recomp's): its data taken
+      on the first run with the World set's (a merged ddonpach.zip, or ddonpachj.zip beside it, or dropped on the
+      first run's window after ddonpach.zip, skippable), so choosing it later needs no window over the main menu.
 
 ## The board (in Cave68kSDK)
 
