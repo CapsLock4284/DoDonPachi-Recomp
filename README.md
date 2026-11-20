@@ -112,7 +112,7 @@ them (the date, how far, the score) to watch or delete. Playback runs from the b
 frames before the game at once, unseen), checking the board as it goes; fast forward works, STOP REPLAY in the
 options ends it. A game with a cheat, a loaded save state or training in it is not recorded.
 
-The main menu comes up as the program starts: START GAME, TRAINING, REPLAYS, SETTINGS (the volume, the game options, graphics and
+The main menu comes up as the program starts: START GAME, TRAINING, REPLAYS, SETTINGS (the sound, the game options, graphics and
 controls, before a game) and QUIT TO DESKTOP, with the high score kept. The game waits at its start while it is up,
 and runs from there with START GAME, as the board switched on. MAIN MENU in the options menu leaves the game for it
 (the game reset). MAIN MENU AT START in the game options (`main_menu` in `ddonpach.ini`) turns it off: straight into
@@ -131,7 +131,7 @@ F3 resets the game, F4 holds the service switch for you (the test mode, from the
 switches full screen, Escape (View on the gamepad) opens the options menu: video, sound, controls (remapping), the game's options,
 save states, cheats, QUIT TO DESKTOP. Player 2: R F D G, A, S, 2, 6. Everything can be changed there or in `ddonpach.ini`,
 written beside the program on its first run: the keys and buttons, the window's size, the video (scaling, scanlines, the
-CRT look, the pixel-art scalers, a monitor on its side), the sound's volume, the arcade's slowdown.
+CRT look, the pixel-art scalers, a monitor on its side), the sound's volumes, the arcade's slowdown.
 
 Cheats (GAME OPTIONS > CHEATS): the port's own P1 INVINCIBLE and P2 INVINCIBLE (nothing can hit that player's ship:
 the time without harm the game gives after a life, kept up; the ship looks as always), for seeing the whole game. With
@@ -141,6 +141,13 @@ statistics or replay.
 
 The menus have sounds of the game's own (its ship select's cursor and choice, and a short one for going back), and
 an achievement earned plays the extra life's; at the game's own levels, under VOLUME as the game is.
+
+Sound (SETTINGS > SOUND, `[sound]` in `ddonpach.ini`): VOLUME for all of it, and MUSIC, EFFECTS and VOICES each on
+its own under it, in steps of 5%. While one is changed an example plays at the level being set (stage 1's music,
+shots and enemies shot down, a voice). The game's own table of its 66 sounds says which are music (the last 11, all
+on the chip's voice 0); the voices (#44-#54) were chosen by ear; the rest are effects. Only what you hear changes:
+the game, its timing and the sound chip's interrupt are the same at any levels (checked through both loops; at 100%
+the sound is the same as before, sample for sample).
 
 Difficulty (DIFFICULTY in the game options): EASY, NORMAL (the arcade's default), HARD or VERY HARD, the test mode's
 own GAME DIFFICULTY setting, so there is no need to go into the test mode for it. It sets each stage's base rank (how

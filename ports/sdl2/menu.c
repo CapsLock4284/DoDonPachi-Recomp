@@ -52,7 +52,8 @@
 #define CHEAT_ROWS   16                 /* the cheats page's: as many shown at a time, scrolled with the choice */
 
 enum { PAGE_MAIN, PAGE_CONTROLS, PAGE_GRAPHICS, PAGE_GAME, PAGE_CHEATS, PAGE_FRONT, PAGE_TRAINING, PAGE_REPLAYS,
-	PAGE_REPLAY_MENU, PAGE_DELETE, PAGE_SAVE_REPLAY, PAGE_ACHIEVEMENTS, PAGE_STATS, PAGE_UPDATE };
+	PAGE_REPLAY_MENU, PAGE_DELETE, PAGE_SAVE_REPLAY, PAGE_ACHIEVEMENTS, PAGE_STATS, PAGE_UPDATE,
+	PAGE_SOUND };
 enum { NAV_NONE, NAV_UP, NAV_DOWN, NAV_LEFT, NAV_RIGHT, NAV_CHOOSE, NAV_BACK, NAV_CLOSE };
 
 enum
@@ -77,6 +78,8 @@ enum
 	ITEM_UPDATE, ITEM_UPDATE_YES, ITEM_UPDATE_NO,    /* the main menu's, a newer release found (updater.h) */
 	ITEM_CHECK_UPDATES,           /* the game options': the newest release looked up as the program starts */
 	ITEM_DIFFICULTY,              /* the game options': the game's difficulty, the test mode's (in the EEPROM) */
+	ITEM_SOUND,                   /* the sound's page: VOLUME, and MUSIC, EFFECTS and VOICES on their own */
+	ITEM_MUSIC_VOLUME, ITEM_EFFECTS_VOLUME, ITEM_VOICES_VOLUME,
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -95,7 +98,7 @@ static const char *const item_labels[] = {
 	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
 	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
 	"STOP REPLAY", "HITBOX", "AURA", "ACHIEVEMENTS", "STATISTICS", "UPDATE", "YES, UPDATE", "NOT NOW",
-	"CHECK FOR UPDATES", "DIFFICULTY"
+	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -182,9 +185,16 @@ static void build_items(void)
 	else if (page == PAGE_MAIN && front)
 	{
 		/* (the main menu's SETTINGS: what can be set before a game) */
-		static const int settings_items[] = { ITEM_VOLUME, ITEM_GAME, ITEM_GRAPHICS, ITEM_CONTROLS, ITEM_BACK };
+		static const int settings_items[] = { ITEM_SOUND, ITEM_GAME, ITEM_GRAPHICS, ITEM_CONTROLS, ITEM_BACK };
 
 		add_items(settings_items, sizeof(settings_items) / sizeof(settings_items[0]));
+	}
+	else if (page == PAGE_SOUND)
+	{
+		static const int sound_items[] = { ITEM_VOLUME, ITEM_MUSIC_VOLUME, ITEM_EFFECTS_VOLUME, ITEM_VOICES_VOLUME,
+			ITEM_BACK };
+
+		add_items(sound_items, sizeof(sound_items) / sizeof(sound_items[0]));
 	}
 	else if (page == PAGE_TRAINING)
 	{
@@ -233,7 +243,7 @@ static void build_items(void)
 	}
 	else if (page == PAGE_MAIN && host.in_replay && host.in_replay())
 	{
-		static const int replay_game_items[] = { ITEM_RESUME, ITEM_STOP_REPLAY, ITEM_VOLUME, ITEM_GRAPHICS,
+		static const int replay_game_items[] = { ITEM_RESUME, ITEM_STOP_REPLAY, ITEM_SOUND, ITEM_GRAPHICS,
 			ITEM_MAIN_MENU, ITEM_QUIT };
 
 		add_items(replay_game_items, sizeof(replay_game_items) / sizeof(replay_game_items[0]));
@@ -242,14 +252,14 @@ static void build_items(void)
 	{
 		/* (a training game's: its place again and its page; no RESET or save states: the training is its own save
 		   state, F5 / F8 still there) */
-		static const int training_game_items[] = { ITEM_RESUME, ITEM_RETRY_TRAINING, ITEM_TRAINING_MENU, ITEM_VOLUME,
+		static const int training_game_items[] = { ITEM_RESUME, ITEM_RETRY_TRAINING, ITEM_TRAINING_MENU, ITEM_SOUND,
 			ITEM_GAME, ITEM_GRAPHICS, ITEM_CONTROLS, ITEM_MAIN_MENU, ITEM_QUIT };
 
 		add_items(training_game_items, sizeof(training_game_items) / sizeof(training_game_items[0]));
 	}
 	else if (page == PAGE_MAIN)
 	{
-		static const int main_items[] = { ITEM_RESUME, ITEM_RESET, ITEM_VOLUME, ITEM_SAVE_STATE, ITEM_LOAD_STATE,
+		static const int main_items[] = { ITEM_RESUME, ITEM_RESET, ITEM_SOUND, ITEM_SAVE_STATE, ITEM_LOAD_STATE,
 			ITEM_STATE_SLOT, ITEM_GAME, ITEM_GRAPHICS, ITEM_CONTROLS, ITEM_MAIN_MENU, ITEM_QUIT };
 
 		add_items(main_items, sizeof(main_items) / sizeof(main_items[0]));
@@ -302,6 +312,7 @@ static void save(void)
 
 static void close_menu(void)
 {
+	ui_sound_preview_stop();
 	open = false;
 	just_closed = true;
 	capture = -1;
@@ -456,9 +467,27 @@ static void change(int item, int step, bool wrap)
 		break;
 	}
 	case ITEM_VOLUME:
-		in_use->volume = wrap && in_use->volume >= 100 ? 0 : clamp(in_use->volume + step * 10, 0, 100);
+		in_use->volume = wrap && in_use->volume >= 100 ? 0 : clamp(in_use->volume + step * 5, 0, 100);
 		file->volume = in_use->volume;
+		ui_sound_preview(UI_PREVIEW_MUSIC);    /* (heard as it changes: the music, at the volume being set) */
 		break;
+	case ITEM_MUSIC_VOLUME:
+	case ITEM_EFFECTS_VOLUME:
+	case ITEM_VOICES_VOLUME:
+	{
+		/* (applied by main.c each frame: cave_sound_set_level) */
+		int *const now = item == ITEM_MUSIC_VOLUME ? &in_use->music_volume
+			: item == ITEM_EFFECTS_VOLUME ? &in_use->effects_volume : &in_use->voices_volume;
+		int *const kept = item == ITEM_MUSIC_VOLUME ? &file->music_volume
+			: item == ITEM_EFFECTS_VOLUME ? &file->effects_volume : &file->voices_volume;
+
+		*now = wrap && *now >= 100 ? 0 : clamp(*now + step * 5, 0, 100);
+		*kept = *now;
+		/* (heard as it changes: an example of the group, at its level) */
+		ui_sound_preview(item == ITEM_MUSIC_VOLUME ? UI_PREVIEW_MUSIC : item == ITEM_EFFECTS_VOLUME
+			? UI_PREVIEW_EFFECTS : UI_PREVIEW_VOICES);
+		break;
+	}
 	case ITEM_SCALE:
 		in_use->scale = wrap && in_use->scale >= 8 ? 1 : clamp(in_use->scale + step, 1, 8);
 		file->scale = in_use->scale;
@@ -584,7 +613,7 @@ static void back(void)
 	}
 	{
 	const int opened_by = page == PAGE_GRAPHICS ? ITEM_GRAPHICS : page == PAGE_GAME ? ITEM_GAME
-		: page == PAGE_CHEATS ? ITEM_CHEATS : ITEM_CONTROLS;
+		: page == PAGE_SOUND ? ITEM_SOUND : page == PAGE_CHEATS ? ITEM_CHEATS : ITEM_CONTROLS;
 
 	page = page == PAGE_CHEATS ? PAGE_GAME : PAGE_MAIN;
 	build_items();
@@ -691,6 +720,9 @@ static void choose(int item)
 	case ITEM_CHEATS:
 		to_page(PAGE_CHEATS);
 		break;
+	case ITEM_SOUND:
+		to_page(PAGE_SOUND);
+		break;
 	case ITEM_QUIT:
 		host.quit();
 		close_menu();
@@ -748,7 +780,10 @@ static void navigate(int nav)
 
 	/* (the menu's sounds, ui_sound.h: the cursor's, a choice's, going back's) */
 	if (nav == NAV_UP || nav == NAV_DOWN || nav == NAV_LEFT || nav == NAV_RIGHT)
-		ui_sound_play(UI_SOUND_MOVE);
+	{
+		if (page != PAGE_SOUND)
+			ui_sound_play(UI_SOUND_MOVE);    /* (the SOUND page: its example is heard instead) */
+	}
 	else if (nav == NAV_CHOOSE)
 		ui_sound_play(item == ITEM_BACK || item == ITEM_RESUME || item == ITEM_NO || item == ITEM_DELETE_NO
 			|| item == ITEM_UPDATE_NO ? UI_SOUND_BACK : UI_SOUND_CHOOSE);
@@ -1010,6 +1045,15 @@ void menu_tick(void)
 
 	if (!open)
 		return;
+	{
+		/* the SOUND page's example stops as its entry is left (another entry, page or the menu closed) */
+		static int previewed = -1;
+		const int now = page == PAGE_SOUND ? items[selected] : -1;
+
+		if (now != previewed)
+			ui_sound_preview_stop();
+		previewed = now;
+	}
 	if (updater_state() == UPDATER_AVAILABLE)
 		update_found = true;
 	if (page == PAGE_FRONT && update_listed != update_found)
@@ -1323,6 +1367,15 @@ static void item_value(int item, char *out, size_t size)
 		break;
 	case ITEM_VOLUME:
 		snprintf(out, size, "%d%%", s->volume);
+		break;
+	case ITEM_MUSIC_VOLUME:
+		snprintf(out, size, "%d%%", s->music_volume);
+		break;
+	case ITEM_EFFECTS_VOLUME:
+		snprintf(out, size, "%d%%", s->effects_volume);
+		break;
+	case ITEM_VOICES_VOLUME:
+		snprintf(out, size, "%d%%", s->voices_volume);
 		break;
 	case ITEM_SCALE:
 		snprintf(out, size, "%dX", s->scale);
@@ -1642,6 +1695,8 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 		put_centre(out, PANEL_TOP + 1, "GRAPHICS", GOLD);
 	else if (page == PAGE_GAME)
 		put_centre(out, PANEL_TOP + 1, "GAME OPTIONS", GOLD);
+	else if (page == PAGE_SOUND)
+		put_centre(out, PANEL_TOP + 1, "SOUND", GOLD);
 	else if (page == PAGE_TRAINING)
 	{
 		put_centre(out, PANEL_TOP + 1, "TRAINING", GOLD);
@@ -1771,7 +1826,7 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 			if ((item == ITEM_QUIT && !(index > 0 && items[index - 1] == ITEM_MAIN_MENU)) || item == ITEM_MAIN_MENU
 					|| item == ITEM_BACK || item == ITEM_FAST_FORWARD_KEY || item == ITEM_DEADZONE
 					|| item == ITEM_SCALE || item == ITEM_SAVE_STATE || item == ITEM_GAME
-					|| item == ITEM_T_START || (item == ITEM_VOLUME && index > 0 && items[index - 1] == ITEM_TRAINING_MENU))
+					|| item == ITEM_T_START || (item == ITEM_SOUND && index > 0 && items[index - 1] == ITEM_TRAINING_MENU))
 				y += page == PAGE_CONTROLS ? 6 : 8;    /* (a gap before them) */
 			if (chosen)
 				put_char_y(out, PANEL_LEFT + 1, y, '>', GOLD);

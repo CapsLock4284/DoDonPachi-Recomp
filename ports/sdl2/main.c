@@ -430,6 +430,10 @@ static void audio_queue(void)
 	}
 	if (SDL_GetQueuedAudioSize(audio) > audio_bytes(AUDIO_MOST_MS))
 		audio_restart();
+	/* (the groups' levels, for the board's next sound: the SOUND page's) */
+	cave_sound_set_level(CAVE_SOUND_MUSIC, (float)options.music_volume / 100.0f);
+	cave_sound_set_level(CAVE_SOUND_EFFECTS, (float)options.effects_volume / 100.0f);
+	cave_sound_set_level(CAVE_SOUND_VOICES, (float)options.voices_volume / 100.0f);
 	while ((count = cave_sound_take(samples, 2048u)) > 0)
 	{
 		ui_sound_mix(samples, count);    /* (the port's own: the menus', the achievement pop-up's) */
@@ -457,6 +461,13 @@ static void audio_menu_frame(void)
 	if (SDL_GetQueuedAudioSize(audio) > audio_bytes(AUDIO_MOST_MS))
 		audio_restart();
 	ui_sound_mix(samples, count);
+	{
+		/* (the SOUND page's example, at the level being set: the music's for VOLUME's too) */
+		const float levels[UI_PREVIEWS] = { (float)options.music_volume / 100.0f,
+			(float)options.effects_volume / 100.0f, (float)options.voices_volume / 100.0f };
+
+		ui_sound_mix_preview(samples, count, levels);
+	}
 	if (options.volume < 100)
 		for (unsigned index = 0; index < count; index++)
 			samples[index] = (int16_t)(samples[index] * options.volume / 100);

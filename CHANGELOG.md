@@ -6,7 +6,13 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
-Nothing yet.
+### New
+- **Separate volumes for the music, the sound effects and the voices** (SETTINGS > SOUND, `[sound]` in
+  `ddonpach.ini`): VOLUME sets all of it as before; MUSIC, EFFECTS and VOICES set each on its own, under it, in steps
+  of 5% (VOLUME too, now). While you change one, an example plays at the level you are setting (a piece of stage 1's
+  music, shots and enemies shot down, a voice), over and over until you move off it. Players asked for it. The game
+  itself is untouched: only what you hear changes (checked through both loops: the board the same, frame by frame,
+  whatever the levels; at 100% the sound the same as before, sample for sample).
 
 ## v0.1.0 (2026-11-19)
 

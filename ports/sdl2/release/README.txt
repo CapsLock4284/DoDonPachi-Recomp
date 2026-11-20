@@ -91,6 +91,8 @@ FEATURES
   - Lifetime statistics (main menu > STATISTICS): games, play time, stages and
     loops cleared, deaths, bombs, bees, the best score and hit combo, per stage
     and per ship (arcade games only, as the achievements)
+  - Sound (SETTINGS > SOUND): VOLUME for all of it, and MUSIC, EFFECTS and
+    VOICES each on their own
   - Updates: as it starts, the game looks for a newer release on GitHub. If
     there is one, UPDATE TO V... shows at the top of the main menu: it asks
     first, then downloads it, checks it and starts the game again. Your files
