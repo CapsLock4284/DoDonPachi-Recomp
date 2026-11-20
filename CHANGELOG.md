@@ -6,19 +6,9 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
-### Fixed
-- **Training: a boss place began too late into the fight** in 1-3 to 1-6 and 2-3 to 2-6 (up to 24 seconds in, the
-  boss already firing): it began where the stage's scroll ends, which in those stages comes long after the boss.
-  Every boss place now begins at the boss's WARNING, as the boss's music starts. In 1-5, 1-6, 2-5 and 2-6 the
-  enemies the unseen run had left alive were then waiting there, firing as the ship came in (a miss at once): the
-  way to those bosses is now flown firing, as a player would, and the items it drops are taken away; and every place
-  now begins with 3 seconds without harm, as after a life (the ship blinks), so nothing left on the screen can take a
-  life as you start. The HIGH on the screen is no longer raised by the way there (2-6's: the second loop's 6,000,000
-  area bonus).
-- **Training loads faster**: about twice as fast to a stage's start and a third faster to a boss (the way there run
-  unheard and without the slowdown, and 1-1's boss shot down on the way instead of waited out), and a place already
-  loaded this session (the same choices) comes back at once.
-- **The SOUND entry in SETTINGS had no ">"** to show it opens a page, as the others do.
+Nothing yet.
+
+## v0.2.0 (2026-11-20)
 
 ### New
 - **Separate volumes for the music, the sound effects and the voices** (SETTINGS > SOUND, `[sound]` in
@@ -37,6 +27,19 @@ notes). The release zip carries this file as `CHANGES.txt`.
   work up to full speed. The game itself is the same, frame for frame (its slowdown, patterns and timings as they
   are), only slower; the sound is slowed with it (lower in pitch, as a tape played slow), and the speed shows at the
   foot of the screen while it isn't 100%.
+- **Training loads faster**: about twice as fast to a stage's start and a third faster to a boss (the way there run
+  unheard and without the slowdown, and 1-1's boss shot down on the way instead of waited out), and a place already
+  loaded this session (the same choices) comes back at once.
+
+### Fixed
+- **Training: a boss place began too late into the fight** in 1-3 to 1-6 and 2-3 to 2-6 (up to 24 seconds in, the
+  boss already firing): it began where the stage's scroll ends, which in those stages comes long after the boss.
+  Every boss place now begins at the boss's WARNING, as the boss's music starts. In 1-5, 1-6, 2-5 and 2-6 the
+  enemies the unseen run had left alive were then waiting there, firing as the ship came in (a miss at once): the
+  way to those bosses is now flown firing, as a player would, and the items it drops are taken away; and every place
+  now begins with 3 seconds without harm, as after a life (the ship blinks), so nothing left on the screen can take a
+  life as you start. The HIGH on the screen is no longer raised by the way there (2-6's: the second loop's 6,000,000
+  area bonus).
 
 ## v0.1.0 (2026-11-19)
 
