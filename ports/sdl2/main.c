@@ -103,6 +103,15 @@ static int running = 1;
 static bool fast_forwarding;
 static bool training_on;     /* a training game (training.h): the main menu's TRAINING, until a reset or the main
                                 menu */
+
+/* The game's speed now, in %: a training game's SPEED (options.training_speed) while it plays, else the arcade's,
+   100. Slower, the board's frames come further apart (the game itself the same, frame for frame: its slowdown and
+   patterns as they are, all slower) and its sound is stretched with them, lower, as a tape played slow */
+static int game_speed(void)
+{
+	return training_on && !menu_is_open() && options.training_speed >= 50 && options.training_speed < 100
+		? options.training_speed : 100;
+}
 static bool state_loaded;    /* this game went back to a save state, or had a cheat on: its scores are not kept
                                 (until the next game: hiscore.h) */
 static bool reset_asked;    /* a reset asked for this frame (the look-ahead's state would undo it: look_ahead) */
@@ -436,6 +445,35 @@ static void audio_queue(void)
 	cave_sound_set_level(CAVE_SOUND_VOICES, (float)options.voices_volume / 100.0f);
 	while ((count = cave_sound_take(samples, 2048u)) > 0)
 	{
+		const int speed = game_speed();
+		int16_t slowed[2048u * 2u + 4u];
+
+		if (speed < 100)
+		{
+			/* (a slower training game: the board's sound stretched to the longer frames, 100/speed as many samples,
+			   each between two of the board's: 'position' runs on from chunk to chunk, from the last one kept) */
+			static double position;
+			static int16_t last;
+			const double step = speed / 100.0;
+			unsigned made = 0;
+
+			for (; position < (double)count && made < sizeof(slowed) / sizeof(slowed[0]); position += step)
+			{
+				const unsigned below = (unsigned)position;
+				const double fraction = position - below;
+				const int16_t from = below == 0 ? last : samples[below - 1u], to = samples[below];
+
+				slowed[made++] = (int16_t)(from + (to - from) * fraction);
+			}
+			position -= (double)count;
+			last = samples[count - 1u];
+			ui_sound_mix(slowed, made);
+			if (options.volume < 100)
+				for (unsigned index = 0; index < made; index++)
+					slowed[index] = (int16_t)(slowed[index] * options.volume / 100);
+			SDL_QueueAudio(audio, slowed, (Uint32)(made * sizeof(int16_t)));
+			continue;
+		}
 		ui_sound_mix(samples, count);    /* (the port's own: the menus', the achievement pop-up's) */
 		if (options.volume < 100)
 			for (unsigned index = 0; index < count; index++)
@@ -1044,6 +1082,18 @@ static const uint32_t *with_overlays(const uint32_t *pixels)
 	memcpy(marked, pixels, sizeof(marked));
 	hitbox_draw(marked, options.arcade_timing ? 3 : 2, options.hitbox, options.aura);
 	return marked;
+}
+
+/* The picture with the training's speed at its foot, while it is slower than the arcade's */
+static const uint32_t *with_speed(const uint32_t *pixels)
+{
+	static uint32_t out[VIDEO_WIDTH * VIDEO_HEIGHT];
+
+	if (game_speed() >= 100)
+		return pixels;
+	memcpy(out, pixels, sizeof(out));
+	menu_put_speed(out, game_speed());
+	return out;
 }
 
 /* The picture with the meter over its corner, when it is on */
@@ -1777,7 +1827,7 @@ int main(int argc, char **argv)
 		{
 			const Uint64 show_began = SDL_GetPerformanceCounter();
 
-			show_picture(with_meter(menu_with_notice(with_overlays(picture))));
+			show_picture(with_meter(menu_with_notice(with_speed(with_overlays(picture)))));
 			spend(SPENT_SHOW, show_began);
 		}
 pace:
@@ -1794,7 +1844,12 @@ pace:
 				SDL_Delay((Uint32)((next - now - margin) * 1000u / frequency));
 			while ((now = SDL_GetPerformanceCounter()) < next)
 				;
-			next = (now > next + 4u * period) ? now + period : next + period;
+			{
+				/* (a slower training game: its frames further apart, game_speed) */
+				const Uint64 paced = period * 100u / (Uint64)game_speed();
+
+				next = (now > next + 4u * paced) ? now + paced : next + paced;
+			}
 		}
 	}
 	stats_save();

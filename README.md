@@ -86,10 +86,16 @@ contents in `ddonpach.dat` beside the program; it reads that from then on.
 | Start, coin | 1, 5 | Start |
 | Service switch (held 2 s at the title: the test mode) | F2 | |
 
-Training (TRAINING on the main menu): any stage of either loop, from its start or at its boss, with the ship, its
-style (shot or laser), the power (1 to MAX) and the bombs (3, or the most, 6) chosen. The game is run there unseen
+Training (TRAINING on the main menu): any stage of either loop, from its start or at its boss (from its WARNING,
+as the boss comes), and 2-7, the second loop's hidden Area 7: its boss Hachi, or the true last boss Hibachi (Hachi
+shot down for you on the way). The ship, its style (shot or laser), the power (ON PACE, the default: what a player
+has there from the power-ups on the way, shown beside it, "ON PACE (2)"; or 1 to MAX) and the bombs (3, or the
+most, 6) are chosen. The game is run there unseen
 from its reset (a few seconds: LOADING...), and kept as a save state: RETRY TRAINING in the options goes back to
 it, and with RETRY ON MISS a miss goes back to it a second later. TRAINING MENU goes back to the training page.
+SPEED plays the game slower, 50% to 100% in steps of 10, to learn a place and work up to the arcade's: the game is
+the same frame for frame (its slowdown and patterns as they are), its frames only come further apart, and the sound
+is slowed with it (lower, as a tape played slow); the speed shows at the foot of the screen.
 Training games don't count for high scores or the stages' bests. Its choices are kept in `[training]` in
 `ddonpach.ini`.
 

@@ -6,6 +6,12 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
+### Fixed
+- **Training: a boss place began too late into the fight** in 1-3 to 1-6 and 2-3 to 2-6 (up to 24 seconds in, the
+  boss already firing): it began where the stage's scroll ends, which in those stages comes long after the boss.
+  Every boss place now begins at the boss's WARNING, as the boss's music starts.
+- **The SOUND entry in SETTINGS had no ">"** to show it opens a page, as the others do.
+
 ### New
 - **Separate volumes for the music, the sound effects and the voices** (SETTINGS > SOUND, `[sound]` in
   `ddonpach.ini`): VOLUME sets all of it as before; MUSIC, EFFECTS and VOICES set each on its own, under it, in steps
@@ -13,6 +19,16 @@ notes). The release zip carries this file as `CHANGES.txt`.
   music, shots and enemies shot down, a voice), over and over until you move off it. Players asked for it. The game
   itself is untouched: only what you hear changes (checked through both loops: the board the same, frame by frame,
   whatever the levels; at 100% the sound the same as before, sample for sample).
+- **Training: ON PACE power** (TRAINING > POWER, now the default): the power a player would have at the place from
+  the power-ups on the way there, none missed; the page shows what it gives ("ON PACE (2)"). It rises from level 1 at
+  1-1's start to MAX at 1-3's boss, and stays MAX in the second loop. So a boss is practised with the power it is
+  really met with. 1 to MAX can still be chosen.
+- **Training: the true last boss** (TRAINING > STAGE 2-7): the second loop's hidden Area 7, at its boss Hachi or at
+  Hibachi, the true last boss (Hachi is shot down for you on the way, unseen: the loading takes a few seconds more).
+- **Training: SPEED** (TRAINING > SPEED, 50% to 100% in steps of 10): the game played slower, to learn a place and
+  work up to full speed. The game itself is the same, frame for frame (its slowdown, patterns and timings as they
+  are), only slower; the sound is slowed with it (lower in pitch, as a tape played slow), and the speed shows at the
+  foot of the screen while it isn't 100%.
 
 ## v0.1.0 (2026-11-19)
 

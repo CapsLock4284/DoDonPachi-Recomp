@@ -240,24 +240,29 @@
       (`tests/training_check`: 0.3-4.6 s each on the build machine, the bosses of 1-3 and 2-3 the longest).
       Still to do, as DonPachi Recomp's: a point part way through a stage, the mid-bosses, the difficulty, ON PACE
       power, the true last boss (2-6's second), a quicker way (1-1's boss is waited out)
-- [ ] **Training: ON PACE power and bombs** (owner, 18-11-2026: "so we're not hugely overpowered or underpowered when
-      fighting bosses"), as DonPachi Recomp's POWER: ON PACE: the power a player would have at the place from the
-      power-ups on the way there, not 1 or MAX. In DoDonPachi a power-up raises both weapons a level (the style's own
-      and the other, 0-4 each: GM_OWN_POWER / GM_OTHER_POWER), so ON PACE is a count of the power-ups (P items) before
-      each place: each stage's start, its mid-boss, its boss, from 1-1 on (in loop 2 the power carries over: likely
-      MAX from early on). To find: the power-up items, by logging them as they come out (the item records and the P's
-      sprite; their carriers) in a run that shoots everything (the test player with P1 INVINCIBLE, tests/cheats_check,
-      both loops), and checked against the ship's power as it reaches each place. Then a table as DonPachi Recomp's
-      (training.c's on_pace) and ON PACE in POWER's choices, the menu showing the level it gives ("ON PACE (3)").
-      Bombs the same if it makes a difference: the stock and its most (3 to 6: what raises the most, and what bomb
-      items do, to read from the code); DonPachi Recomp found it made no difference there
-- [ ] **Training: a slower speed to choose** (owner, 18-11-2026: "would let players ramp up to full speed for
-      training"): SPEED on the training page (`[training] speed`: 50% to 100% in steps of 10, 100% the arcade's), the
-      board's frames shown more slowly (the frame's period longer in main.c's pacing), so the game itself is the same
-      frame for frame: its slowdown, patterns and timings as they are, only all of them slower. The sound: played
-      slower (lower, as a tape slowed) by resampling the board's output to the longer frame, or kept at its pitch
-      (time-stretched: harder), to choose; the side panel's FPS showing the board's rate as played. The speed shown
-      on the screen while it isn't 100%. Training games don't count for scores already, so nothing else changes
+- [x] **Training: ON PACE power and bombs** (owner, 18-11-2026: "so we're not hugely overpowered or underpowered when
+      fighting bosses"), as DonPachi Recomp's POWER: ON PACE. Done 20-11-2026 (`training.c`'s on_pace,
+      `[training] power = on_pace`, the page showing "ON PACE (2)"): the items logged as they come out (their records
+      at $10A9F6, $20 each, 10 of them: $8010 a P, $8012 a bomb) through both loops, the test player with P1
+      INVINCIBLE shooting all it can, each P taken seen in the power as it rises (a P raises both weapons a level):
+      one P in 1-1, two in 1-2, the last that counts at 1-3's start; so level 1 at 1-1, 2 at its boss and 1-2's
+      start, 4 at 1-2's boss and 1-3's start, MAX from 1-3's boss on and through loop 2 (the power carries over).
+      Checked: training at each of the 24 places with ON PACE, the power set as the table says. Bombs need none:
+      their most is 3 until a life is lost (each loss raises it by one, to 6), and the stock is full at each place
+- [x] **Training fixes** (owner, 20-11-2026): ON PACE the default power; the boss places of 1-3 to 1-6 and 2-3 to
+      2-6 began well into the fight (the scroll's end, up to 24 s after the boss came: in the owner's words, the
+      boss "a bit too early"): every boss now from its WARNING (the owner's picture of 1-1's as the reference), as
+      the boss's music (#56, $502B8E in nibbles) starts on the YMZ280B's voice 0; and 2-7, the second loop's hidden
+      Area 7 (stage 6 of loop 1: 2-6's end set as the place's way there), at Hachi (its speech over, 38.6 s in) or at
+      the true last boss Hibachi (Hachi shot down on the way: the ship at MAX firing from below its middle, about 17,000
+      frames, unseen; then from Hibachi's WARNING, the boss's music again). Checked: each of the 14 boss places reached
+      (1 to 4.7 s of loading here), pictures of each at its first frame and a second after
+- [x] **Training: a slower speed to choose** (owner, 18-11-2026: "would let players ramp up to full speed for
+      training"). Done 20-11-2026: SPEED on the training page (`[training] speed`, 50-100 in steps of 10), the
+      board's frames paced further apart in main.c (game_speed: a training game, the menu closed), so the game is
+      the same frame for frame. The sound slowed with it, as a tape (lower): the board's output stretched to
+      100/speed as many samples (linear, from chunk to chunk); keeping its pitch (time-stretching) left for later if
+      wanted. "SPEED 70%" at the picture's foot while it isn't 100%; the FPS meter shows the board's rate as played
 - [x] **Difficulty in the game options** (owner, 18-11-2026: as DonPachi Recomp's, "an easier way of selecting
       difficulty without having to get into the test menu"): DIFFICULTY first in GAME OPTIONS (EASY / NORMAL / HARD /
       VERY HARD), the test mode's GAME DIFFICULTY: EEPROM word 4, bits 8-9 (0 NORMAL, 1 EASY, 2 HARD, 3 VERY HARD,
@@ -350,5 +355,6 @@
       `tests/updater_check` against DonPachi Recomp's real 0.9.0 release (its JSON, both packages, the install and
       restart, the clean-up), and the port itself pointed at that release (offscreen: the entry, the question, the
       download, the install, the restart)
-- [ ] A release package (tools/make_release.ps1, as DonPachi Recomp's): the asset's name must end "-win64.zip"
+- [x] A release package (tools/make_release.ps1 and .sh, as DonPachi Recomp's): the asset's name must end "-win64.zip"
       (and "-linux-x64.tar.gz" for Linux) and the release's tag be the version ("v0.2.0"), for the updater to find it.
+      Done: v0.1.0 released with it (19-11-2026).

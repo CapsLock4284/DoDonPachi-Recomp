@@ -67,6 +67,9 @@ FEATURES
   - Main menu: START GAME, TRAINING (any stage of either loop, from its start
     or at its boss, with your choice of ship, style, power and bombs, and retry
     on a miss), REPLAYS, ACHIEVEMENTS, STATISTICS, SETTINGS
+  - Training extras: ON PACE power (what you would have there from the
+    power-ups on the way), SPEED (the game slowed to 50-90% to learn a place)
+    and 2-7, the hidden Area 7: Hachi, or the true last boss Hibachi
   - Side panels on wide screens: your ship's power and bombs, the board's speed
     and slowdown, the enemy bullets on screen with a graph of the last seconds,
     the stage's 13 bees, your stick and buttons; the score chasing the high

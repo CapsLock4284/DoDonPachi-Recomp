@@ -99,8 +99,9 @@ void settings_defaults(settings *s)
 	s->show_fps = false;
 	s->side_panels = true;
 	s->rotate = ROTATE_NONE;
-	s->training_power = 4;
+	s->training_power = 5;    /* (ON PACE) */
 	s->training_retry = true;
+	s->training_speed = 100;
 	s->sound = true;
 	s->volume = 100;
 	s->music_volume = s->effects_volume = s->voices_volume = 100;
@@ -353,12 +354,13 @@ static bool take(settings *s, const char *section, const char *name, char *value
 	if (!SDL_strcasecmp(section, "training"))
 	{
 		if (!SDL_strcasecmp(name, "stage"))
-			return parse_int(value, 0, 11, &s->training_stage);
+			return parse_int(value, 0, 12, &s->training_stage);
 		if (!SDL_strcasecmp(name, "place"))
 		{
-			if (!SDL_strcasecmp(value, "start") || !SDL_strcasecmp(value, "boss"))
+			if (!SDL_strcasecmp(value, "start") || !SDL_strcasecmp(value, "boss")
+					|| !SDL_strcasecmp(value, "true_last_boss"))
 			{
-				s->training_point = !SDL_strcasecmp(value, "boss");
+				s->training_point = !SDL_strcasecmp(value, "boss") ? 1 : !SDL_strcasecmp(value, "start") ? 0 : 2;
 				return true;
 			}
 			return false;
@@ -375,11 +377,27 @@ static bool take(settings *s, const char *section, const char *name, char *value
 			return false;
 		}
 		if (!SDL_strcasecmp(name, "power"))
+		{
+			/* (0-4, or on_pace) */
+			if (!SDL_strcasecmp(value, "on_pace"))
+			{
+				s->training_power = 5;
+				return true;
+			}
 			return parse_int(value, 0, 4, &s->training_power);
+		}
 		if (!SDL_strcasecmp(name, "max_bombs"))
 			return parse_bool(value, &s->training_max_bombs);
 		if (!SDL_strcasecmp(name, "retry_on_miss"))
 			return parse_bool(value, &s->training_retry);
+		if (!SDL_strcasecmp(name, "speed"))
+		{
+			/* (50-100, to the step of 10 below) */
+			if (!parse_int(value, 50, 100, &s->training_speed))
+				return false;
+			s->training_speed -= s->training_speed % 10;
+			return true;
+		}
 		return false;
 	}
 	if (!SDL_strcasecmp(section, "hotkeys"))
@@ -616,18 +634,24 @@ const char *settings_save(const settings *s, const char *path)
 	fprintf(file, "voices = %d\n\n", s->voices_volume);
 
 	fputs("[training]\n", file);
-	fputs("; the main menu's TRAINING: the stage, 0-11 (1-1 ... 1-6, 2-1 ... 2-6), and the place in it (start or boss)\n",
-		file);
+	fputs("; the main menu's TRAINING: the stage, 0-12 (1-1 ... 1-6, 2-1 ... 2-6, 12 2-7: the second loop's Area 7),\n"
+		"; and the place in it: start or boss (2-7: boss, Hachi, or true_last_boss, Hibachi)\n", file);
 	fprintf(file, "stage = %d\n", s->training_stage);
-	fprintf(file, "place = %s\n", s->training_point ? "boss" : "start");
+	fprintf(file, "place = %s\n", s->training_point == 2 ? "true_last_boss" : s->training_point ? "boss" : "start");
 	fputs("; the ship, 0-2 (types A, B, C), and its style (shot or laser)\n", file);
 	fprintf(file, "ship = %d\n", s->training_ship);
 	fprintf(file, "style = %s\n", s->training_laser ? "laser" : "shot");
-	fputs("; the power, 0-4 (levels 1-4, 4 MAX: the shot and the laser both); max_bombs: 6 bombs, else 3\n", file);
-	fprintf(file, "power = %d\n", s->training_power);
+	fputs("; the power, 0-4 (levels 1-4, 4 MAX: the shot and the laser both) or on_pace (what a player has there from\n"
+		"; the power-ups on the way); max_bombs: 6 bombs, else 3\n", file);
+	if (s->training_power == 5)
+		fputs("power = on_pace\n", file);
+	else
+		fprintf(file, "power = %d\n", s->training_power);
 	fprintf(file, "max_bombs = %s\n", bool_text(s->training_max_bombs));
 	fputs("; a miss: back to the place at once\n", file);
-	fprintf(file, "retry_on_miss = %s\n\n", bool_text(s->training_retry));
+	fprintf(file, "retry_on_miss = %s\n", bool_text(s->training_retry));
+	fputs("; the game's speed, 50 to 100 (%) in steps of 10: slower to learn a place (the sound slowed with it)\n", file);
+	fprintf(file, "speed = %d\n\n", s->training_speed);
 
 	fputs("[hotkeys]\n", file);
 	fputs("; the board's reset (keys, then the gamepad's buttons, either player's)\n", file);

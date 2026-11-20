@@ -16,6 +16,7 @@
 #include "hiscore.h"
 #include "stats.h"
 #include "updater.h"
+#include "training.h"
 #include "ui_sound.h"
 #include "replay.h"
 #include "scaler.h"
@@ -80,6 +81,7 @@ enum
 	ITEM_DIFFICULTY,              /* the game options': the game's difficulty, the test mode's (in the EEPROM) */
 	ITEM_SOUND,                   /* the sound's page: VOLUME, and MUSIC, EFFECTS and VOICES on their own */
 	ITEM_MUSIC_VOLUME, ITEM_EFFECTS_VOLUME, ITEM_VOICES_VOLUME,
+	ITEM_T_SPEED,                 /* the training page's: the game's speed, 50-100% */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -98,7 +100,7 @@ static const char *const item_labels[] = {
 	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
 	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
 	"STOP REPLAY", "HITBOX", "AURA", "ACHIEVEMENTS", "STATISTICS", "UPDATE", "YES, UPDATE", "NOT NOW",
-	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES"
+	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES", "SPEED"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -199,7 +201,7 @@ static void build_items(void)
 	else if (page == PAGE_TRAINING)
 	{
 		static const int training_items[] = { ITEM_T_STAGE, ITEM_T_POINT, ITEM_T_SHIP, ITEM_T_STYLE, ITEM_T_POWER,
-			ITEM_T_BOMBS, ITEM_T_RETRY, ITEM_T_START, ITEM_BACK };
+			ITEM_T_BOMBS, ITEM_T_SPEED, ITEM_T_RETRY, ITEM_T_START, ITEM_BACK };
 
 		add_items(training_items, sizeof(training_items) / sizeof(training_items[0]));
 	}
@@ -400,10 +402,15 @@ static void change(int item, int step, bool wrap)
 		in_use->aura = file->aura = !in_use->aura;
 		break;
 	case ITEM_T_STAGE:
-		in_use->training_stage = file->training_stage = cycle(in_use->training_stage, 12, step, wrap);
+		in_use->training_stage = file->training_stage = cycle(in_use->training_stage, TRAINING_STAGES, step, wrap);
 		break;
 	case ITEM_T_POINT:
-		in_use->training_point = file->training_point = !in_use->training_point;
+		/* (START and BOSS; 2-7: BOSS, Hachi, and TRUE LAST BOSS, Hibachi) */
+		in_use->training_point = file->training_point = in_use->training_stage == TRAINING_AREA_7
+			? (training_place(in_use->training_stage, in_use->training_point) == TRAINING_TRUE_LAST
+				? TRAINING_BOSS : TRAINING_TRUE_LAST)
+			: (training_place(in_use->training_stage, in_use->training_point) == TRAINING_BOSS
+				? TRAINING_START : TRAINING_BOSS);
 		break;
 	case ITEM_T_SHIP:
 		in_use->training_ship = file->training_ship = cycle(in_use->training_ship, 3, step, wrap);
@@ -412,13 +419,19 @@ static void change(int item, int step, bool wrap)
 		in_use->training_laser = file->training_laser = !in_use->training_laser;
 		break;
 	case ITEM_T_POWER:
-		in_use->training_power = file->training_power = cycle(in_use->training_power, 5, step, wrap);
+		/* (1-4, MAX, ON PACE) */
+		in_use->training_power = file->training_power = cycle(in_use->training_power, 6, step, wrap);
 		break;
 	case ITEM_T_BOMBS:
 		in_use->training_max_bombs = file->training_max_bombs = !in_use->training_max_bombs;
 		break;
 	case ITEM_T_RETRY:
 		in_use->training_retry = file->training_retry = !in_use->training_retry;
+		break;
+	case ITEM_T_SPEED:
+		/* (50-100% in steps of 10: from 100 up, 50) */
+		in_use->training_speed = file->training_speed = wrap && in_use->training_speed >= 100 ? 50
+			: clamp(in_use->training_speed + step * 10, 50, 100);
 		break;
 	case ITEM_HIGH_SCORES:
 		in_use->save_high_scores = file->save_high_scores = !in_use->save_high_scores;
@@ -1224,6 +1237,19 @@ void menu_put_meter(uint32_t *picture, const char *const *lines, int count)
 	}
 }
 
+void menu_put_speed(uint32_t *picture, int percent)
+{
+	char text[16];
+	int width, left;
+
+	snprintf(text, sizeof(text), "SPEED %d%%", percent);
+	width = (int)strlen(text) * 8;
+	left = (PICTURE_W - width) / 2;
+	fill(picture, left - 2, PICTURE_H - 12, left + width + 2, PICTURE_H, 0x000000u);
+	for (int at = 0; text[at]; at++)
+		put_glyph(picture, left + at * 8, PICTURE_H - 10, text[at], CYAN, 1);
+}
+
 /* ---- the entries' names and values ---- */
 
 static const char *item_label(int item)
@@ -1320,11 +1346,21 @@ static void item_value(int item, char *out, size_t size)
 		snprintf(out, size, "%s", s->aura ? "ON" : "OFF");
 		break;
 	case ITEM_T_STAGE:
-		snprintf(out, size, "%d-%d", s->training_stage / 6 + 1, s->training_stage % 6 + 1);
+		if (s->training_stage == TRAINING_AREA_7)
+			snprintf(out, size, "2-7");    /* (the second loop's hidden Area 7) */
+		else
+			snprintf(out, size, "%d-%d", s->training_stage / 6 + 1, s->training_stage % 6 + 1);
 		break;
 	case ITEM_T_POINT:
-		snprintf(out, size, "%s", s->training_point ? "BOSS" : "START");
+	{
+		const int point = training_place(s->training_stage, s->training_point);
+
+		if (s->training_stage == TRAINING_AREA_7)
+			snprintf(out, size, "%s", point == TRAINING_TRUE_LAST ? "HIBACHI (TLB)" : "HACHI");
+		else
+			snprintf(out, size, "%s", point == TRAINING_BOSS ? "BOSS" : "START");
 		break;
+	}
 	case ITEM_T_SHIP:
 		snprintf(out, size, "TYPE-%c", 'A' + s->training_ship);
 		break;
@@ -1332,10 +1368,23 @@ static void item_value(int item, char *out, size_t size)
 		snprintf(out, size, "%s", s->training_laser ? "LASER" : "SHOT");
 		break;
 	case ITEM_T_POWER:
-		if (s->training_power >= 4)
+		if (s->training_power == TRAINING_POWER_ON_PACE)
+		{
+			/* (what it gives at the place chosen: "ON PACE (2)") */
+			const int power = training_on_pace(s->training_stage, s->training_point);
+
+			if (power >= TRAINING_MAX_POWER)
+				snprintf(out, size, "ON PACE (MAX)");
+			else
+				snprintf(out, size, "ON PACE (%d)", power + 1);
+		}
+		else if (s->training_power >= TRAINING_MAX_POWER)
 			snprintf(out, size, "MAX");
 		else
 			snprintf(out, size, "%d", s->training_power + 1);
+		break;
+	case ITEM_T_SPEED:
+		snprintf(out, size, "%d%%%s", s->training_speed, s->training_speed == 100 ? " (ARCADE)" : "");
 		break;
 	case ITEM_T_BOMBS:
 		snprintf(out, size, "%s", s->training_max_bombs ? "6 (MAX)" : "3");
@@ -1387,6 +1436,7 @@ static void item_value(int item, char *out, size_t size)
 	case ITEM_GRAPHICS:
 	case ITEM_GAME:
 	case ITEM_CHEATS:
+	case ITEM_SOUND:
 		snprintf(out, size, ">");
 		break;
 	case ITEM_DEADZONE:

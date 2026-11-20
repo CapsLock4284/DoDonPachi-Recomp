@@ -89,6 +89,9 @@ const uint32_t *menu_with_notice(const uint32_t *picture);
    changed */
 void menu_put_meter(uint32_t *picture, const char *const *lines, int count);
 
+/* "SPEED 70%" at the picture's foot, centred (a training game slower than the arcade's) */
+void menu_put_speed(uint32_t *picture, int percent);
+
 /* Closed since the last call (then the port lets the game ignore what is still held, and starts the sound again) */
 bool menu_just_closed(void);
 
