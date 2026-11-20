@@ -107,10 +107,13 @@ bees, the best score and hit combo, the longest life, the furthest stage, each s
 bees, each ship's games and best score; kept in `ddonpach.stats`. Both count arcade games only: not training,
 replays, a game with a cheat or a save state, or one with the slowdown off.
 
-Overlays (HITBOX and AURA in the game options, `hitbox` and `aura` in `ddonpach.ini`; off by default): the ship's
-hitbox as a white glowing dot (the box the game tests the enemies' bullets against: much smaller than the ship),
-and, while the laser is fired, its aura as a light blue box (where the laser hits enemies close up, around the
-ship). Read from the game's own records each frame and drawn over the picture only: the game is not changed.
+Overlays (HITBOX, AURA and BULLETS in the game options, `hitbox`, `aura` and `bullets` in `ddonpach.ini`; off by
+default): the ship's hitbox as a white glowing dot (the box the game tests the enemies' bullets against: much
+smaller than the ship), and, while the laser is fired, its aura as a light blue box (where the laser hits enemies
+close up, around the ship). BULLETS marks each enemy bullet's point, a white pixel in a small green cross: the game
+tests a bullet only by that point (the middle of its sprite), so a bullet hits only when its point gets inside the
+ship's hitbox, however big it looks. Read from the game's own records each frame and drawn over the picture only:
+the game is not changed.
 
 Replays: every game is recorded as it is played. At its game over the game asks whether to keep its replay (saved
 in `replays/` beside the program, a file of about 14 KB a minute that can be shared); REPLAYS on the main menu lists

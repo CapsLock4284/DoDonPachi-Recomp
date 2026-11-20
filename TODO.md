@@ -340,13 +340,15 @@
       loops, 2-6's true last boss and the ending, no life lost, in 39 s; without it, 20 lives lost in 1-1's first
       30,000 VBLANKs), and the port (the ship drawn as without it: the glow every other frame is the laser's aura, as
       the arcade's)
-- [ ] **Bullet hitboxes** (owner, 18-11-2026; DonPachi Recomp's TODO has the same): beside HITBOX and AURA, the
-      enemies' bullets as the game tests them, so a player sees what can hit the ship and what can't. The bullets
-      are the records at $106CB6 ($40 each) that func_0057EE tests against the ship's box (+$10..+$16 of its record);
-      to find: whether a bullet is a point or has a box of its own (its reach, by its type), the table's length and
-      which records are in play. Drawn from the same frame as the sprites (two frames back, three with arcade timing),
-      as the hitbox. An option (BULLETS, off by default), only drawn over the picture: the game is not changed.
-      Later perhaps the enemies' own boxes (where the ship's shots land)
+- [x] **Bullet hitboxes** (owner, 18-11-2026; DonPachi Recomp's TODO has the same): beside HITBOX and AURA, the
+      enemies' bullets as the game tests them. Done 20-11-2026 (GAME OPTIONS > BULLETS, `[game] bullets`, off;
+      `hitbox.c`): a bullet is a point, not a box: func_0057EE takes each record's +06/+08 (as the ship's position)
+      and tests it inside the ship's box. The records: $106CB6, $40 bytes, 225 tested in the first loop, 245 in the
+      second (five a pass, 45 or 49 passes); a record is passed over when its top byte has any of $51 (bits 14, 12, 8
+      of +00: one that has hit, or can't); the overlay draws those in play (bit 15) without them. Checked: the points
+      against the bullet sprites in the bank shown, 40,000 frames of the test player: the record a frame before the
+      bank sits on its sprite's middle (0.14 pixels on average; 2 to 6 pixels at the other delays), the same delay as
+      the ship's box, so it is drawn with the hitbox's. The game options' rows 11 pixels apart to fit it
 - [x] **Separate volumes for music, sound effects and voices** (owner, 18-11-2026, players asked for it; DonPachi
       Recomp's has the same): SETTINGS > SOUND, VOLUME and MUSIC, EFFECTS and VOICES under it, in steps of 5, an
       example of each played while its volume is changed (owner, 19-11), `[sound] music / effects / voices`. Done

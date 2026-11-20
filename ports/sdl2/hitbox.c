@@ -23,6 +23,11 @@
 #define SPRITE_BANK 0x2000u         /* the sprite RAM's words a bank: 8 a sprite */
 #define GAME_MODE   0x1017A6u       /* 7: playing */
 #define AURA_COLOUR 0x40E0FFu
+#define BULLETS     0x106CB6u       /* the enemies' bullets: $40 bytes each */
+#define BULLET_SIZE 0x40u
+#define BULLETS_MOST 245            /* the most the game tests: 225 in the first loop, 245 in the second */
+#define LOOP        0x10197Au
+#define BULLET_COLOUR 0x50FF70u
 
 typedef struct
 {
@@ -35,8 +40,16 @@ typedef struct
 	box ship, aura;
 } boxes;
 
+/* the bullets that can hit a ship this frame: their points, the board's pixels */
+typedef struct
+{
+	int count;
+	int16_t x[BULLETS_MOST], y[BULLETS_MOST];
+} bullets;
+
 static const uint32_t records[2] = { 0x102C8Cu, 0x102CCCu }, auras[2] = { 0x103BAEu, 0x103ECEu };
 static boxes history[HISTORY][2];
+static bullets bullet_history[HISTORY];
 static unsigned recorded;
 static unsigned unseen[2] = { SEEN_FOR, SEEN_FOR };    /* the frames since each ship's sprite was last on the screen */
 static unsigned seen[2];           /* the frames in a row it has been */
@@ -92,13 +105,39 @@ void hitbox_record(void)
 	boxes *const now = history[recorded++ % HISTORY];
 	const bool playing = word(GAME_MODE) == 7;
 
+	bullets *const shots = &bullet_history[(recorded - 1u) % HISTORY];
+
 	if (program_frame_lagged())
 	{
 		/* (a frame of slowdown: the picture is the last one again, and so are its boxes; the records are half way
 		   through the frame) */
 		if (recorded > 1u)
+		{
 			memcpy(now, history[(recorded - 2u) % HISTORY], sizeof(history[0]));
+			*shots = bullet_history[(recorded - 2u) % HISTORY];
+		}
 		return;
+	}
+	/* the bullets the game tests (func_0057EE): in play (+00 bit 15; the game's own test doesn't look, but the others
+	   are away from the screen), and none of +00's bits 14, 12, 8 (the test's mask $51 on its top byte: a bullet
+	   that has hit, or one that can't) */
+	shots->count = 0;
+	if (playing)
+	{
+		const int most = word(LOOP) != 0 ? BULLETS_MOST : 225;
+
+		for (int index = 0; index < most; index++)
+		{
+			const uint32_t record = BULLETS + BULLET_SIZE * (uint32_t)index;
+			const int flags = word(record);
+
+			if ((flags & 0x8000) && !(flags & 0x5100))
+			{
+				shots->x[shots->count] = (int16_t)pixels(word(record + 0x06u));
+				shots->y[shots->count] = (int16_t)pixels(word(record + 0x08u));
+				shots->count++;
+			}
+		}
 	}
 	for (int player = 0; player < 2; player++)
 	{
@@ -157,13 +196,32 @@ static void picture_box(const box *b, int *left, int *right, int *top, int *bott
 	*bottom = (PICTURE_H - 1) - b->x0;
 }
 
-void hitbox_draw(uint32_t *picture, int frames_ago, bool hitboxes, bool show_auras)
+void hitbox_draw(uint32_t *picture, int frames_ago, bool hitboxes, bool show_auras, bool show_bullets)
 {
 	const boxes *now;
 
 	if (recorded <= (unsigned)frames_ago || frames_ago >= HISTORY)
 		return;
 	now = history[(recorded - 1u - (unsigned)frames_ago) % HISTORY];
+	if (show_bullets)
+	{
+		/* each bullet's point: what the game tests against the ships' boxes (a bullet hits as its point comes inside
+		   one), a white pixel in a small green cross so it shows on any bullet */
+		const bullets *const shots = &bullet_history[(recorded - 1u - (unsigned)frames_ago) % HISTORY];
+
+		for (int index = 0; index < shots->count; index++)
+		{
+			const box point = { true, shots->x[index], shots->x[index], shots->y[index], shots->y[index] };
+			int left, right, top, bottom;
+
+			picture_box(&point, &left, &right, &top, &bottom);
+			tint(picture, left - 1, top, BULLET_COLOUR, 85);
+			tint(picture, left + 1, top, BULLET_COLOUR, 85);
+			tint(picture, left, top - 1, BULLET_COLOUR, 85);
+			tint(picture, left, top + 1, BULLET_COLOUR, 85);
+			tint(picture, left, top, 0xFFFFFFu, 100);
+		}
+	}
 	for (int player = 0; player < 2; player++)
 	{
 		int left, right, top, bottom;

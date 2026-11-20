@@ -72,6 +72,7 @@ typedef struct
 	bool check_updates;         /* the newest release looked up as the program starts (updater.h); true by default */
 	bool hitbox;                /* the ships' hitboxes shown (hitbox.h) */
 	bool aura;                  /* the laser's aura shown (hitbox.h) */
+	bool bullets;               /* the enemies' bullets' points shown: what the game tests against the ships (hitbox.h) */
 	bool save_high_scores;      /* the high score table kept in ddonpach.hiscore (hiscore.h); true by default */
 	bool free_play;             /* Start drops in the coins a game needs first (cave/free_play.h); true by default */
 	bool arcade_timing;         /* the arcade's input latency exactly: the picture drawn when the vblank interrupt

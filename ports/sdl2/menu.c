@@ -82,6 +82,7 @@ enum
 	ITEM_SOUND,                   /* the sound's page: VOLUME, and MUSIC, EFFECTS and VOICES on their own */
 	ITEM_MUSIC_VOLUME, ITEM_EFFECTS_VOLUME, ITEM_VOICES_VOLUME,
 	ITEM_T_SPEED,                 /* the training page's: the game's speed, 50-100% */
+	ITEM_BULLETS,                 /* the game options': the bullets' points (hitbox.h) */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -100,7 +101,7 @@ static const char *const item_labels[] = {
 	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
 	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
 	"STOP REPLAY", "HITBOX", "AURA", "ACHIEVEMENTS", "STATISTICS", "UPDATE", "YES, UPDATE", "NOT NOW",
-	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES", "SPEED"
+	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES", "SPEED", "BULLETS"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -268,8 +269,8 @@ static void build_items(void)
 	}
 	else if (page == PAGE_GAME)
 	{
-		static const int game_items[] = { ITEM_DIFFICULTY, ITEM_TIMING, ITEM_HITBOX, ITEM_AURA, ITEM_FREE_PLAY, ITEM_HIGH_SCORES,
-			ITEM_SKIP_WARNING, ITEM_FRONT_AT_START, ITEM_CHECK_UPDATES, ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
+		static const int game_items[] = { ITEM_DIFFICULTY, ITEM_TIMING, ITEM_HITBOX, ITEM_AURA, ITEM_BULLETS,
+			ITEM_FREE_PLAY, ITEM_HIGH_SCORES, ITEM_SKIP_WARNING, ITEM_FRONT_AT_START, ITEM_CHECK_UPDATES, ITEM_SLOWDOWN, ITEM_AUTO_FIRE, ITEM_FAST_SPEED, ITEM_TEST_MODE, ITEM_CHEATS, ITEM_BACK };
 
 		for (size_t index = 0; index < sizeof(game_items) / sizeof(game_items[0]); index++)
 			if (!(front && game_items[index] == ITEM_TEST_MODE))    /* (no game running to hold the switch for) */
@@ -400,6 +401,9 @@ static void change(int item, int step, bool wrap)
 		break;
 	case ITEM_AURA:
 		in_use->aura = file->aura = !in_use->aura;
+		break;
+	case ITEM_BULLETS:
+		in_use->bullets = file->bullets = !in_use->bullets;
 		break;
 	case ITEM_T_STAGE:
 		in_use->training_stage = file->training_stage = cycle(in_use->training_stage, TRAINING_STAGES, step, wrap);
@@ -1345,6 +1349,9 @@ static void item_value(int item, char *out, size_t size)
 	case ITEM_AURA:
 		snprintf(out, size, "%s", s->aura ? "ON" : "OFF");
 		break;
+	case ITEM_BULLETS:
+		snprintf(out, size, "%s", s->bullets ? "ON" : "OFF");
+		break;
 	case ITEM_T_STAGE:
 		if (s->training_stage == TRAINING_AREA_7)
 			snprintf(out, size, "2-7");    /* (the second loop's hidden Area 7) */
@@ -1853,10 +1860,10 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 		put_centre(out, PANEL_TOP + 2, "KEY / GAMEPAD", GREY);
 	}
 	{
-		/* the entries, in pixel lines: 16 apart, the controls page's and the game options' 12 (18 and 14 of them) */
+		/* the entries, in pixel lines: 16 apart, the controls page's 12 (18 of them), the game options' 11 (16 of them,
+		   their note above the hints) */
 		const bool listed = page == PAGE_CHEATS || page == PAGE_REPLAYS || page == PAGE_ACHIEVEMENTS || page == PAGE_STATS;
-		const int step = page == PAGE_CONTROLS || page == PAGE_GAME ? 12 : listed ? 13 : 16;    /* (the game options:
-		                                                                                          their note above the hints) */
+		const int step = page == PAGE_GAME ? 11 : page == PAGE_CONTROLS ? 12 : listed ? 13 : 16;
 		int y = (PANEL_TOP + ((page == PAGE_CHEATS || page == PAGE_REPLAYS) && cheats_total == 0 ? 8
 			: page == PAGE_REPLAY_MENU || page == PAGE_DELETE ? 14 : page == PAGE_SAVE_REPLAY ? 9
 			: page == PAGE_UPDATE ? 19 : 4)) * 8;

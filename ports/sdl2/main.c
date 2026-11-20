@@ -1077,10 +1077,10 @@ static const uint32_t *with_overlays(const uint32_t *pixels)
 {
 	static uint32_t marked[VIDEO_WIDTH * VIDEO_HEIGHT];
 
-	if (!options.hitbox && !options.aura)
+	if (!options.hitbox && !options.aura && !options.bullets)
 		return pixels;
 	memcpy(marked, pixels, sizeof(marked));
-	hitbox_draw(marked, options.arcade_timing ? 3 : 2, options.hitbox, options.aura);
+	hitbox_draw(marked, options.arcade_timing ? 3 : 2, options.hitbox, options.aura, options.bullets);
 	return marked;
 }
 

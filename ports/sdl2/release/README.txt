@@ -83,6 +83,8 @@ FEATURES
   - Save states, fast forward, scanlines, borderless or exclusive full screen
   - Hitbox and aura displays (GAME OPTIONS > HITBOX, AURA): your ship's real
     hitbox (much smaller than the ship), and the laser's aura while it fires
+  - Bullet points (GAME OPTIONS > BULLETS): the one point of each enemy bullet
+    the game tests; a bullet hits only when that point is inside your hitbox
   - High scores kept between sessions (not while cheats or save states were used)
   - 24 achievements (main menu > ACHIEVEMENTS): stage and loop clears, no-miss
     and no-bomb stages, all 13 bees, hit combos, scores and more. Earned in the

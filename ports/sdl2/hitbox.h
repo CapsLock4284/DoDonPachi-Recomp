@@ -8,14 +8,16 @@
  *
  *    license:BSD-3-Clause
  *    DonPachi Recomp's (ports/sdl2/hitbox.h), made again for DoDonPachi. The game's tests (func_0057EE, run for each
- *    ship from 005790): a bullet's point (the 44 bullets from $106CB6, $40 bytes each; 48 in the second loop) against
- *    the ship's box, from its record (player 1 at $102C8C, player 2 at $102CCC): position +06 (along the board's x: up
- *    the cabinet's screen) and +08 (the board's y: across it), in 64ths of a pixel; the box reaches +10 above +06 and
- *    +12 below it, +14 above +08 and +16 below it (narrower as the ship banks). A ship is in play while bit 15 of its
- *    word +00 is set.
+ *    ship from 005790): a bullet's point (the bullets from $106CB6, $40 bytes each: the first 225 in the first loop,
+ *    245 in the second, five a pass of its loop) against the ship's box, from its record (player 1 at $102C8C,
+ *    player 2 at $102CCC): position +06 (along the board's x: up the cabinet's screen) and +08 (the board's y:
+ *    across it), in 64ths of a pixel; the box reaches +10 above +06 and +12 below it, +14 above +08 and +16 below it
+ *    (narrower as the ship banks). A ship is in play while bit 15 of its word +00 is set.
  *    The aura: a hit record of its own for each ship (player 1's at $103BAE, player 2's at $103ECE: the same layout,
  *    in play (bit 15 of +00) while the laser is fired), at the ship's position: on the owner's PC's type A shot it
  *    reaches 56 pixels ahead of the ship, 16 behind and 16 to each side; its own sizes are read each frame.
+ *    The bullets (BULLETS): each one's point, +06 and +08 as the ship's, drawn while its +00 has bit 15 (in play) and
+ *    none of bits 14, 12 and 8 (the test's mask: $51 on the top byte; a bullet with one of them is passed over).
  *    The sprites shown are two frames behind the game's memory (three with arcade timing: measured, the ship's sprite
  *    against its record), so what is drawn is the boxes of the frame the ship shown is from. A box is drawn only while
  *    the ship's own sprite (its code, the record's +04) is in the sprite bank shown, near it, during play.
@@ -30,7 +32,7 @@
 void hitbox_record(void);
 
 /* The boxes of 'frames_ago' frames ago drawn on 'picture' (240 x 320, as the cabinet shows it): the hitboxes, the
-   auras, as asked */
-void hitbox_draw(uint32_t *picture, int frames_ago, bool hitboxes, bool auras);
+   auras, the bullets' points, as asked */
+void hitbox_draw(uint32_t *picture, int frames_ago, bool hitboxes, bool auras, bool bullets);
 
 #endif
