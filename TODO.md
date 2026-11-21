@@ -160,12 +160,25 @@
 - [ ] **MAYBE: a death map** (owner, 18-11-2026: maybe): where each life was lost and each bomb used in a stage, as
       marks on a bar of the stage's progress (its scroll position, $10198E), kept across games (in a file beside
       `ddonpach.stages`), so the stages' hard places show
-- [ ] **MAYBE: the next extra life** (owner, 18-11-2026: maybe): the score of the next extend and how far there is to
+- [x] **MAYBE: the next extra life** (owner, 18-11-2026: maybe; done 21-11-2026: the right panel's "1UP IN" under
+      the high score chase, the amount still to score; "1UP" alone where the panel is narrow; NO MORE after the
+      last; a dotted line on the graph at its score once that is under the graph's top. $101950 / $101954, the next
+      extend's score, as game_memory.h; the graph 12 pixels shorter for the line. Checked: tests/panels_shot,
+      the test player through 6,000,000 to 20,000,000): the score of the next extend and how far there is to
       go, from the game's own extend scores (to find, where it gives the life: game_watch.c's "extended" event)
 - [ ] **MAYBE: a hit chain meter** (owner, 18-11-2026: maybe): the live hit count large, the chain's timer draining as
       a bar, and the best chain this stage and this game ($101842: player 1's MAX HIT; the count and its timer to
       find)
-- [ ] **The FPS meter on a side panel, not over the game** (owner, 20-11-2026): F9 / FPS METER now draws over
+- [ ] **Tooltips in the options menu, as DonPachi Recomp's** (owner, 21-11-2026): while a menu page is up (with
+      the side panels on), the right panel becomes a HELP panel: the chosen entry's name, then what it does, in
+      lines broken at the spaces to the panel's width. DonPachi's way: `menu_help()` in `menu.c` (`item_help`: a
+      text for every entry, the controls' actions, cheats, achievements, statistics) and `widgets_draw_help()` in
+      `widgets.c`, drawn by main.c in place of the right panel while the menu is open. Every DoDonPachi entry to
+      get its own text (the training's places and ON PACE, SPEED, the sound mixer's groups, BY LAYER, VERSION...)
+- [x] **The FPS meter on a side panel, not over the game** (owner, 20-11-2026; done 21-11-2026: with the panels shown,
+      F9's meter is a box over the right panel's score graph, GAME, BOARD, WINDOW, LATE, WORK MS, MOST MS, its
+      colours as the corner's warnings (`widgets_set_meter`); the corner only without the panels or rotated. Checked:
+      tests/panels_shot METER=1 at 120 and 156): F9 / FPS METER now draws over
       the picture's corner, on the game's area; it is to go onto the side panels instead (a section of its own,
       or over a panel's top as the achievement toast is), so the game is never covered. Over the picture only when
       the panels are off or the picture is rotated. DonPachi Recomp to get the same meter and log (its TODO)

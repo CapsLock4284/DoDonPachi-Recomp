@@ -886,8 +886,20 @@ static void draw_input(panel *p, int top)
 
 /* ---- the right panel: the score chasing the high scores, its graph, this stage ---- */
 
-#define GRAPH_TOP    88
-#define GRAPH_HEIGHT 90
+#define GRAPH_TOP    100         /* (under the next extra life's line) */
+#define GRAPH_HEIGHT 78
+
+/* the score of the player's next extend, as the score is kept (game_memory.h: $101950 / $101954, BCD; func_044BBE
+   gives the life when the score reaches it), or 0 when there are none left ($FFFF) */
+#define NEXT_EXTEND 0x101950u
+#define EXTEND_COLOUR 0xC8FFC8u    /* (pale: the places' colours are the graph's other lines) */
+
+static uint32_t next_extend(int player)
+{
+	const uint32_t at = NEXT_EXTEND + 4u * (uint32_t)player;
+
+	return word(at) == 0xFFFFu ? 0u : bcd_long(at);
+}
 
 static void draw_graph(panel *p, uint32_t score)
 {
@@ -956,6 +968,18 @@ static void draw_graph(panel *p, uint32_t score)
 		else if (place == run.chasing)
 			for (int x = left; x < left + width; x += 6)
 				box(p, x, y, x + 3, y + 1, colour);
+	}
+	/* the next extra life's score, dotted, when it is under the graph's top */
+	{
+		const uint32_t extend = next_extend(run.player);
+
+		if (extend != 0 && extend > score && extend <= top)
+		{
+			const int y = bottom - 1 - (int)((double)extend / (double)top * (GRAPH_HEIGHT - 1));
+
+			for (int x = left + 1; x < left + width; x += 3)
+				dot(p, x, y, EXTEND_COLOUR);
+		}
 	}
 }
 
@@ -1069,6 +1093,22 @@ static void draw_right(panel *p)
 	{
 		put_centre(p, 60, "PAST #1!", GOLD, 1);
 	}
+	/* the next extra life: how much more score it takes (the score's extends; none left after the last) */
+	if (showing)
+	{
+		const uint32_t extend = next_extend(run.player);
+
+		const char *label = "1UP IN";
+
+		if (extend)
+		{
+			score_text(value, sizeof(value), extend > score ? extend - score : 0u, room - text_width("1UP", 1) - 8);
+			if (text_width(label, 1) + 8 + text_width(value, 1) > room)
+				label = "1UP";    /* (a narrow panel: the shorter name, the amount kept whole) */
+		}
+		put_text(p, 8, 86, label, extend ? EXTEND_COLOUR : DIM, 1);
+		put_right(p, 86, extend ? value : "NO MORE", extend ? WHITE : DIM, 1);
+	}
 	draw_graph(p, score);
 
 	draw_stages(p, score);
@@ -1130,6 +1170,41 @@ static void draw_toast(panel *p)
 	}
 }
 
+/* ---- the FPS meter, on the right panel over the score's graph (the stages' list left as it is) ---- */
+
+static widgets_meter meter;
+
+void widgets_set_meter(const widgets_meter *now)
+{
+	meter = *now;
+}
+
+static void draw_meter(panel *p)
+{
+	const int top = GRAPH_TOP - 3, bottom = GRAPH_TOP + GRAPH_HEIGHT + 3, w = p->w;
+	char text[24];
+	const struct { const char *name; double value; const char *format; uint32_t colour; } rows[6] = {
+		{ "GAME", meter.game, "%.1f", meter.game < meter.board - 0.5 ? YELLOW : GREEN },
+		{ "BOARD", meter.board, "%.1f", meter.board < 57.0 ? RED : WHITE },
+		{ "WINDOW", meter.windows, "%.1f", WHITE },
+		{ "LATE", (double)meter.late, "%.0f", meter.late ? RED : WHITE },
+		{ "WORK MS", meter.work, "%.1f", WHITE },
+		{ "MOST MS", meter.work_most, "%.1f", meter.work_most > 17.4 ? YELLOW : WHITE },
+	};
+
+	box(p, 4, top, w - 4, bottom, HEADER);
+	outline(p, 4, top, w - 4, bottom, FRAME);
+	put_centre(p, top + 4, "FPS METER", GOLD, 1);
+	for (int row = 0; row < 6; row++)
+	{
+		const int y = top + 16 + row * 10;
+
+		put_text(p, 10, y, rows[row].name, GREY, 1);
+		snprintf(text, sizeof(text), rows[row].format, rows[row].value);
+		put_right(p, y, text, rows[row].colour, 1);
+	}
+}
+
 void widgets_draw(uint32_t *left, uint32_t *right, int width)
 {
 	panel p;
@@ -1143,6 +1218,8 @@ void widgets_draw(uint32_t *left, uint32_t *right, int width)
 	draw_left(&p);
 	p.pixels = right;
 	draw_right(&p);
+	if (meter.on)
+		draw_meter(&p);
 	if (toast_frames > 0)
 		draw_toast(&p);
 }

@@ -171,7 +171,7 @@ how its picture is shown:
 | CRT | OFF, LIGHT, FULL | The arcade monitor's look: a curved screen with its lines, phosphor stripes and glow (SCANLINES and FILTER are set aside while it is on). Best in full screen |
 | VSYNC | OFF, ON | On: no tearing, the picture waits for the monitor (a little more delay). Off (the default): the least delay |
 | RENDERER | AUTO, DIRECT3D, DIRECT3D11, DIRECT3D12, OPENGL, SOFTWARE | How the picture reaches the screen, used from the next start. AUTO is Direct3D 12 on Windows, the quickest to show |
-| FPS METER | OFF, ON | The frame rate over the picture's corner (F9 too) |
+| FPS METER | OFF, ON | The frame rate and the PC's time a frame (F9 too): on the right side panel, never over the game; over the picture's corner only when the panels are off or the picture is rotated |
 | ROTATE | OFF, RIGHT, LEFT | Turns the picture for a monitor on its side (TATE); the side panels are hidden then |
 | SIDE PANELS | ON, OFF | Panels in the empty space beside the picture on a wide screen: the game's information beside the picture (see Side panels below). They widen to fill the screen; the game's picture keeps its size |
 | WINDOW SIZE | 1X to 8X | The window's size, as times the arcade's picture (3X by default) |
@@ -214,7 +214,9 @@ game itself runs every one of them, as on the board). SKIP WARNING in the game o
 The FPS meter (F9, or FPS METER in the graphics options) shows, each second: GAME, the game's own frames (fewer
 while the game slows down, as the arcade board does: SLOWDOWN OFF in the game options to compare); BOARD, the
 board's frames run (57.55 a second, the arcade's rate: fewer means the PC can't keep up); WINDOW, the pictures
-shown; LATE, the frames the PC ran late; and WORK, a frame's milliseconds on average and at most.
+shown; LATE, the frames the PC ran late; and WORK, a frame's milliseconds on average and at most. With the side
+panels on it is drawn on the right one (over the score's graph), so it never covers the game; without them, or with
+the picture rotated, over the picture's top corner.
 While the meter is on, each second is also written to `ddonpach_fps.log` beside the program, with the settings,
 the renderer, and the time each part of a frame takes.
 
@@ -231,7 +233,9 @@ and the panels only take the black space at its sides (as wide as the screen lea
   colours then), with the count ("9/13"); and the controls, as DonPachi Recomp's: the stick (a 3 x 3, the way it
   points lit) and the S, B and C buttons, lit while held, as the board is given them each frame.
 - Right: the stage and the score, and the high score table chased one place at a time: #5 first, then #4 once it
-  is passed, up to #1 ("NEXT #3", the score, and how much more it takes). The graph shows the score through the
+  is passed, up to #1 ("NEXT #3", the score, and how much more it takes); then how much more score the next extra
+  life takes ("1UP IN": the game gives one at 6,000,000 and one at 20,000,000; NO MORE after them), also a dotted
+  line on the graph when it is in sight. The graph shows the score through the
   game against the place being chased (the dashed line at the top); each place passed leaves a line in its colour
   where it was passed, with its number. Below: the loop's six stages one under the other, a record of the game so
   far: each stage finished with its score and how it went against the best ever for that stage (+ or -, gold for a

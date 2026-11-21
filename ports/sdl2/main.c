@@ -999,6 +999,7 @@ static struct
 	unsigned game_frames, board_frames, windows, late;
 	Uint64 work, work_most;         /* (counter ticks) */
 	char lines[3][32];
+	widgets_meter shown;            /* the last second's, for the side panel (widgets.h) */
 } meter;
 
 static void meter_board_frame(void)
@@ -1034,6 +1035,12 @@ static void meter_frame_end(Uint64 began, Uint64 next)
 			meter.windows / seconds);
 		snprintf(meter.lines[2], sizeof(meter.lines[2]), "LATE %u  WORK %.1f/%.1fMS", meter.late,
 			meter.windows ? (double)meter.work * ms / meter.windows : 0.0, (double)meter.work_most * ms);
+		meter.shown.game = meter.game_frames / seconds;
+		meter.shown.board = meter.board_frames / seconds;
+		meter.shown.windows = meter.windows / seconds;
+		meter.shown.late = meter.late;
+		meter.shown.work = meter.windows ? (double)meter.work * ms / meter.windows : 0.0;
+		meter.shown.work_most = (double)meter.work_most * ms;
 #ifdef METER_LOG
 		fprintf(stderr, "%s | %s | %s\n", meter.lines[0], meter.lines[1], meter.lines[2]);
 #endif
@@ -1140,13 +1147,16 @@ static const uint32_t *with_speed(const uint32_t *pixels)
 	return out;
 }
 
-/* The picture with the meter over its corner, when it is on */
+/* The picture with the meter over its corner, when it is on and there are no side panels to show it on (owner: never
+   over the game when it can be beside it): with them, on the right panel (widgets_set_meter) */
 static const uint32_t *with_meter(const uint32_t *pixels)
 {
 	static uint32_t out[VIDEO_WIDTH * VIDEO_HEIGHT];
 	const char *const lines[3] = { meter.lines[0], meter.lines[1], meter.lines[2] };
 
-	if (!options.show_fps || !meter.lines[0][0])
+	meter.shown.on = options.show_fps && meter.lines[0][0] && panels_shown();
+	widgets_set_meter(&meter.shown);
+	if (!options.show_fps || !meter.lines[0][0] || panels_shown())
 		return pixels;
 	memcpy(out, pixels, sizeof(out));
 	menu_put_meter(out, lines, 3);

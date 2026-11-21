@@ -2,7 +2,8 @@
    as the screen shows them, played by tests/player.h (or another: -DPLAYER='"players/type_A_shot.h"') and kept from
    harm from VBLANK 2,500 as slowdown_check's INVINCIBLE (MORTAL=1: not); every EVERY VBLANKs a picture
    panels_VBLANK_WIDTH.ppm for each panel width given (120 156 251 by default: 16:10, 16:9 and 21:9 screens). The
-   stages' best scores in panels_test.stages (started empty; KEEP_STAGES=1: kept from the last run). Run where ddonpach.zip is, as slowdown_check */
+   stages' best scores in panels_test.stages (started empty; KEEP_STAGES=1: kept from the last run). METER=1: the
+   FPS meter on the right panel too, as F9 shows it with the panels on. Run where ddonpach.zip is, as slowdown_check */
 #include "cave/boards.h"
 #include "cave/machine.h"
 #include "cave/program.h"
@@ -94,6 +95,14 @@ int main(int argc, char **argv)
 			{
 				char name[64];
 
+				if (getenv("METER"))
+				{
+					/* (the FPS meter on the right panel's foot, as F9 shows it with the panels: figures for the
+					   picture) */
+					const widgets_meter shown = { true, 56.6, 57.5, 57.5, 0, 3.2, 6.8 };
+
+					widgets_set_meter(&shown);
+				}
 				widgets_draw(left, right, widths[at]);
 				snprintf(name, sizeof(name), "panels_%07llu_%d.ppm", (unsigned long long)cave_board.frame, widths[at]);
 				save(name, widths[at] < WIDGET_W ? WIDGET_W : widths[at] > WIDGET_MAX_W ? WIDGET_MAX_W : widths[at]);

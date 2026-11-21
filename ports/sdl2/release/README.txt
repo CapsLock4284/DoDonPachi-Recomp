@@ -58,7 +58,7 @@ CONTROLS (change them in SETTINGS > CONTROLS)
   F4                     the arcade's test (service) menu
   F5 / F8                save state / load state (for this session)
   F6 / F7                the save state slot before / after (5 slots)
-  F9                     the FPS meter
+  F9                     the FPS meter (on the right side panel)
   Tab / LB (held)        fast forward
   F11 or Alt+Enter       full screen
 

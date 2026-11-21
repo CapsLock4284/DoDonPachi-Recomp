@@ -13,6 +13,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
   with separate sets, put `ddonpachj.zip` beside `ddonpach.zip` or drop it on the first run's window (it can be
   skipped and added later, when JAPAN is chosen). Each version keeps its own high scores, stage bests and arcade
   settings; achievements and statistics are shared.
+- **The next extra life** on the right side panel: how much more score it takes ("1UP IN"; the game gives one at
+  6,000,000 and one at 20,000,000), with a dotted line on the score graph once it is in sight.
+- **The FPS meter moved off the game**: with the side panels on, F9's meter is drawn on the right panel instead of
+  over the picture's corner. Without the panels (or rotated) it stays in the corner.
 - **Filters by layer** (SETTINGS > GRAPHICS > BY LAYER, `[video] filter_layers`, off by default): the FILTER now
   runs on each of the game's layers and its sprites on their own, then puts them back together the way the arcade
   board does. Sprite outlines stay clean instead of smearing into the background, and lines that cross (the mesh in

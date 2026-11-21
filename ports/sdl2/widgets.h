@@ -59,6 +59,18 @@ void widgets_game_begun(void);
 void widgets_toast(const char *name, int more);
 bool widgets_toast_busy(void);
 
+/* The FPS meter (main.c, F9: its second's figures), shown on the right panel (over the score's graph) while the
+   panels are shown, so it never covers the game: 'on' false, not shown */
+typedef struct
+{
+	bool on;
+	double game, board, windows;    /* frames a second: the game's own, the board's, the pictures shown */
+	unsigned late;                  /* frames the PC came to late */
+	double work, work_most;         /* a frame's work and picture, ms: on average, at most */
+} widgets_meter;
+
+void widgets_set_meter(const widgets_meter *meter);
+
 /* Both panels, 'width' x WIDGET_H each (WIDGET_W to WIDGET_MAX_W), upright as the player sees them; a row is 'width'
    pixels */
 void widgets_draw(uint32_t *left, uint32_t *right, int width);
