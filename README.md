@@ -158,6 +158,25 @@ written beside the program on its first run: the keys and buttons, the window's 
 CRT look, the pixel-art scalers, on the whole picture or by layer, a monitor on its side), the sound's volumes,
 the arcade's slowdown.
 
+Graphics settings (SETTINGS > GRAPHICS, and `[video]` in `ddonpach.ini`). None of them change the game itself, only
+how its picture is shown:
+
+| Setting | Choices | What it does |
+|---|---|---|
+| SCALING | FIT, INTEGER, STRETCH | FIT: as large as the window allows, in the arcade's shape. INTEGER: whole multiples of the arcade's pixels only, so every pixel is the same size (the sharpest; may leave a border). STRETCH: fills the whole window, out of shape |
+| SMOOTHING | OFF, ON | Softens the pixels' edges as the picture is scaled up; off, the pixels stay sharp squares |
+| FILTER | OFF, SCALE2X, SCALE3X, XBR 2X, XBR 3X, XBR 4X, MMPX | A pixel-art scaler: a larger copy of the picture whose jagged edges are smoothed while the art stays sharp. Scale2x and Scale3x are the lightest, MMPX keeps the art's own look (thin lines and single pixels kept), xBR is the smoothest. Not used with the CRT look |
+| BY LAYER | OFF, ON | Runs FILTER on each of the game's layers and its sprites on their own, then puts them back together as the arcade board does: sprite outlines stay clean instead of smearing into a busy background, and lines that cross keep their shape. Scale2x, Scale3x and MMPX only: with xBR it shows NO (XBR) and xBR stays on the whole picture. Costs a few more milliseconds a frame |
+| SCANLINES | OFF, LIGHT, MEDIUM, HEAVY | Dark lines like an arcade monitor's. They run up and down the picture, as the cabinet's monitor stands on its side; none when the picture is too small for them |
+| CRT | OFF, LIGHT, FULL | The arcade monitor's look: a curved screen with its lines, phosphor stripes and glow (SCANLINES and FILTER are set aside while it is on). Best in full screen |
+| VSYNC | OFF, ON | On: no tearing, the picture waits for the monitor (a little more delay). Off (the default): the least delay |
+| RENDERER | AUTO, DIRECT3D, DIRECT3D11, DIRECT3D12, OPENGL, SOFTWARE | How the picture reaches the screen, used from the next start. AUTO is Direct3D 12 on Windows, the quickest to show |
+| FPS METER | OFF, ON | The frame rate over the picture's corner (F9 too) |
+| ROTATE | OFF, RIGHT, LEFT | Turns the picture for a monitor on its side (TATE); the side panels are hidden then |
+| SIDE PANELS | ON, OFF | Panels in the empty space beside the picture on a wide screen: the game's information beside the picture (see Side panels below). They widen to fill the screen; the game's picture keeps its size |
+| WINDOW SIZE | 1X to 8X | The window's size, as times the arcade's picture (3X by default) |
+| FULL SCREEN | OFF, BORDERLESS, EXCLUSIVE | BORDERLESS: a window over the whole screen, quick to switch away from. EXCLUSIVE: the display is the game's alone, which may lag a little less. F11 or Alt+Enter switches it too |
+
 Cheats (GAME OPTIONS > CHEATS): the port's own P1 INVINCIBLE and P2 INVINCIBLE (nothing can hit that player's ship:
 the time without harm the game gives after a life, kept up; the ship looks as always), for seeing the whole game. With
 MAME's cheat file for DoDonPachi (`cheats/ddonpach.xml` beside the program, from Pugsy's Cheats; not included) its

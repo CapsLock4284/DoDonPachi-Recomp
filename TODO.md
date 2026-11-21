@@ -165,6 +165,10 @@
 - [ ] **MAYBE: a hit chain meter** (owner, 18-11-2026: maybe): the live hit count large, the chain's timer draining as
       a bar, and the best chain this stage and this game ($101842: player 1's MAX HIT; the count and its timer to
       find)
+- [ ] **The FPS meter on a side panel, not over the game** (owner, 20-11-2026): F9 / FPS METER now draws over
+      the picture's corner, on the game's area; it is to go onto the side panels instead (a section of its own,
+      or over a panel's top as the achievement toast is), so the game is never covered. Over the picture only when
+      the panels are off or the picture is rotated. DonPachi Recomp to get the same meter and log (its TODO)
 - [ ] Side panel ideas still open: the lives; the hit counter's chain (the GP gauge's DoDonPachi equivalent);
       the boss's health; the stage's progress (its scroll position); the run's statistics (bombs used, misses by
       stage); the high score chase and the stage bests per ship and style

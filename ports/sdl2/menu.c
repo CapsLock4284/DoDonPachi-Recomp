@@ -1880,9 +1880,10 @@ void menu_draw(const uint32_t *game, uint32_t *out)
 	}
 	{
 		/* the entries, in pixel lines: 16 apart, the controls page's 12 (18 of them), the game options' 11 (16 of them,
-		   their note above the hints) */
+		   their note above the hints), the graphics page's 14 */
 		const bool listed = page == PAGE_CHEATS || page == PAGE_REPLAYS || page == PAGE_ACHIEVEMENTS || page == PAGE_STATS;
-		const int step = page == PAGE_GAME ? 11 : page == PAGE_CONTROLS ? 12 : listed ? 13 : 16;
+		const int step = page == PAGE_GAME ? 11 : page == PAGE_CONTROLS ? 12 : listed ? 13
+			: page == PAGE_GRAPHICS ? 14 : 16;    /* (the graphics page's 14 entries) */
 		int y = (PANEL_TOP + ((page == PAGE_CHEATS || page == PAGE_REPLAYS) && cheats_total == 0 ? 8
 			: page == PAGE_REPLAY_MENU || page == PAGE_DELETE ? 14 : page == PAGE_SAVE_REPLAY ? 9
 			: page == PAGE_UPDATE ? 19 : 4)) * 8;
