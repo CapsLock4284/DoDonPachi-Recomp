@@ -86,7 +86,9 @@ FEATURES
   - A CRT look (SETTINGS > GRAPHICS > CRT): a curved arcade screen with its
     scanlines, phosphor stripes and glow
   - Pixel-art filters (SETTINGS > GRAPHICS > FILTER): Scale2x, Scale3x, xBR 2x,
-    3x and 4x, and MMPX, smoothing the picture's edges while keeping it sharp
+    3x and 4x, and MMPX, smoothing the picture's edges while keeping it sharp;
+    BY LAYER runs it on each of the game's layers and its sprites on their own,
+    so sprite outlines stay clean against the background
   - Save states, fast forward, scanlines, borderless or exclusive full screen
   - Hitbox and aura displays (GAME OPTIONS > HITBOX, AURA): your ship's real
     hitbox (much smaller than the ship), and the laser's aura while it fires

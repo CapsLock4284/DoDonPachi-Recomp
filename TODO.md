@@ -101,6 +101,16 @@
       the whole frame's scalers), an option off by default, in Cave68kSDK's video.c for every game on the board.
       Later perhaps: replacement art packs, a GPU shader pipeline; a wider picture is a judgment call (the game
       only places things on its own 240 x 320).
+  - [x] **The first: filters by layer** (owner, 20-11-2026; both games): GRAPHICS > BY LAYER (`[video]
+        filter_layers`, off by default; `ports/sdl2/layer_filter.c`, as DonPachi Recomp's). Cave68kSDK's
+        `video_draw_planes` gives each tile layer and the sprites apart (a colour with its priority key in the top
+        byte), the FILTER's scaler makes each larger, `video_compose` puts them together by the board's rules. Scale2x,
+        Scale3x and MMPX only (they pick among their input's pixels; xBR blends: NO (XBR) in the menu, the whole
+        picture's). The port's overlays (hitbox, aura, bullets, a notice) stay sharp; the menu up, the whole picture's
+        scaler. Checked: `tests/layer_check` (the planes put together are `video_draw`'s picture, pixel for pixel, every
+        third frame of 120,000 VBLANKs of the test player); a picture of 1-3's mesh over the ground (MMPX: crossing
+        lines clean by layer, blobbed over the whole picture); about 4 ms a frame against 1 over the whole picture
+        (the cloud's 2 cores). Not seen yet on the owner's PC
 - [x] **The side panels, DoDonPachi's own** (18-11-2026; `ports/sdl2/widgets.c`, GRAPHICS > SIDE PANELS,
       `[video] side_panels`, on by default): as wide as the screen leaves room for (owner: DonPachi's left black at
       the sides of a 16:9 screen): main.c works the width out from the screen's shape, WIDGET_W (120) to 256 game

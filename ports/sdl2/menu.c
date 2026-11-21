@@ -84,6 +84,7 @@ enum
 	ITEM_T_SPEED,                 /* the training page's: the game's speed, 50-100% */
 	ITEM_BULLETS,                 /* the game options': the bullets' points (hitbox.h) */
 	ITEM_VERSION,                 /* the main menu's version of the game: the World one or the Japanese one */
+	ITEM_FILTER_LAYERS,           /* the filter on each layer and the sprites apart (layer_filter.h) */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -102,7 +103,8 @@ static const char *const item_labels[] = {
 	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
 	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
 	"STOP REPLAY", "HITBOX", "AURA", "ACHIEVEMENTS", "STATISTICS", "UPDATE", "YES, UPDATE", "NOT NOW",
-	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES", "SPEED", "BULLETS", "VERSION: WORLD"
+	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES", "SPEED", "BULLETS", "VERSION: WORLD",
+	"BY LAYER"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -287,7 +289,8 @@ static void build_items(void)
 	}
 	else if (page == PAGE_GRAPHICS)
 	{
-		static const int graphics_items[] = { ITEM_SCALING, ITEM_SMOOTH, ITEM_FILTER, ITEM_SCANLINES, ITEM_CRT,
+		static const int graphics_items[] = { ITEM_SCALING, ITEM_SMOOTH, ITEM_FILTER, ITEM_FILTER_LAYERS,
+			ITEM_SCANLINES, ITEM_CRT,
 			ITEM_VSYNC, ITEM_RENDERER, ITEM_FPS, ITEM_PANELS, ITEM_ROTATE, ITEM_SCALE, ITEM_FULLSCREEN, ITEM_BACK };
 
 		add_items(graphics_items, sizeof(graphics_items) / sizeof(graphics_items[0]));
@@ -537,6 +540,9 @@ static void change(int item, int step, bool wrap)
 	case ITEM_FILTER:
 		in_use->filter = file->filter = cycle(in_use->filter, SCALERS, step, wrap);
 		host.apply_video();
+		break;
+	case ITEM_FILTER_LAYERS:
+		in_use->filter_layers = file->filter_layers = !in_use->filter_layers;
 		break;
 	case ITEM_SCANLINES:
 		in_use->scanlines = file->scanlines = cycle(in_use->scanlines, 4, step, wrap);
@@ -1465,6 +1471,11 @@ static void item_value(int item, char *out, size_t size)
 		break;
 	case ITEM_FILTER:
 		snprintf(out, size, "%s", scaler_name(s->filter));
+		break;
+	case ITEM_FILTER_LAYERS:
+		/* (xBR blends: by layer it can't, so it stays on the whole picture) */
+		snprintf(out, size, "%s", !s->filter_layers ? "OFF" : scaler_by_layer(s->filter) || s->filter == SCALER_OFF
+			? "ON" : "NO (XBR)");
 		break;
 	case ITEM_SCANLINES:
 		snprintf(out, size, "%s", settings_scanline_names[s->scanlines]);

@@ -13,6 +13,11 @@ notes). The release zip carries this file as `CHANGES.txt`.
   with separate sets, put `ddonpachj.zip` beside `ddonpach.zip` or drop it on the first run's window (it can be
   skipped and added later, when JAPAN is chosen). Each version keeps its own high scores, stage bests and arcade
   settings; achievements and statistics are shared.
+- **Filters by layer** (SETTINGS > GRAPHICS > BY LAYER, `[video] filter_layers`, off by default): the FILTER now
+  runs on each of the game's layers and its sprites on their own, then puts them back together the way the arcade
+  board does. Sprite outlines stay clean instead of smearing into the background, and lines that cross (the mesh in
+  stage 3) keep their shape. Works with Scale2x, Scale3x and MMPX (xBR mixes colours, so it stays on the whole
+  picture). It costs a few more milliseconds a frame; the game itself is unchanged.
 - **Four more achievements** (28 now): HIDDEN EXTEND (the stage 3 ship's hidden 1UP: open its six side boxes with
   the laser, then destroy its tower, no bomb), HIDDEN STAGE (reach 2-7), HIBACHI (face the true last boss) and TRUE
   ENDING (shoot Hibachi down).

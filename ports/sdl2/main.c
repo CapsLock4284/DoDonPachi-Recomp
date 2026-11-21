@@ -57,6 +57,7 @@
  */
 #include "achievements.h"
 #include "crash_log.h"
+#include "layer_filter.h"
 #include "game_watch.h"
 #include "stats.h"
 #include "crt.h"
@@ -669,8 +670,15 @@ static void draw_picture(void)
 {
 	const Uint64 began = SDL_GetPerformanceCounter();
 
-	video_draw(frame);
-	video_rotated(frame, picture);
+	/* (GRAPHICS > BY LAYER with a filter that can: the same picture, its layers and sprites kept apart too) */
+	if (options.filter_layers && scaler_by_layer(options.filter) && options.crt == CRT_OFF)
+		layer_filter_draw(frame, picture);
+	else
+	{
+		video_draw(frame);
+		video_rotated(frame, picture);
+		layer_filter_forget();
+	}
 	spend(SPENT_DRAW, began);
 }
 
@@ -803,7 +811,9 @@ static SDL_Texture *filtered_picture(const uint32_t *pixels, float shown_w)
 		}
 		filtered_factor = factor;
 	}
-	scaler_run(options.filter, pixels, VIDEO_HEIGHT, VIDEO_WIDTH, filtered_pixels);
+	/* (by layer when it is on and can be: else over the whole picture) */
+	if (!options.filter_layers || !layer_filter_scale(options.filter, pixels, picture, filtered_pixels))
+		scaler_run(options.filter, pixels, VIDEO_HEIGHT, VIDEO_WIDTH, filtered_pixels);
 	SDL_UpdateTexture(filtered, NULL, filtered_pixels, VIDEO_HEIGHT * factor * (int)sizeof(uint32_t));
 	SDL_SetTextureScaleMode(filtered, options.smooth || shown_w < (float)(VIDEO_HEIGHT * factor) - 0.5f
 		? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
@@ -2016,6 +2026,7 @@ pace:
 	if (audio)
 		SDL_CloseAudioDevice(audio);
 	scaler_quit();
+	layer_filter_quit();
 	SDL_Quit();
 	if (update_restart && !updater_restart(argv))
 		fprintf(stderr, "updated: the new program could not be started, start it again\n");

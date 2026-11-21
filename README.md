@@ -155,7 +155,8 @@ F3 resets the game, F4 holds the service switch for you (the test mode, from the
 switches full screen, Escape (View on the gamepad) opens the options menu: video, sound, controls (remapping), the game's options,
 save states, cheats, QUIT TO DESKTOP. Player 2: R F D G, A, S, 2, 6. Everything can be changed there or in `ddonpach.ini`,
 written beside the program on its first run: the keys and buttons, the window's size, the video (scaling, scanlines, the
-CRT look, the pixel-art scalers, a monitor on its side), the sound's volumes, the arcade's slowdown.
+CRT look, the pixel-art scalers, on the whole picture or by layer, a monitor on its side), the sound's volumes,
+the arcade's slowdown.
 
 Cheats (GAME OPTIONS > CHEATS): the port's own P1 INVINCIBLE and P2 INVINCIBLE (nothing can hit that player's ship:
 the time without harm the game gives after a life, kept up; the ship looks as always), for seeing the whole game. With
