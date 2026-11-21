@@ -17,6 +17,13 @@
  *      $10161E / $101622  the scores (BCD, without the last digit the game shows: the continues)
  *      $101842  player 1's best hit combo of the game (the table's MAX HIT)
  *      $103F8E  the bees taken since the stage began or the last miss (its rises are the bees taken)
+ *      $101950 / $101954  the score of the player's next extend (BCD as the score; $FFFF none left): func_044BBE
+ *               gives the life when the score reaches it and moves it on (6,000,000 then 20,000,000 as the screen
+ *               shows them). A life with this unchanged is the hidden 1UP item's (func_04D178, func_04E5C0)
+ *      2-7, the second loop's hidden stage: the stage 6 of loop 1 after 2-6 is cleared (the same values are the
+ *               pause between the loops after 1-6); its true last boss Hibachi comes with the boss music on the
+ *               YMZ280B's voice 0 ($502B8E, its first in 2-7: Hachi has its own), and after Hibachi the loop is 2
+ *               (the ending)
  */
 #ifndef DDONPACH_GAME_MEMORY_H
 #define DDONPACH_GAME_MEMORY_H
@@ -40,6 +47,8 @@
 #define GM_SCORE_1      0x10161Eu
 #define GM_MAX_HIT_1    0x101842u
 #define GM_BEES         0x103F8Eu
+#define GM_NEXT_EXTEND  0x101950u   /* (player 1's: a long) */
+#define GM_BOSS_MUSIC   0x502B8Eu   /* (the YMZ280B's voice 0 starting there: a boss's WARNING) */
 
 static inline unsigned gm_byte(uint32_t address)
 {

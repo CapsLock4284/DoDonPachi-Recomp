@@ -10,6 +10,7 @@
 #include "game_memory.h"
 
 #include "cave/program.h"
+#include "cave/sound.h"
 
 #include <string.h>
 
@@ -18,7 +19,8 @@ game_watch_state game_watch;
 static struct
 {
 	unsigned mode, lives, bombs, bomb_most, own_power, bees;
-	bool flying;
+	uint32_t next_extend;
+	bool flying, boss_music;
 } last;
 
 void game_watch_reset(void)
@@ -42,6 +44,7 @@ void game_watch_frame(bool counts)
 	int area;
 
 	g->begun = g->ended = g->died = g->extended = g->bomb_used = g->continued = g->powered_up = false;
+	g->hidden_extend = g->area7_reached = g->hibachi_met = g->hibachi_defeated = false;
 	g->cleared = -1;
 	g->bees_taken = 0;
 	if (program_frame_lagged())
@@ -85,6 +88,8 @@ void game_watch_frame(bool counts)
 			g->cleared_two_players = g->stage_two_players;
 			if (g->stage < 6 && g->stage_bees >= 13u)
 				g->loop1_full_bees++;
+			if (g->stage == 11)
+				g->cleared_2_6 = true;
 		}
 		if (area >= 0)
 			stage_begin(area);
@@ -98,6 +103,10 @@ void game_watch_frame(bool counts)
 		const unsigned bomb_most = gm_byte(record + GM_BOMBS + 1u), own = gm_word(record + GM_OWN_POWER);
 		const unsigned bees = gm_word(GM_BEES);
 		const bool flying = gm_flying(0);
+		const uint32_t next_extend = (uint32_t)gm_word(GM_NEXT_EXTEND) << 16 | gm_word(GM_NEXT_EXTEND + 2u);
+		const cave_ymz_voice *const music = &cave_board.sound.ymz280b.voice[0];
+		const bool boss_music = music->playing && music->start == GM_BOSS_MUSIC;
+		const bool in_area7 = g->cleared_2_6 && gm_word(GM_STAGE) == 6u && gm_word(GM_LOOP) == 1u;
 
 		if (last.mode == 7u)
 		{
@@ -110,7 +119,11 @@ void game_watch_frame(bool counts)
 				g->life_frames = 0;
 			}
 			else if (lives == last.lives + 1u && flying && last.flying)
+			{
 				g->extended = true;    /* (one more life while flying: an extend; a continue comes from the count) */
+				/* (the score's extend moves its next score on in the same frame; the 1UP item's leaves it) */
+				g->hidden_extend = next_extend == last.next_extend;
+			}
 			/* a bomb: the stock one down, its most the same (a miss raises the most and fills the stock) */
 			if (bombs + 1u == last.bombs && bomb_most == last.bomb_most && lives == last.lives)
 			{
@@ -124,7 +137,17 @@ void game_watch_frame(bool counts)
 				g->bees_taken = bees - last.bees;
 				g->stage_bees += g->bees_taken;
 			}
+			/* 2-7: begun; Hibachi's WARNING (the boss music's start there); shot down (the ending: the loop 2) */
+			if (in_area7 && !g->in_area7)
+				g->area7_reached = true;
+			if (in_area7 && boss_music && !last.boss_music && !g->hibachi)
+				g->hibachi = g->hibachi_met = true;
+			if (g->in_area7 && g->hibachi && gm_word(GM_LOOP) == 2u)
+				g->hibachi_defeated = true;
 		}
+		g->in_area7 = in_area7;
+		last.next_extend = next_extend;
+		last.boss_music = boss_music;
 		last.lives = lives;
 		last.bombs = bombs;
 		last.bomb_most = bomb_most;

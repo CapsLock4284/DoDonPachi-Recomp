@@ -344,8 +344,18 @@
       the right panel; the statistics' totals, records, each stage's and each ship's. Checked headless over a whole
       two-loop game (tests via the test players) and the port's pages. Player 1 only for the lives, the combo and
       the score (player 2's places to find).
-- [ ] Achievements, statistics: more (DonPachi Recomp's area targets have DoDonPachi equivalents to find: the
-      hidden 1-ups, the true last boss)
+- [x] Achievements, statistics: more (DonPachi Recomp's area targets have DoDonPachi equivalents to find: the
+      hidden 1-ups, the true last boss). Done 20-11-2026, four more (28): HIDDEN EXTEND (the stage 3 ship's 1UP),
+      HIDDEN STAGE (2-7 begun), HIBACHI (its WARNING), TRUE ENDING (Hibachi shot down: the ending). Found: the extends
+      are func_044BBE's, by the score ($101950 / $101954 the next one's score, BCD: 6,000,000 then 20,000,000 as
+      shown, then $FFFF), and the 1UP item's (func_04D178, func_04E5C0: +1 life, sound $48, its next score left as
+      it is), so a life gained with the next extend's score unchanged is the 1UP's. 2-7 is the stage 6 of loop 1
+      after 2-6 is cleared (the same values are the pause between the loops after 1-6); Hibachi's WARNING the boss
+      music ($502B8E on voice 0, Hachi has its own); after it the loop is 2, the ending. Checked: `tests/
+      achievements_check` (the test player, invincible, both loops: 2-7, Hibachi and the ending earned in order, the
+      two score extends EXTRA LIFE only; the run again with a life given in 1-3 as the 1UP item gives it: HIDDEN
+      EXTEND). Not seen: the real 1UP item taken (none of the test players gets it: all 6 side boxes of the stage 3
+      ship opened with the laser, then its tower shot down, no bomb), and the Japanese version's runs
       each reads DonPachi's memory; DoDonPachi's addresses to find.
 - [x] **The hitbox and aura overlays** (18-11-2026; `ports/sdl2/hitbox.c`, GAME OPTIONS > HITBOX and AURA): the
       ship's box from its record (+06/+08 the position, +10..+16 the reach: the bullets' test, func_0057EE), and

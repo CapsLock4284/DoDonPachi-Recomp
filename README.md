@@ -113,8 +113,9 @@ is slowed with it (lower, as a tape played slow); the speed shows at the foot of
 Training games don't count for high scores or the stages' bests. Its choices are kept in `[training]` in
 `ddonpach.ini`.
 
-Achievements (ACHIEVEMENTS on the main menu): 24 goals, from clearing 1-1 to a one-credit clear of both loops,
-a stage without dying or without bombs, all 13 bees, hit combos, scores, full power, an extra life, every ship.
+Achievements (ACHIEVEMENTS on the main menu): 28 goals, from clearing 1-1 to a one-credit clear of both loops,
+a stage without dying or without bombs, all 13 bees, hit combos, scores, full power, an extra life, every ship,
+the hidden 1UP, 2-7 and Hibachi.
 Each earned is shown over the right side panel ("ACHIEVEMENT UNLOCKED") and kept in `ddonpach.achievements`.
 Statistics (STATISTICS on the main menu): games, continues, play time, stages and loops cleared, deaths, bombs,
 bees, the best score and hit combo, the longest life, the furthest stage, each stage's clears, deaths and best

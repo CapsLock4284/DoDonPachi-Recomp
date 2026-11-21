@@ -18,6 +18,7 @@ enum {
 	A_STAGE1, A_LOOP1, A_LOOP2, A_ALL, A_ONE_CREDIT, A_ONE_CREDIT_ALL, A_NO_MISS_STAGE, A_NO_MISS_LOOP,
 	A_NO_BOMB_STAGE, A_BEES_STAGE, A_BEES_LOOP, A_HIT100, A_HIT500, A_HIT1000, A_SCORE10M, A_SCORE50M,
 	A_SCORE100M, A_FULL_POWER, A_BOMB_SLOTS, A_EXTEND, A_TEAM, A_EVERY_SHIP, A_BOTH_STYLES, A_SURVIVOR,
+	A_HIDDEN_EXTEND, A_AREA7, A_HIBACHI, A_HIBACHI_DOWN,
 	ACHIEVEMENTS
 };
 
@@ -46,6 +47,10 @@ static const struct { const char *id, *name, *text; } list[ACHIEVEMENTS] = {
 	{ "every_ship",     "TEST PILOT",       "CLEAR 1-1 WITH TYPES A, B, C" },
 	{ "both_styles",    "SHOT AND LASER",   "CLEAR 1-1 IN BOTH STYLES" },
 	{ "survivor",       "SURVIVOR",         "5 MINUTES WITHOUT DYING" },
+	{ "hidden_extend",  "HIDDEN EXTEND",    "THE STAGE 3 SHIP'S 1UP" },
+	{ "area7",          "HIDDEN STAGE",     "REACH STAGE 2-7" },
+	{ "hibachi",        "HIBACHI",          "FACE THE TRUE LAST BOSS" },
+	{ "hibachi_down",   "TRUE ENDING",      "SHOOT DOWN HIBACHI" },
 };
 
 static char dates[ACHIEVEMENTS][16];    /* when each was earned ("" not yet) */
@@ -168,6 +173,14 @@ void achievements_frame(bool counts)
 		earn(A_LOOP2);
 	if (g->extended)
 		earn(A_EXTEND);
+	if (g->hidden_extend)
+		earn(A_HIDDEN_EXTEND);
+	if (g->area7_reached)
+		earn(A_AREA7);
+	if (g->hibachi_met)
+		earn(A_HIBACHI);
+	if (g->hibachi_defeated)
+		earn(A_HIBACHI_DOWN);
 	if (g->max_hit >= 100u)
 		earn(A_HIT100);
 	if (g->max_hit >= 500u)

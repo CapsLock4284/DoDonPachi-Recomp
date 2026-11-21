@@ -13,6 +13,9 @@ notes). The release zip carries this file as `CHANGES.txt`.
   with separate sets, put `ddonpachj.zip` beside `ddonpach.zip` or drop it on the first run's window (it can be
   skipped and added later, when JAPAN is chosen). Each version keeps its own high scores, stage bests and arcade
   settings; achievements and statistics are shared.
+- **Four more achievements** (28 now): HIDDEN EXTEND (the stage 3 ship's hidden 1UP: open its six side boxes with
+  the laser, then destroy its tower, no bomb), HIDDEN STAGE (reach 2-7), HIBACHI (face the true last boss) and TRUE
+  ENDING (shoot Hibachi down).
 - **Bullet points** (GAME OPTIONS > BULLETS, `[game] bullets`, off by default): each enemy bullet's point, a white
   pixel in a small green cross. The game tests a bullet only by that point, the middle of its sprite, so a bullet
   hits you only when its point gets inside your hitbox, however big it looks: with HITBOX on you see exactly what

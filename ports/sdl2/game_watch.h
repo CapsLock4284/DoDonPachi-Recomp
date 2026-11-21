@@ -26,6 +26,8 @@ typedef struct
 	unsigned cleared_misses, cleared_bombs, cleared_bees;
 	bool cleared_two_players;
 	bool died, extended, bomb_used, continued, powered_up;
+	bool hidden_extend;         /* the extend was the hidden 1UP item's (not the score's) */
+	bool area7_reached, hibachi_met, hibachi_defeated;    /* 2-7 begun, its true last boss come, shot down */
 	unsigned bees_taken;
 	/* the game so far */
 	bool on;                    /* a game being played, from its ship select */
@@ -41,6 +43,8 @@ typedef struct
 	uint32_t score;             /* player 1's (as the game counts it) */
 	unsigned max_hit;           /* player 1's best combo */
 	unsigned own_power, other_power, bombs, bomb_most;
+	bool cleared_2_6;           /* 2-6 cleared in this game: the stage 6 of loop 1 is 2-7 from then */
+	bool in_area7, hibachi;     /* in 2-7 now, and Hibachi come in it */
 	uint32_t play_frames, life_frames;    /* frames of play, and since the last miss */
 } game_watch_state;
 
