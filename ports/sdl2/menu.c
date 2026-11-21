@@ -83,6 +83,7 @@ enum
 	ITEM_MUSIC_VOLUME, ITEM_EFFECTS_VOLUME, ITEM_VOICES_VOLUME,
 	ITEM_T_SPEED,                 /* the training page's: the game's speed, 50-100% */
 	ITEM_BULLETS,                 /* the game options': the bullets' points (hitbox.h) */
+	ITEM_VERSION,                 /* the main menu's version of the game: the World one or the Japanese one */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -101,7 +102,7 @@ static const char *const item_labels[] = {
 	"TRAINING", "STAGE", "PLACE", "SHIP", "STYLE", "POWER", "BOMBS", "RETRY ON MISS", "START TRAINING",
 	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
 	"STOP REPLAY", "HITBOX", "AURA", "ACHIEVEMENTS", "STATISTICS", "UPDATE", "YES, UPDATE", "NOT NOW",
-	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES", "SPEED", "BULLETS"
+	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES", "SPEED", "BULLETS", "VERSION: WORLD"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -163,8 +164,8 @@ static void build_items(void)
 	item_count = 0;
 	if (page == PAGE_FRONT)
 	{
-		static const int front_items[] = { ITEM_START_GAME, ITEM_TRAINING, ITEM_REPLAYS, ITEM_ACHIEVEMENTS,
-			ITEM_STATISTICS, ITEM_SETTINGS, ITEM_QUIT };
+		static const int front_items[] = { ITEM_VERSION, ITEM_START_GAME, ITEM_TRAINING, ITEM_REPLAYS,
+			ITEM_ACHIEVEMENTS, ITEM_STATISTICS, ITEM_SETTINGS, ITEM_QUIT };
 
 		if (update_found)
 			items[item_count++] = ITEM_UPDATE;    /* (first: seen at once) */
@@ -649,6 +650,11 @@ static void choose(int item)
 	case ITEM_START_GAME:
 		front = false;
 		close_menu();    /* (the game starts: it runs from its reset, as the board switched on) */
+		break;
+	case ITEM_VERSION:
+		/* the other version, from its reset (main.c: its data, EEPROM and high scores) */
+		if (host.version && host.set_version)
+			host.set_version(!host.version());
 		break;
 	case ITEM_SETTINGS:
 		to_page(PAGE_MAIN);
@@ -1289,6 +1295,8 @@ static const char *item_label(int item)
 		name[19] = '\0';
 		return name;
 	}
+	if (item == ITEM_VERSION && host.version && host.version() == 1)
+		return "VERSION: JAPAN";
 	if (item == ITEM_UPDATE)
 	{
 		static char label[40];

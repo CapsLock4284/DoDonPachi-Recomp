@@ -14,6 +14,7 @@
  *
  *    Usage: cref_timed [--rom PATH] [--frames N] [--log FILE] [--waits FILE] [--hashes FILE] [--play]
  *      --rom     the ROM set's .zip (default ddonpach.zip): the International program
+ *                (VERSION=1 in the environment: the Japanese set's, ddonpachj's chips from the same .zip or beside it)
  *      --frames  the board's frames (VBLANKs) to run (default 18000: about 5 minutes)
  *      --log     a line per VBLANK: "vblank game_frame busy_cycles lagged"
  *      --waits   a line per frame of the game, as it comes to its wait for the next one, its work done:
@@ -56,7 +57,9 @@ extern "C" {
 #include <stdexcept>
 #include <string>
 
-#define CREF_FRAME_WAIT 0x0571ACu    /* tools/game_profile.py's FRAME_WAIT: the wait for the next frame */
+/* tools/game_profile.py's FRAME_WAIT: the wait for the next frame (the Japanese program's: game_profile.here's place
+   for it, VERSION=1) */
+static u32 CREF_FRAME_WAIT = 0x0571ACu;
 #define CREF_READY      0x10120Cu    /* bit 0: the frame made ready for the interrupt (DonPachi's 1011FC) */
 
 namespace {
@@ -301,12 +304,15 @@ int main(int argc, char **argv)
 	cave_clock = clock_now;
 	cave_access_clock = instruction_start;
 	cave_sound_events_changed = sound_events_changed;
-	if (const char *problem = rom_set_load(rom.c_str()))
+	/* (VERSION=1: the Japanese set, ddonpachj: its program chips from the .zip, merged or beside it) */
+	if (const char *problem = rom_set_load_version(rom.c_str(), getenv("VERSION") ? std::atoi(getenv("VERSION")) : 0))
 	{
 		std::fprintf(stderr, "The game does not start: %s\n", problem);
 		return 1;
 	}
 	cave_board.program = rom_set.program;
+	if (rom_set.version == 1)
+		CREF_FRAME_WAIT = 0x056DF4u;    /* (0571AC's place in the Japanese program: the same wait loop) */
 	std::memcpy(cave_board.eeprom.words, rom_set.eeprom, sizeof(cave_board.eeprom.words));
 	cave_reset();
 	cave_board.in0 = cave_board.in1 = 0xFFFFu;

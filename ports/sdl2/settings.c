@@ -547,7 +547,7 @@ const char *settings_save(const settings *s, const char *path)
 		"; (--rom, --scale, --no-sound, --eeprom, --cheats) go over these.\n\n", file);
 
 	fputs("[game]\n", file);
-	fputs("; the game's version: world, or japan (not yet: the Japanese program is still to be translated)\n", file);
+	fputs("; the game's version: world, or japan (MAME's ddonpachj: the main menu's VERSION)\n", file);
 	fprintf(file, "version = %s\n", s->version == 1 ? "japan" : "world");
 	fputs("; while the fast forward key or button is held ([hotkeys]): the game's frames a frame, 2 to 16\n", file);
 	fprintf(file, "fast_forward_speed = %d\n", s->fast_forward_speed);

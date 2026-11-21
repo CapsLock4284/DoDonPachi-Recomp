@@ -27,6 +27,13 @@ You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/0
    (`ddonpach.dat`, beside the program); after that the .zip isn't needed. From then on the game offers each new
    version itself (UPDATE TO V... on the main menu).
 
+**The Japanese version:** VERSION on the main menu switches to MAME's `ddonpachj` (Japan, Master Ver. 97/02/05). It
+has its own program chips only (`u27.bin`, `u26.bin`); a merged `ddonpach.zip` has them inside (in `ddonpachj/`), so
+its data is taken on the first run with the World one; with separate sets, put `ddonpachj.zip` beside
+`ddonpach.zip`, or drop it on the first run's window after `ddonpach.zip` (or later, when JAPAN is first chosen). It
+is extracted to `ddonpach_jpn.dat`. Each version keeps its own high scores, stage bests and arcade settings;
+achievements and statistics are shared.
+
 The release's `README.txt` has the controls, hotkeys and the list of files the game keeps. What's new in each
 version: [CHANGELOG.md](CHANGELOG.md). Making a release: `tools/make_release.ps1` (Windows) and
 `tools/make_release.sh` (Linux, or WSL), after a Release build; the changelog's section for the version first.
@@ -61,6 +68,13 @@ python tools/decompile.py             # the C, into src/
 ```
 
 The C is made from your ROMs, so it is never committed. (A run takes a while: about an hour.)
+
+The Japanese version's program, the same way (its names carried over from the International program's, where the code
+is the same: `tools/version_map.py`); the build puts it in the game beside the other when `src_jpn/` is there:
+
+```sh
+python tools/decompile.py --set japan # the Japanese program's C, into src_jpn/
+```
 
 Then build the game in a window (CMake, a C compiler, and SDL2: on Windows its development package,
 `SDL2-devel-2.x.x-VC.zip`, unpacked in `build/downloads/sdl2`; on Linux the system's, e.g. `libsdl2-dev`):
@@ -263,6 +277,9 @@ cd rom
 ../tests/bin/slowdown_check 72000
 python3 ../tests/slowdown_compare.py mame_waits.txt slowdown_waits.txt
 ```
+
+The Japanese program the same way, with `VERSION=1` before both tools (`cref_timed` reads `ddonpachj`'s chips from
+the same .zip, merged, or `ddonpachj.zip` beside it; `tests/build.sh` builds `src_jpn/` in when it is there).
 
 When they differ, `TRACE_FRAME=N` on both (the port built from `tools/decompile.py --trace`) and
 `tests/trace_compare.py` show where the port first goes another way.

@@ -56,11 +56,53 @@ REGIONS = [(0xC00000, 0xC10000, "PALETTE_RAM"), (0x400000, 0x410000, "SPRITE_RAM
            (0x700000, 0x704000, "LAYER2_RAM")]
 
 
+_address_map = None
+_images = []    # (the two programs: the International one, the one decompiled)
+
+
 def here(address):
-    """An address of the International program in the program being decompiled (the Japanese: not mapped yet)"""
-    if JAPAN:
-        raise SystemExit("the Japanese program's addresses are not mapped yet")
-    return address
+    """An address of the International program (as this file, tools/call_tables.py and symbols.txt give them) in the
+    program being decompiled: the same for the International set; for the Japanese, where the same code is
+    (tools/version_map.py, DonPachi Recomp's: the two programs aligned, both read from the rom folder). An address in
+    code that differs stops the decompile"""
+    global _address_map
+    if not JAPAN:
+        return address
+    if _address_map is None:
+        sys.path.append(str(Path(__file__).resolve().parent))    # (tools/version_map.py, after the core's own)
+        import version_map
+        folder = ROOT / "rom"
+        _images[:] = [rom.build_program(rom.load_set(folder, "ddonpach")), rom.build_program(rom.load_set(folder))]
+        _address_map = version_map.AddressMap(*_images)
+    mapped = _address_map(address)
+    if mapped is None:
+        mapped = _by_neighbours(address)
+    if mapped is None:
+        raise SystemExit(f"{address:06X} of the International program is in code the Japanese one doesn't share")
+    return mapped
+
+
+def _by_neighbours(address):
+    """Where the aligner left an address out though the code is the same (its runs need words found once in each
+    program: a routine repeated word for word, as 049DF4's five copies, has none): the shift of a matched run near it
+    (the nearest first: in a repeated stretch the aligner may have matched some words to the wrong copy), taken if the
+    8 bytes from the address are the same there (its instruction: a call further on may differ, its target moved)"""
+    import bisect
+    runs, starts = _address_map.runs, _address_map.starts
+    word = address >> 1
+    at = bisect.bisect_right(starts, word) - 1
+    shifts = []
+    for index in sorted(range(at - 3, at + 5), key=lambda index: abs(index - at - 0.5)):    # (the nearest first)
+        if 0 <= index < len(runs):
+            shift = (runs[index][1] - runs[index][0]) * 2
+            if shift not in shifts:
+                shifts.append(shift)
+    world, japan = _images
+    for shift in shifts:
+        moved = address + shift
+        if 0 <= moved and world[address:address + 8] == japan[moved:moved + 8]:
+            return moved
+    return None
 
 
 DECOMPILER = "m68000.decompile"
@@ -68,6 +110,6 @@ SUPERVISOR_CODE = [(0x000000, 0x100000)]
 
 # the main loop's wait for its next frame, as DonPachi's: 0571AC "addq.b #1, $101273.l", 0571B2 "tst.w $100f44.l"
 # (frame_flag, which the interrupt sets), 0571B8 "beq $571ac"; frame_wait() before its first instruction
-FRAME_WAIT = 0x0571AC
+FRAME_WAIT = here(0x0571AC)
 
 TIMING_MODEL = True

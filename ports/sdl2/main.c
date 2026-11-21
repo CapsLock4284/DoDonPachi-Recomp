@@ -347,25 +347,57 @@ static void show_problem(const char *problem)
 static const char *const data_files[2] = { "ddonpach.dat", "ddonpach_jpn.dat" };
 
 static bool data_extracted;
+static bool version_fell_back;    /* the settings' Japanese version not there at the start: the World one */
+
+/* the World data just extracted (the first run): the Japanese version's too if its set is there, so that choosing
+   JAPAN later needs no window (a build without the Japanese program: nothing). Not when its data is there already */
+static bool japan_wanted(const char *japan_path)
+{
+	FILE *const file = program_has_version(1) ? fopen(japan_path, "rb") : NULL;
+
+	if (file)
+		fclose(file);
+	return program_has_version(1) && !file;
+}
 
 /* The version's extracted data beside the program; without it (the first run, or a damaged file), the ROM set ('rom'
    in the settings), then its contents saved as the data for next time. 'rom_given': the command line's --rom, read
    (and extracted) whatever data there is */
 static const char *game_data_open(int version, bool rom_given)
 {
-	char path[1024];
+	char path[1024], japan_path[1024];
 	const char *data_problem = "--rom given", *rom_problem, *save_problem;
 
 	snprintf(path, sizeof(path), "%s%s", paths_folder(), data_files[version]);
+	snprintf(japan_path, sizeof(japan_path), "%s%s", paths_folder(), data_files[1]);
 	if (!rom_given && (data_problem = rom_set_load_data_version(path, version)) == NULL)
 		return NULL;
-	if ((rom_problem = rom_set_load_version(options.rom, version)) != NULL)
+	if ((rom_problem = rom_set_load_version(options.rom, version)) != NULL && version == 1)
+	{
+		/* (the Japanese chips alone, ddonpachj.zip: the World set's other chips, from its data or its set) */
+		char world[1024];
+
+		snprintf(world, sizeof(world), "%s%s", paths_folder(), data_files[0]);
+		if ((rom_set.program && rom_set.version == 0) || rom_set_load_data_version(world, 0) == NULL
+				|| rom_set_load_version(options.rom, 0) == NULL)
+			rom_problem = rom_set_load_clone_over(options.rom, 1);
+	}
+	if (rom_problem != NULL)
 	{
 		/* no data and no set: a window asks for the set to be dropped onto it */
 		bool saved;
 
 		fprintf(stderr, "%s (%s): the ROM set is asked for\n", rom_problem, data_problem);
-		if (!rom_drop_screen_version(path, version ? "NO DDONPACH_JPN.DAT, AND NO DDONPACHJ.ZIP IN THE 'ROM' FOLDER"
+		if (version == 0 && japan_wanted(japan_path))
+		{
+			/* (the first run: the World set, then the Japanese one in the same window, or both from a merged set) */
+			bool japan_saved;
+
+			if (!rom_drop_screen_both(path, japan_path, "NO DDONPACH.DAT, AND NO DDONPACH.ZIP IN THE 'ROM' FOLDER",
+					&saved, &japan_saved))
+				return "";
+		}
+		else if (!rom_drop_screen_version(path, version ? "NO DDONPACH_JPN.DAT, AND NO DDONPACHJ.ZIP IN THE 'ROM' FOLDER"
 				: "NO DDONPACH.DAT, AND NO DDONPACH.ZIP IN THE 'ROM' FOLDER", &saved, version))
 			return "";    /* (the window closed: no game, no message) */
 		data_extracted = saved;
@@ -377,6 +409,8 @@ static const char *game_data_open(int version, bool rom_given)
 	{
 		data_extracted = true;
 		fprintf(stderr, "the game's data extracted from %s into %s\n", options.rom, path);
+		if (version == 0 && japan_wanted(japan_path))
+			rom_drop_japan_too(options.rom, path, japan_path);    /* (a merged set, or ddonpachj.zip beside it) */
 	}
 	return NULL;
 }
@@ -1325,6 +1359,64 @@ static void menu_retry_training(void)
 	menu_notice("RETRY");
 }
 
+/* ---- the game's version (the main menu's VERSION): the World one or the Japanese one ---- */
+
+static int menu_version(void)
+{
+	return (int)rom_set.version;
+}
+
+/* The game to the other version, from its reset: its data (extracted the first time: game_data_open), its
+   program, EEPROM, high scores and stages' bests; the save states and the training places kept gone (another
+   program's). False if it could not be (the version as it was, told on the screen). As DonPachi Recomp's */
+static bool switch_version(int version)
+{
+	const int was = (int)rom_set.version;
+	const char *problem;
+
+	if (version == was)
+		return true;
+	if (!program_has_version(version))
+	{
+		menu_notice("NO JAPANESE PROGRAM IN THIS BUILD");
+		return false;
+	}
+	if (replay_playing())
+		replay_stop();
+	replay_keep(false);
+	eeprom_keep(false);
+	data_extracted = false;
+	if ((problem = game_data_open(version, false)) != NULL || (problem = program_switch()) != NULL)
+	{
+		if (problem[0])
+			fprintf(stderr, "the %s version: %s\n", rom_set_version_name(version), problem);
+		if ((int)rom_set.version != was || !rom_set.program)
+			game_data_open(was, false);
+		program_switch();
+		menu_notice(version ? "NO JAPANESE ROM SET" : "NO WORLD ROM SET");
+		return false;
+	}
+	eeprom_open(options.eeprom[0] ? options.eeprom : NULL);
+	hiscores_open();
+	for (int slot = 0; slot < STATE_SLOTS; slot++)
+	{
+		program_state_free(slot_states[slot]);
+		slot_states[slot] = NULL;
+	}
+	program_state_free(training_state);
+	training_state = NULL;
+	for (int index = 0; index < TRAINING_KEPT; index++)
+	{
+		program_state_free(training_kept[index].state);
+		training_kept[index].state = NULL;
+	}
+	menu_main_menu();
+	options.version = file_options.version = version;
+	settings_save(&file_options, settings_path);
+	menu_notice(data_extracted ? "ROM DATA EXTRACTED" : version ? "JAPANESE VERSION" : "WORLD VERSION");
+	return true;
+}
+
 /* ---- replays (replay.h): each arcade game recorded; saved at its end if the player says yes; played back ---- */
 
 
@@ -1564,7 +1656,15 @@ int main(int argc, char **argv)
 		fprintf(stderr, "no Japanese program in this build: the World version\n");
 		options.version = 0;
 	}
-	if ((problem = game_data_open(options.version, rom_given)) != NULL || (problem = program_start()) != NULL)
+	if (options.version != 0 && (problem = game_data_open(options.version, rom_given)) != NULL)
+	{
+		/* (no Japanese set, or its window closed: the World version, told in the menu) */
+		fprintf(stderr, "the Japanese version: %s: the World version\n", problem[0] ? problem : "no ROM set");
+		options.version = 0;
+		version_fell_back = true;
+	}
+	if ((options.version == 0 && (problem = game_data_open(0, rom_given)) != NULL)
+			|| (problem = program_start()) != NULL)
 	{
 		if (problem[0])
 			show_problem(problem);
@@ -1674,12 +1774,16 @@ int main(int argc, char **argv)
 		menu.in_replay = menu_in_replay;
 		menu.stop_replay = replay_end;
 		menu.install_update = menu_install_update;
+		menu.version = menu_version;
+		menu.set_version = switch_version;
 		menu_init(&menu);
 		if (options.main_menu)
 			menu_open_front();    /* (the main menu first: the game waits at its start until START GAME) */
 	}
 	if (data_extracted)
 		menu_notice("ROM DATA EXTRACTED");
+	else if (version_fell_back)
+		menu_notice("NO JAPANESE ROM SET: THE WORLD VERSION");
 	if (options.sound)
 		audio_open();
 	if (audio)

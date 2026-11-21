@@ -22,4 +22,16 @@ bool rom_drop_screen(const char *data_path, const char *why, bool *saved);
    rom_set_load_version, or over the parent's set already loaded: rom_set_load_clone_over) */
 bool rom_drop_screen_version(const char *data_path, const char *why, bool *saved, int version);
 
+/* The first run's: the World set just read and saved as its data at 'world_data_path', the Japanese version's data
+   too, so that choosing JAPAN later needs no window: from 'source' (a merged ddonpach.zip has ddonpachj's chips in
+   it), or its folder (ddonpachj.zip beside it). Saved at 'japan_data_path'; the World set loaded again after,
+   whatever happened. true: the Japanese data saved (DonPachi Recomp's, for this game) */
+bool rom_drop_japan_too(const char *source, const char *world_data_path, const char *japan_data_path);
+
+/* rom_drop_screen with the Japanese version as well ('japan_data_path'): a set with both (merged) gives both at
+   once; otherwise, the World set read, the same window asks for ddonpachj.zip too, which can be skipped
+   ('japan_saved': its data saved) */
+bool rom_drop_screen_both(const char *data_path, const char *japan_data_path, const char *why, bool *saved,
+	bool *japan_saved);
+
 #endif

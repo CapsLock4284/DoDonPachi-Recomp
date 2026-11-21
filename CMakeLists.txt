@@ -79,6 +79,32 @@ else()
 	target_compile_options(ddonpach_game PRIVATE -fno-strict-aliasing)
 endif()
 
+# The Japanese program (python tools/decompile.py --set japan writes src_jpn/): in the game beside the International
+# one when it is there, its names as jpn_NAME (src_jpn/jpn_names.h, included before each of its files) and its own
+# headers; the runtime runs the one the ROM set loaded has (runtime/src/game_program.c, DONPACHI_JAPAN_PROGRAM: the
+# SDK's name for a game's second program), as DonPachi Recomp's
+set(DDONPACH_JAPAN_DIR ${CMAKE_SOURCE_DIR}/src_jpn CACHE PATH
+	"The Japanese program's C (tools/decompile.py --set japan)")
+file(GLOB DDONPACH_JAPAN_C CONFIGURE_DEPENDS ${DDONPACH_JAPAN_DIR}/*.c ${DDONPACH_JAPAN_DIR}/*/*.c)
+if(DDONPACH_JAPAN_C AND EXISTS ${DDONPACH_JAPAN_DIR}/jpn_names.h)
+	add_library(ddonpach_game_jpn STATIC ${DDONPACH_JAPAN_C})
+	target_include_directories(ddonpach_game_jpn PRIVATE ${DDONPACH_JAPAN_DIR} include runtime/include)
+	if(MSVC)
+		target_compile_options(ddonpach_game_jpn PRIVATE "/FI${DDONPACH_JAPAN_DIR}/jpn_names.h" /bigobj /wd4244 /wd4146
+			/wd4018 /wd4554)
+	else()
+		target_compile_options(ddonpach_game_jpn PRIVATE -include ${DDONPACH_JAPAN_DIR}/jpn_names.h -fno-strict-aliasing)
+	endif()
+	target_compile_definitions(ddonpach_game PUBLIC DONPACHI_JAPAN_PROGRAM)
+	# (each calls the other: the runtime starts the program, the program calls the runtime's frame and bus)
+	target_link_libraries(ddonpach_game PUBLIC ddonpach_game_jpn)
+	target_link_libraries(ddonpach_game_jpn INTERFACE ddonpach_game)
+	message(STATUS "The Japanese program (${DDONPACH_JAPAN_DIR}) is in the game")
+else()
+	message(STATUS "No Japanese program in ${DDONPACH_JAPAN_DIR} (python tools/decompile.py --set japan): "
+		"the International one alone")
+endif()
+
 # The game in a window (ports/sdl2): SDL2 from the system, or on Windows the development package unpacked in
 # build/downloads/sdl2, its library copied beside the executable
 set(DDONPACH_SDL2_UNPACKED "")

@@ -48,6 +48,8 @@ typedef struct
 	void (*stop_replay)(void);  /* the replay stopped (the main menu's replays page then up) */
 	void (*install_update)(void);   /* the update downloaded (updater.h): installed and the program closed to start
 	                                   again, or updater_state() FAILED (the menu says why) */
+	int (*version)(void);              /* the game's version: 0 the World one, 1 the Japanese one (rom_set.h) */
+	bool (*set_version)(int version);  /* the game to that version, from its reset: false if it could not be */
 } menu_host;
 
 void menu_init(const menu_host *host);

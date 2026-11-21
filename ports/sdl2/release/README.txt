@@ -32,7 +32,14 @@ Then, on both:
    isn't needed. Merged and non-merged MAME sets both work. If your set is
    incomplete, the window lists the files it is missing.
 
-The Japanese version (MAME's ddonpachj) isn't in this version yet.
+THE JAPANESE VERSION
+The game also has the Japanese release (MAME's ddonpachj): choose VERSION on the
+main menu. A merged ddonpach.zip already has it inside, and the first run takes
+both. With separate sets, put ddonpachj.zip beside ddonpach.zip in the rom
+folder, or drag it onto the first run's window after ddonpach.zip (or skip it
+there, and drag it on when you first choose JAPAN). It is saved as
+ddonpach_jpn.dat. Each version keeps its own high scores and arcade settings;
+achievements and statistics are shared.
 
 
 CONTROLS (change them in SETTINGS > CONTROLS)
@@ -129,6 +136,8 @@ FILES THE GAME KEEPS BESIDE THE PROGRAM
                      difficulty)
   ddonpach.hiscore   the high score table
   ddonpach.stages    your best score for each stage
+  ddonpach_jpn.dat, ddonpach_jpn.eeprom, ddonpach_jpn.hiscore, ddonpach_jpn.stages
+                     the same for the Japanese version
   ddonpach.achievements   the achievements you've earned, and when
   ddonpach.stats     your lifetime statistics
   ddonpach.log       the program's messages (and ddonpach_previous.log, the last

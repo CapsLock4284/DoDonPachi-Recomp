@@ -7,6 +7,12 @@ notes). The release zip carries this file as `CHANGES.txt`.
 ## Unreleased
 
 ### New
+- **The Japanese version** (VERSION on the main menu: WORLD / JAPAN): MAME's `ddonpachj`, the original Japanese
+  release. Checked frame by frame against the arcade program on MAME's 68000, through both loops into Area 7, as the
+  World one was. A merged `ddonpach.zip` already has it inside: its data is taken on the first run with the World one;
+  with separate sets, put `ddonpachj.zip` beside `ddonpach.zip` or drop it on the first run's window (it can be
+  skipped and added later, when JAPAN is chosen). Each version keeps its own high scores, stage bests and arcade
+  settings; achievements and statistics are shared.
 - **Bullet points** (GAME OPTIONS > BULLETS, `[game] bullets`, off by default): each enemy bullet's point, a white
   pixel in a small green cross. The game tests a bullet only by that point, the middle of its sprite, so a bullet
   hits you only when its point gets inside your hitbox, however big it looks: with HITBOX on you see exactly what

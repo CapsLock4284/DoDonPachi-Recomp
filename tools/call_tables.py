@@ -93,13 +93,20 @@ DONPACHI_TO_DODONPACHI = {
 
 
 def here(address):
+    """DonPachi's address, in the program being decompiled (DoDonPachi's International one's place, moved to the
+    Japanese one's by game_profile.here for that set)"""
     if address not in DONPACHI_TO_DODONPACHI:
         raise SystemExit(f"call_tables.py: DonPachi's {address:06X} has no place in DoDonPachi yet")
-    return DONPACHI_TO_DODONPACHI[address]
+    return H(DONPACHI_TO_DODONPACHI[address])
+
+
+# DoDonPachi's own addresses below are the International program's: H() puts each where the program being decompiled
+# has the same code (the same address for the International set; the Japanese: tools/version_map.py)
+H = game_profile.here
 
 # the object types: records of 8 bytes from the second one (the first is unused), each a pointer to a word and the
 # object's init code, which "jsr (A1)" at 012D22 runs: the code is the pointer plus 2 (the word is skipped)
-OBJECT_TYPES = (0x015A92, 8, 226)    # (DoDonPachi's: 015A8A + 8, 226 types, each a code pointer and its +4)
+OBJECT_TYPES = (H(0x015A92), 8, 226)    # (DoDonPachi's: 015A8A + 8, 226 types, each a code pointer and its +4)
 # {address of a jump or call through a register: function giving the addresses it can go to}
 MANUAL = {}
 
@@ -166,7 +173,7 @@ def direct_init_routines():
     return frozenset(found)
 
 
-MANUAL_LATER = {0x036278: direct_init_routines}
+MANUAL_LATER = {H(0x036278): direct_init_routines}
 
 
 @lru_cache(maxsize=None)
@@ -206,7 +213,7 @@ def object_update_routines():
 
 MANUAL[here(0x012D86)] = object_update_routines
 
-MANUAL[0x0362A6] = object_update_routines
+MANUAL[H(0x0362A6)] = object_update_routines
 MANUAL.update(MANUAL_LATER)    # (DoDonPachi's own: 0362A2 "movea.l ($4,A0,D0.w), A1", the same table)
 
 
@@ -250,13 +257,13 @@ def record_callbacks():
     return frozenset(found)
 
 
-MANUAL[0x0514DC] = record_callbacks
-MANUAL[0x055436] = record_callbacks
+MANUAL[H(0x0514DC)] = record_callbacks
+MANUAL[H(0x055436)] = record_callbacks
 
 # DoDonPachi's own: a stage's routine from a table of 7 code addresses by the stage ($101978), 0 for none (058942
 # "movea.l ($48,PC,D0.w), A0", 0589FA "movea.l (-$70,PC,D0.w), A0": the same table, 05898C), "jsr (A0)" at 058954
 # and 058A0C after the test for 0
-STAGE_ROUTINES = (0x05898C, 7)
+STAGE_ROUTINES = (H(0x05898C), 7)
 
 
 @lru_cache(maxsize=None)
@@ -271,8 +278,8 @@ def stage_routines():
     return frozenset(found)
 
 
-MANUAL[0x058954] = stage_routines
-MANUAL[0x058A0C] = stage_routines
+MANUAL[H(0x058954)] = stage_routines
+MANUAL[H(0x058A0C)] = stage_routines
 
 
 def stage_table(start, count=7):
@@ -291,11 +298,11 @@ def stage_table(start, count=7):
 
 # two more: 05A106 "movea.l ($1a,PC,D0.w), A0" (the table at 05A122) and 05A1E6 "movea.l ($2c,PC,D0.w), A0" (at
 # 05A214), each by the stage, then "jmp (A0)" with D1 pushed (the cases come back to 05A11A, 05A1FE)
-MANUAL[0x05A118] = stage_table(0x05A122)
-MANUAL[0x05A1FC] = stage_table(0x05A214)
+MANUAL[H(0x05A118)] = stage_table(H(0x05A122))
+MANUAL[H(0x05A1FC)] = stage_table(H(0x05A214))
 # the records' routines (record_callbacks) also reached by "jmp (A0)": 051432 and 055390 "movea.l ($3c,A6), A0"
-MANUAL[0x051436] = record_callbacks
-MANUAL[0x055390] = record_callbacks
+MANUAL[H(0x051436)] = record_callbacks
+MANUAL[H(0x055390)] = record_callbacks
 
 
 @lru_cache(maxsize=None)
@@ -308,23 +315,24 @@ def animation_commands():
     went their own way at game frame 2,392)"""
     from m68000 import disassembler
     memory = disassembler.FlatMemory(program())
-    found, address = {0x053CA2}, 0x053CA2
-    while address < 0x053D32:
+    first, loop, jump = H(0x053CA2), H(0x053D32), H(0x053D16)
+    found, address = {first}, first
+    while address < loop:
         instruction = disassembler.decode(memory, address)
         address += instruction.length
-        if address >= 0x053D32:
+        if address >= loop:
             break
-        if (instruction.mnemonic == "bra" and instruction.target == 0x053D32) or instruction.address == 0x053D16:
+        if (instruction.mnemonic == "bra" and instruction.target == loop) or instruction.address == jump:
             found.add(address)
     return frozenset(found)
 
 
-MANUAL[0x053D16] = animation_commands
+MANUAL[H(0x053D16)] = animation_commands
 # DoDonPachi's own: 053E16 "moveq #$30, D1", 053E1C "and.w (A1), D1", 053E1E "lsr.w #2, D1", 053E20 "jmp ($4,PC,D1.w)":
 # 4 cases, 3 of them bra stubs (053E26, 053E2A, 053E2E) and the fourth the code after them (053E32 "movea.l $101226.l,
 # A0": a sprite of priority 3 into the list at $101226). Found by the slowdown comparison with MAME's 68000 (game frame
 # 9949: the port drew such a sprite into the other list)
-MANUAL[0x053E20] = lambda: frozenset({0x053E32})
+MANUAL[H(0x053E20)] = lambda: frozenset({H(0x053E32)})
 
 # DoDonPachi's own: jumps through a table of bra stubs whose index also reaches the code right after the table (the
 # index masked wider than the stubs: 04F47A "moveq #$3c, D0", "and.w D4, D0", 04F47E "jmp ($c,PC,D0.w)" over 7 stubs;
@@ -332,33 +340,33 @@ MANUAL[0x053E20] = lambda: frozenset({0x053E32})
 # and the C's switch did nothing there (the port's first difference from the original, at game frame 2,392). Found
 # with tools/cref/cref_timed DEBUG_JUMPS over 18,000 VBLANKs of play: {the jump: the code past its stubs}
 PAST_THE_STUBS = {
-    0x04F47E: 0x04F4A8,    # the records at 10CF16 (their kind $1C, 65,093 times in 18,000 VBLANKs)
-    0x04E0EA: 0x04E146,    # 04E0EA "jmp ($4e,PC,D1.w)", 3 stubs at 04E13A
-    0x053E20: 0x053E32,    # 053E20 "jmp ($4,PC,D1.w)", 3 stubs at 053E26
+    H(0x04F47E): H(0x04F4A8),    # the records at 10CF16 (their kind $1C, 65,093 times in 18,000 VBLANKs)
+    H(0x04E0EA): H(0x04E146),    # 04E0EA "jmp ($4e,PC,D1.w)", 3 stubs at 04E13A
+    H(0x053E20): H(0x053E32),    # 053E20 "jmp ($4,PC,D1.w)", 3 stubs at 053E26
     # 00E008 "jsr ($a,PC,D0.w)", D0 the ship's type ($10,A6) times 4: types A and B through the 2 stubs at 00E014,
     # type C on at 00E01C (its two pods: their animation, and the 2 calls of 00ECC6 that fire their shots). Missing,
     # type C's pods showed for a frame or two and never fired (owner; found by comparing a type C game, button C held,
     # with the original on MAME's 68000: game frame 2,655, on the ship select screen's demo)
-    0x00E008: 0x00E01C,
+    H(0x00E008): H(0x00E01C),
     # 02C52C "jsr ($e,PC,D0.w)": the commands of the objects' timed scripts (02C518 reads a time, then a command: 0 the
     # stub at 02C53C, a byte into the object at A6; 4 the code after it at 02C540, a byte into the record at A5). Missing,
     # the C skipped command 4 and the 2 bytes it reads, and read the rest of the script wrongly (found by the full-game
     # comparison with MAME's 68000, player 1 kept from harm: game frame 32,177, in loop 1)
-    0x02C52C: 0x02C540,
+    H(0x02C52C): H(0x02C540),
 }
 for _jump, _past in PAST_THE_STUBS.items():
     MANUAL[_jump] = (lambda past: lambda: frozenset({past}))(_past)
 # DoDonPachi's own: 00B3F2 "move.w ($10,A6), D0", 00B3F6 "jmp ($2,PC,D0.w)", a state of 0, 4 or 8 as DonPachi's
 # 0097A8 (which goes through 3 bra stubs); DoDonPachi has no stubs there: state 0 runs on at 00B3FA, state 4 lands on
 # 00B3FE "bne $b48a" (taken: the state is not 0), state 8 at 00B402
-MANUAL[0x00B3F6] = lambda: frozenset({0x00B3FA, 0x00B3FE, 0x00B402})
+MANUAL[H(0x00B3F6)] = lambda: frozenset({H(0x00B3FA), H(0x00B3FE), H(0x00B402)})
 
 # DoDonPachi's own: "movem.l D0-D7/A0-A7, -(A7)" at 03D926 and "movem.l (A7)+, D0-D7/A0-A7" at 03D936, around a call.
 # The 68000 does not load A7 from memory in a movem (A7)+ (it ends with the incremented address), so the pop leaves
 # A7 as a pop of the others would: here both have A7 taken out of their lists (15 registers pushed and popped, the
 # same slots), and the core no longer sees "SP set to" a value from memory. Their time is the 68000's, A7 counted (8
 # cycles each: install())
-MOVEM_WITHOUT_SP = (0x03D926, 0x03D936)
+MOVEM_WITHOUT_SP = (H(0x03D926), H(0x03D936))
 
 # the routines the stage scripts hand to "jmp (A0)" at 02D9A2 (script command 15 stores one in $10885C): a list
 # reviewed from tools/find_callbacks.py's output, one address a line, in build/callbacks.txt
@@ -373,7 +381,7 @@ def script_callbacks():
     for line in CALLBACKS.read_text(encoding="utf-8-sig", errors="replace").splitlines():
         text = line.split("#")[0].strip()
         if text:
-            found.add(int(text.split()[0], 16))    # (DoDonPachi's own addresses)
+            found.add(H(int(text.split()[0], 16)))    # (DoDonPachi's own addresses, the International program's)
     return frozenset(found)
 
 
@@ -498,7 +506,7 @@ MAX_DEPTHS = 2           # places of the stack one block may be reached with: 02
 # ends lead to (13). In such a function a way that pops above where the function began (more than it pushed: the
 # static pass running the pop loop on past the pushes) is one the game never goes: it ends there (lost_stack()),
 # not followed on through more places, which would use up the places the game's own ways need.
-MORE_DEPTHS = {0x02C5B8: (16, {0x02C5C2: 11})}
+MORE_DEPTHS = {H(0x02C5B8): (16, {H(0x02C5C2): 11})}
 
 
 def first_int(label):
@@ -560,7 +568,7 @@ def joined_halves(statements):
 # "bsr $4e32e", 04E04C "move.l (A7)+, D0") saves D0 around the call, and the routine reads that copy's low bytes
 # (04E3CE "move.b ($9,A7), D0", 04E400 "add.b ($8,A7), D0", past the word it pushed itself): D0 as the routine was
 # entered. {routine: {the caller's stack offset from the routine's entry: (register, the byte of it, 0 the lowest)}}
-CALLER_STACK_READS = {0x04E32E: {6: (0, 1), 7: (0, 0)}}
+CALLER_STACK_READS = {H(0x04E32E): {6: (0, 1), 7: (0, 0)}}
 # where the register is kept from the routine's entry: a stack slot of its own, far below any it uses (a slot is a
 # local variable in the C; a Temp set at the entry was dropped by the C writer, and the routine read 0: found by
 # tools/cref against the original, the records' field $10 at game frame 3,036)
@@ -1313,7 +1321,7 @@ def install():
 # (program_interrupts(): cave/program.h), the slots get the PC the 68000 would have pushed, the next instruction's
 # address; the writes after it put theirs back over, as on the board. Found by a scan for "movea.l A7, An"
 # in the program: these two (and text in the ROM at 041152, 04BF2E)
-STACK_DIGITS = {0x001F98: 0x001FB2, 0x057A6E: 0x057A84}
+STACK_DIGITS = {H(0x001F98): H(0x001FB2), H(0x057A6E): H(0x057A84)}
 
 
 def interrupt_frames(src_dir):

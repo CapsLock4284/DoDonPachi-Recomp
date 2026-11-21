@@ -70,7 +70,9 @@ int main(int argc, char **argv)
 	uint64_t lagged = 0;
 
 	cave_board_describe(&cave_board_ddonpach);
-	if ((problem = rom_set_load(rom)) != NULL || (problem = program_start()) != NULL)
+	/* (VERSION=1: the Japanese set's program, ddonpachj's, as cref_timed's VERSION) */
+	if ((problem = rom_set_load_version(rom, getenv("VERSION") ? atoi(getenv("VERSION")) : 0)) != NULL
+			|| (problem = program_start()) != NULL)
 	{
 		printf("%s\n", problem);
 		return 1;

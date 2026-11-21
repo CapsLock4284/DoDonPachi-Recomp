@@ -33,9 +33,29 @@
       (interrupt_frames: after each of the 4 writes, if program_interrupts() moved, the slots get the next
       instruction's address). Checked: all 7 full-game runs the same as MAME's 68000 at every frame, type B laser's
       included (290,204 game frames)
-- [ ] The Japanese version (`ddonpachj`). When it comes (owner, 20-11-2026, as DonPachi Recomp's): its data taken
-      on the first run with the World set's (a merged ddonpach.zip, or ddonpachj.zip beside it, or dropped on the
-      first run's window after ddonpach.zip, skippable), so choosing it later needs no window over the main menu.
+- [x] The Japanese version (`ddonpachj`, Master Ver. 97/02/05: its own program chips u27.bin and u26.bin, the rest
+      the World set's; owner's merged ddonpach.zip has them in ddonpachj/). Done 20-11-2026, as DonPachi Recomp's:
+      - The programs compared (tools/version_map.py, DonPachi Recomp's): 97.9% of the words matched, the code moved
+        (by 0, -888, -952 bytes and so on); the work RAM the same (the 905 addresses each program names: the same
+        ones), so the port's features (training, the panels, achievements, statistics, cheats, hitboxes, sounds) work
+        on it as they are.
+      - `python tools/decompile.py --set japan` writes src_jpn/ (about 70 minutes): symbols.txt's names carried over
+        (build/decompile_jpn/symbols_jpn.txt: none left out), tools/call_tables.py's and game_profile.py's addresses
+        through game_profile.here (the International address's place; where the aligner had no run, in 049DF4's five
+        repeated copies, a nearby run's shift taken if the instruction is the same there), jpn_names.h naming its C
+        jpn_NAME; CMakeLists.txt and tests/build.sh build it in beside the other (the SDK's DONPACHI_JAPAN_PROGRAM),
+        the runtime runs the program of the set loaded.
+      - Checked against MAME's 68000 (tools/cref/cref_timed and tests/slowdown_check with VERSION=1; cref_timed's
+        frame wait the Japanese program's, 056DF4): the attract mode (30,000 VBLANKs), the test player's game
+        (60,000) and, kept from harm, both loops into Area 7 (240,000): 309,710 game frames, all the same at every
+        frame, the same frames slowed down.
+      - The port: VERSION: WORLD / JAPAN first on the main menu (switch_version, from the reset: its data, EEPROM, high
+        scores and stage bests, the save states and kept training places let go; DonPachi Recomp's), `[game] version`;
+        a Japanese version chosen but not there at the start: the World one, told on the menu. Its data taken on the
+        first run with the World one (owner, 20-11-2026: a merged ddonpach.zip or ddonpachj.zip beside it, nothing
+        asked; the first run's window asks for ddonpachj.zip after ddonpach.zip, skippable), else asked for when
+        JAPAN is first chosen; ddonpachj.zip alone goes over the World data. Checked (Linux, headless): merged,
+        World alone and separate sets; started as Japan (its own EEPROM file)
 
 ## The board (in Cave68kSDK)
 
