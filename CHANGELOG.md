@@ -34,6 +34,12 @@ notes). The release zip carries this file as `CHANGES.txt`.
   hits you only when its point gets inside your hitbox, however big it looks: with HITBOX on you see exactly what
   can hit you. Drawn over the picture only; the game is not changed.
 
+### Fixed
+- **A short hitch about once a minute** in play: the lifetime statistics were saved every minute in the middle of
+  a frame, and on some PCs writing the file takes 10-20 ms (once over 100 ms, a visible stutter). The port's files
+  (statistics, achievements, high scores, the stages' bests) are now written by a helper thread, so the game never waits for the
+  disk.
+
 ## v0.2.0 (2026-11-20)
 
 ### New

@@ -9,6 +9,7 @@
  *    best_bees" for each stage (1-12: 1-1 ... 2-6), "ship_X = games best_score play_frames" for each ship.
  */
 #include "stats.h"
+#include "file_save.h"
 #include "game_watch.h"
 
 #include <stdio.h>
@@ -53,21 +54,23 @@ static void at_least(unsigned long *kept_value, unsigned long value)
 
 void stats_save(void)
 {
-	FILE *const file = stats_path[0] ? fopen(stats_path, "w") : NULL;
+	file_text text = { 0 };
 
-	if (!file)
+	if (!stats_path[0])
 		return;
-	fputs("; DoDonPachi's lifetime statistics (arcade games only: not training, replays, cheats or save states)\n"
-		"[stats]\n", file);
+	/* (built in memory, written by file_save's helper: the frame doesn't wait for the disk; owner's FPS log, 21-11-2026:
+	   this save each minute of play took 12-18 ms of a frame, once 120) */
+	file_text_add(&text, "; DoDonPachi's lifetime statistics (arcade games only: not training, replays, cheats or save "
+		"states)\n[stats]\n");
 	for (int index = 0; index < COUNTERS; index++)
-		fprintf(file, "%s = %lu\n", counter_ids[index], kept.counter[index]);
+		file_text_add(&text, "%s = %lu\n", counter_ids[index], kept.counter[index]);
 	for (int stage = 0; stage < STAGES; stage++)
-		fprintf(file, "stage%d = %lu %lu %lu %lu\n", stage + 1, kept.stage_played[stage], kept.stage_cleared[stage],
-			kept.stage_deaths[stage], kept.stage_best_bees[stage]);
+		file_text_add(&text, "stage%d = %lu %lu %lu %lu\n", stage + 1, kept.stage_played[stage],
+			kept.stage_cleared[stage], kept.stage_deaths[stage], kept.stage_best_bees[stage]);
 	for (int ship = 0; ship < SHIPS; ship++)
-		fprintf(file, "ship_%c = %lu %lu %lu\n", 'a' + ship, kept.ship_games[ship], kept.ship_best[ship],
+		file_text_add(&text, "ship_%c = %lu %lu %lu\n", 'a' + ship, kept.ship_games[ship], kept.ship_best[ship],
 			kept.ship_frames[ship]);
-	fclose(file);
+	file_text_save(&text, stats_path);
 }
 
 void stats_load(const char *path)

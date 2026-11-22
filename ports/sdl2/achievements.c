@@ -8,6 +8,7 @@
  *    From the game watched (game_watch.h). The file: "; ..." then "[achievements]" and "id = date" for each earned.
  */
 #include "achievements.h"
+#include "file_save.h"
 #include "game_watch.h"
 
 #include <stdio.h>
@@ -62,17 +63,18 @@ static int shown_queue[ACHIEVEMENTS], queued;
 
 static void save(void)
 {
-	FILE *const file = achievements_path[0] ? fopen(achievements_path, "w") : NULL;
+	file_text text = { 0 };
 
-	if (!file)
+	if (!achievements_path[0])
 		return;
-	fputs("; DoDonPachi's achievements: when each was earned (arcade games only)\n[achievements]\n", file);
+	/* (built in memory, written by file_save's helper: an achievement earned in play doesn't wait for the disk) */
+	file_text_add(&text, "; DoDonPachi's achievements: when each was earned (arcade games only)\n[achievements]\n");
 	for (int index = 0; index < ACHIEVEMENTS; index++)
 		if (dates[index][0])
-			fprintf(file, "%s = %s\n", list[index].id, dates[index]);
-	fprintf(file, "ships_cleared = %u\n", ships_cleared);
-	fprintf(file, "styles_cleared = %u\n", styles_cleared);
-	fclose(file);
+			file_text_add(&text, "%s = %s\n", list[index].id, dates[index]);
+	file_text_add(&text, "ships_cleared = %u\n", ships_cleared);
+	file_text_add(&text, "styles_cleared = %u\n", styles_cleared);
+	file_text_save(&text, achievements_path);
 }
 
 void achievements_load(const char *path)

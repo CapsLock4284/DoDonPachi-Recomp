@@ -16,6 +16,8 @@
 
 #include "../ports/sdl2/own_cheats.c"
 #include "../ports/sdl2/game_watch.c"
+#define FILE_SAVE_SYNC    /* (the port's files written at once: no SDL here) */
+#include "../ports/sdl2/file_save.c"
 #include "../ports/sdl2/achievements.c"
 
 #include <inttypes.h>

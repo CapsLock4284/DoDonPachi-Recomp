@@ -12,6 +12,7 @@
  *    digit), area 1-1 ... 1-6, 2-1 ... 2-6; 0 none yet.
  */
 #include "widgets.h"
+#include "file_save.h"
 #include "paths.h"
 
 #include "cave/board.h"
@@ -223,11 +224,8 @@ const char *widgets_open(const char *path)
 
 static void stages_save(void)
 {
-	FILE *const file = fopen(stages_path, "wb");
 	uint8_t data[sizeof(stages_magic) + 4 * AREAS];
 
-	if (!file)
-		return;
 	memcpy(data, stages_magic, sizeof(stages_magic));
 	for (int area = 0; area < AREAS; area++)
 	{
@@ -238,8 +236,7 @@ static void stages_save(void)
 		at[2] = (uint8_t)(best[area] >> 16);
 		at[3] = (uint8_t)(best[area] >> 24);
 	}
-	fwrite(data, 1, sizeof(data), file);
-	fclose(file);
+	file_save(stages_path, data, sizeof(data));    /* (by file_save's helper: the frame doesn't wait for the disk) */
 }
 
 /* ---- the run: the stage being played, the graph, the high scores chased ---- */

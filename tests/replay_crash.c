@@ -10,6 +10,8 @@
 #include "cave/sound.h"
 #include "cave/video.h"
 
+#define FILE_SAVE_SYNC    /* (the port's files written at once: no SDL here) */
+#include "../ports/sdl2/file_save.c"
 #include "../ports/sdl2/hiscore.c"    /* (the port's, as it puts the table back) */
 
 #include <stdio.h>

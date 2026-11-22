@@ -128,7 +128,7 @@ elseif(NOT WIN32)
 endif()
 if(SDL2_FOUND)
 	add_executable(ddonpach WIN32 ports/sdl2/main.c ports/sdl2/settings.c ports/sdl2/rom_drop.c ports/sdl2/paths.c
-		ports/sdl2/crt.c ports/sdl2/scaler.c ports/sdl2/layer_filter.c ports/sdl2/crash_log.c ports/sdl2/menu.c ports/sdl2/hiscore.c
+		ports/sdl2/crt.c ports/sdl2/scaler.c ports/sdl2/layer_filter.c ports/sdl2/file_save.c ports/sdl2/crash_log.c ports/sdl2/menu.c ports/sdl2/hiscore.c
 		ports/sdl2/widgets.c ports/sdl2/training.c ports/sdl2/replay.c
 		ports/sdl2/hitbox.c ports/sdl2/game_watch.c ports/sdl2/achievements.c ports/sdl2/stats.c ports/sdl2/updater.c
 		ports/sdl2/own_cheats.c ports/sdl2/ui_sound.c)

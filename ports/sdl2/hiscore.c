@@ -9,6 +9,7 @@
  *    game has them.
  */
 #include "hiscore.h"
+#include "file_save.h"
 #include "paths.h"
 
 #include "cave/machine.h"
@@ -113,21 +114,17 @@ bool hiscore_between_games(void)
 
 static void save(const uint8_t *table)
 {
-	FILE *file;
+	uint8_t bytes[sizeof(magic) + TABLE_SIZE];
 
 	memcpy(file_data, table, TABLE_SIZE);
 	have_file = true;
 	memcpy(saved, table, TABLE_SIZE);
 	if (!path[0])
 		return;    /* (a table given, not a file's) */
-	if (!(file = fopen(path, "wb")))
-	{
-		fprintf(stderr, "%s: could not be written\n", path);
-		return;
-	}
-	if (fwrite(magic, 1, sizeof(magic), file) != sizeof(magic) || fwrite(file_data, 1, TABLE_SIZE, file) != TABLE_SIZE)
-		fprintf(stderr, "%s: could not be written\n", path);
-	fclose(file);
+	/* (written by file_save's helper: the frame doesn't wait for the disk) */
+	memcpy(bytes, magic, sizeof(magic));
+	memcpy(bytes + sizeof(magic), file_data, TABLE_SIZE);
+	file_save(path, bytes, sizeof(bytes));
 }
 
 /* #1's score as the game's HIGH, with its last digit (#1's continues) */

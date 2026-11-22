@@ -58,6 +58,7 @@
 #include "achievements.h"
 #include "crash_log.h"
 #include "layer_filter.h"
+#include "file_save.h"
 #include "game_watch.h"
 #include "stats.h"
 #include "crt.h"
@@ -2043,6 +2044,7 @@ pace:
 		}
 	}
 	stats_save();
+	file_save_flush();    /* (the files still waiting for file_save's helper written before the program ends) */
 	crash_log_finish();
 	eeprom_keep(true);
 	for (int slot = 0; slot < STATE_SLOTS; slot++)

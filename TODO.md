@@ -117,6 +117,12 @@
         the cloud's 2 cores; the same pictures, every one of 600 frames compared); the work shared across up to 8
         threads (was 4). The FPS log now times FILTER and UPLOAD (the pictures given to the graphics card) inside
         SHOW, to see where the rest goes
+  - [x] The owner's second log (21-11-2026, xBR 4x): late frames 201 in 7.5 minutes to 24 in 5.75; FILTER 2.05 ms
+        a frame (was most of SHOW's 11.7), UPLOAD 2.7, PRESENT 5.2. The one hiccup he felt (19:59:03): RUN 119.8 ms,
+        the game's frame itself, and RUN 12-18 ms about once a minute: the statistics' save each minute of play
+        (stats.c SAVE_EVERY), its file written in the frame. Fixed: every file written in play (statistics,
+        achievements, high scores, the stages' bests) built in memory and written by a helper thread
+        (`ports/sdl2/file_save.c`; the tests write at once, FILE_SAVE_SYNC); written out as the program closes
   - [ ] Next, by the owner's new log: if UPLOAD or PRESENT is the cost (the 4x picture is 4.9 MB a frame to the
         graphics card), the scaler on the graphics card instead (a shader: SDL2's renderer has none, so OpenGL or
         Direct3D directly, or SDL3's GPU API), or a renderer that uploads quicker
