@@ -78,7 +78,8 @@ file_kind=$(od -An -tx1 -N5 "$out/ddonpach" | tr -d ' \n')
 [ "$file_kind" = "7f454c4602" ] || problems="$problems
   ddonpach is not a 64-bit Linux program"
 size=$(wc -c < "$out/ddonpach")
-[ "$size" -le 12582912 ] || problems="$problems
+# (two programs in it since 0.3.0, the World one and the Japanese one: about 14 MB)
+[ "$size" -le 20971520 ] || problems="$problems
   ddonpach is $((size / 1048576)) MB: more than the program should be"
 for needed in $(readelf -d "$out/ddonpach" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p'); do
 	case "$needed" in libSDL2-2.0.so.0|libm.so.6|libc.so.6|libpthread.so.0|libdl.so.2) ;;

@@ -113,7 +113,8 @@ foreach ($romName in "b1.u27", "b2.u26", "u26.bin", "u27.bin", "u50.bin", "u51.b
 $bytes = [System.IO.File]::ReadAllBytes((Join-Path $out "ddonpach.exe"))
 $pe = [BitConverter]::ToInt32($bytes, 0x3C)
 if ([BitConverter]::ToUInt16($bytes, $pe + 4) -ne 0x8664) { $problems += "ddonpach.exe is not a 64-bit build" }
-if ($bytes.Length -gt 12MB) { $problems += "ddonpach.exe is $([int]($bytes.Length / 1MB)) MB: more than the program should be" }
+# (two programs in it since 0.3.0, the World one and the Japanese one: about 15 MB)
+if ($bytes.Length -gt 20MB) { $problems += "ddonpach.exe is $([int]($bytes.Length / 1MB)) MB: more than the program should be" }
 $text = [System.Text.Encoding]::ASCII.GetString($bytes)
 if ($text -match "(?i)vcruntime\d+d?\.dll|msvcp\d+d?\.dll|ucrtbased\.dll") {
     $problems += "ddonpach.exe needs the Visual C++ runtime ($($Matches[0])): build with the static runtime"
