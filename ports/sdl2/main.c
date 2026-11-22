@@ -746,6 +746,13 @@ static void draw_panels(float *x, float y, float *w, float scale_x, float scale_
 	const SDL_FRect right = { *x + *w - (float)panel_width * scale_x, y, (float)panel_width * scale_x, WIDGET_H * scale_y };
 
 	widgets_draw(panel_pixels[0], panel_pixels[1], panel_width);
+	{
+		/* (a menu page up: its chosen entry explained on the right panel, as DonPachi Recomp's) */
+		const char *title, *text;
+
+		if (menu_help(&title, &text))
+			widgets_draw_help(panel_pixels[1], panel_width, title, text);
+	}
 	for (int side = 0; side < 2; side++)
 	{
 		const Uint64 began = SDL_GetPerformanceCounter();

@@ -71,6 +71,10 @@ typedef struct
 
 void widgets_set_meter(const widgets_meter *meter);
 
+/* A panel ('width' as widgets_draw's) of the menu's help instead of the game's: the chosen entry's name and what it
+   does, in lines that fit (DonPachi Recomp's) */
+void widgets_draw_help(uint32_t *pixels, int width, const char *title, const char *text);
+
 /* Both panels, 'width' x WIDGET_H each (WIDGET_W to WIDGET_MAX_W), upright as the player sees them; a row is 'width'
    pixels */
 void widgets_draw(uint32_t *left, uint32_t *right, int width);

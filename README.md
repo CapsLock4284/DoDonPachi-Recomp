@@ -153,7 +153,8 @@ the `curl` command on Linux.
 F3 resets the game, F4 holds the service switch for you (the test mode, from the title or the attract mode), Tab
 (LB) fast-forwards, F5 / F8 save and load a state (F6 / F7 choose the slot, of 5), F9 shows the FPS meter, F11 or Alt+Enter
 switches full screen, Escape (View on the gamepad) opens the options menu: video, sound, controls (remapping), the game's options,
-save states, cheats, QUIT TO DESKTOP. Player 2: R F D G, A, S, 2, 6. Everything can be changed there or in `ddonpach.ini`,
+save states, cheats, QUIT TO DESKTOP (with the side panels on, the right one explains the chosen entry).
+Player 2: R F D G, A, S, 2, 6. Everything can be changed there or in `ddonpach.ini`,
 written beside the program on its first run: the keys and buttons, the window's size, the video (scaling, scanlines, the
 CRT look, the pixel-art scalers, on the whole picture or by layer, a monitor on its side), the sound's volumes,
 the arcade's slowdown.

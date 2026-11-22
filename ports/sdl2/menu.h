@@ -87,6 +87,10 @@ void menu_notice(const char *text);
 /* The picture with the notice over it while there is one (else the picture itself): once a frame shown */
 const uint32_t *menu_with_notice(const uint32_t *picture);
 
+/* The chosen entry's name and what it does, while a page with one is up (the right side panel shows them as its
+   help: widgets_draw_help): false when there is none (no page up, a key being waited for) */
+bool menu_help(const char **title, const char **text);
+
 /* The FPS meter's lines (main.c) over the picture's bottom right corner, on a dark band: 'picture' (240 x 320) is
    changed */
 void menu_put_meter(uint32_t *picture, const char *const *lines, int count);

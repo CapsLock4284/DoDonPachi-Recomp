@@ -184,7 +184,10 @@
 - [ ] **MAYBE: a hit chain meter** (owner, 18-11-2026: maybe): the live hit count large, the chain's timer draining as
       a bar, and the best chain this stage and this game ($101842: player 1's MAX HIT; the count and its timer to
       find)
-- [ ] **Tooltips in the options menu, as DonPachi Recomp's** (owner, 21-11-2026): while a menu page is up (with
+- [x] **Tooltips in the options menu, as DonPachi Recomp's** (owner, 21-11-2026; done 21-11-2026: `item_help` and
+      `menu_help` in menu.c, a text for every entry (checked: each of the enum's), the cheats', achievements',
+      statistics' and replays' as theirs; `widgets_draw_help` in widgets.c, drawn by main.c's `draw_panels` over the
+      right panel while a page is up; checked on a picture of the GRAPHICS page's help at 156 wide): while a menu page is up (with
       the side panels on), the right panel becomes a HELP panel: the chosen entry's name, then what it does, in
       lines broken at the spaces to the panel's width. DonPachi's way: `menu_help()` in `menu.c` (`item_help`: a
       text for every entry, the controls' actions, cheats, achievements, statistics) and `widgets_draw_help()` in

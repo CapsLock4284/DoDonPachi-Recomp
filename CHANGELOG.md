@@ -6,7 +6,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
-Nothing yet.
+### New
+- **Help in the menus**, as DonPachi Recomp has: while a menu page is up (with the side panels on), the right panel
+  explains the chosen entry: its name, then what it does. Every entry has one, from the training's places and ON
+  PACE to the sound's groups, BY LAYER and VERSION.
 
 ## v0.3.0 (2026-11-21)
 

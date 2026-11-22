@@ -1202,6 +1202,50 @@ static void draw_meter(panel *p)
 	}
 }
 
+/* ---- the menu's help, on the right panel while a page is up ---- */
+
+/* 'text' in lines broken at its spaces to the panel's width, from 'y': the y under the last */
+static int put_wrapped(panel *p, int y, const char *text, uint32_t colour)
+{
+	const int most = (p->w - 12) / 8;
+	char line[40];
+
+	while (*text && y < WIDGET_H - 12)
+	{
+		int length = (int)strlen(text), take = length;
+
+		if (length > most)
+		{
+			/* (the last space that fits; a word too long for a line is cut) */
+			take = most;
+			while (take > 0 && text[take] != ' ')
+				take--;
+			if (take == 0)
+				take = most;
+		}
+		snprintf(line, sizeof(line), "%.*s", take, text);
+		put_text(p, 6, y, line, colour, 1);
+		y += 11;
+		text += take;
+		while (*text == ' ')
+			text++;
+	}
+	return y;
+}
+
+void widgets_draw_help(uint32_t *pixels, int width, const char *title, const char *text)
+{
+	panel p;
+	int y;
+
+	p.w = width < WIDGET_W ? WIDGET_W : width > WIDGET_MAX_W ? WIDGET_MAX_W : width;
+	p.pixels = pixels;
+	frame_panel(&p, "HELP");
+	y = put_wrapped(&p, 26, title, GOLD);
+	box(&p, 6, y + 2, p.w - 6, y + 3, FRAME);
+	put_wrapped(&p, y + 10, text, WHITE);
+}
+
 void widgets_draw(uint32_t *left, uint32_t *right, int width)
 {
 	panel p;
