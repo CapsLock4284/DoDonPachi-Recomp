@@ -6,6 +6,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
+Nothing yet.
+
+## v0.3.0 (2026-11-21)
+
 ### New
 - **The Japanese version** (VERSION on the main menu: WORLD / JAPAN): MAME's `ddonpachj`, the original Japanese
   release. Checked frame by frame against the arcade program on MAME's 68000, through both loops into Area 7, as the
@@ -37,8 +41,8 @@ notes). The release zip carries this file as `CHANGES.txt`.
 ### Fixed
 - **A short hitch about once a minute** in play: the lifetime statistics were saved every minute in the middle of
   a frame, and on some PCs writing the file takes 10-20 ms (once over 100 ms, a visible stutter). The port's files
-  (statistics, achievements, high scores, the stages' bests) are now written by a helper thread, so the game never waits for the
-  disk.
+  (statistics, achievements, high scores, the stages' bests) are now written by a helper thread, so the game never
+  waits for the disk.
 
 ## v0.2.0 (2026-11-20)
 
