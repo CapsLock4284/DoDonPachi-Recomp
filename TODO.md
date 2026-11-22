@@ -168,11 +168,11 @@
       a frame otherwise). Checked: each counted bullet marked on the picture lands on one (114 in 1-2's boss fight);
       the table at $10A9F6 ($20 each, 160, tested after them with the ship's box moved) is not the bullets. Found
       with it: the slowdown isn't only bullets (1-2: 33% slowed with 9 on screen, a crowd of tanks and explosions)
-- [ ] **MAYBE: the second loop's qualification** (owner, 18-11-2026: maybe): whether this game can still reach loop 2
+- [ ] **The second loop's qualification** (owner, 18-11-2026: maybe; 21-11-2026: wanted, "absolutely"): whether this game can still reach loop 2
       ("LOOP 2: ON TRACK, 1 MORE MISS ALLOWED"), from the game's own rule (the lives lost and bombs used in loop 1, a
       continue; to read from the code that decides it at 1-6's end, not from memory), and the true last boss's own
       conditions in loop 2 the same way
-- [ ] **MAYBE: a death map** (owner, 18-11-2026: maybe): where each life was lost and each bomb used in a stage, as
+- [ ] **MAYBE: a death map** (owner, 18-11-2026: maybe; 21-11-2026: to decide once he sees how it looks): where each life was lost and each bomb used in a stage, as
       marks on a bar of the stage's progress (its scroll position, $10198E), kept across games (in a file beside
       `ddonpach.stages`), so the stages' hard places show
 - [x] **MAYBE: the next extra life** (owner, 18-11-2026: maybe; done 21-11-2026: the right panel's "1UP IN" under
@@ -181,9 +181,9 @@
       extend's score, as game_memory.h; the graph 12 pixels shorter for the line. Checked: tests/panels_shot,
       the test player through 6,000,000 to 20,000,000): the score of the next extend and how far there is to
       go, from the game's own extend scores (to find, where it gives the life: game_watch.c's "extended" event)
-- [ ] **MAYBE: a hit chain meter** (owner, 18-11-2026: maybe): the live hit count large, the chain's timer draining as
-      a bar, and the best chain this stage and this game ($101842: player 1's MAX HIT; the count and its timer to
-      find)
+- [ ] ~~**MAYBE: a hit chain meter**~~ (owner, 18-11-2026: maybe; 21-11-2026: not needed, the game's own HUD shows
+      the chain): the live hit count large, the chain's timer draining as a bar, and the best chain this stage and
+      this game ($101842: player 1's MAX HIT; the count and its timer to find)
 - [x] **Tooltips in the options menu, as DonPachi Recomp's** (owner, 21-11-2026; done 21-11-2026: `item_help` and
       `menu_help` in menu.c, a text for every entry (checked: each of the enum's), the cheats', achievements',
       statistics' and replays' as theirs; `widgets_draw_help` in widgets.c, drawn by main.c's `draw_panels` over the
