@@ -218,7 +218,7 @@ shown; LATE, the frames the PC ran late; and WORK, a frame's milliseconds on ave
 panels on it is drawn on the right one (over the score's graph), so it never covers the game; without them, or with
 the picture rotated, over the picture's top corner.
 While the meter is on, each second is also written to `ddonpach_fps.log` beside the program, with the settings,
-the renderer, and the time each part of a frame takes.
+the renderer, and the time each part of a frame takes (the filter and the uploads to the graphics card among them).
 
 Side panels (SIDE PANELS in the graphics options, `side_panels` in `ddonpach.ini`; on by default) fill the screen
 beside the picture. The game's picture is never changed by them: it stays the arcade's 240 x 320, at the same scale,

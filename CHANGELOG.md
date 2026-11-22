@@ -13,6 +13,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
   with separate sets, put `ddonpachj.zip` beside `ddonpach.zip` or drop it on the first run's window (it can be
   skipped and added later, when JAPAN is chosen). Each version keeps its own high scores, stage bests and arcade
   settings; achievements and statistics are shared.
+- **Faster xBR filters**: xBR 2x, 3x and 4x take about a quarter less time a frame (the same picture, pixel for
+  pixel), and all the filters now share their work across up to 8 of your processor's cores instead of 4.
+- **The FPS log** (`ddonpach_fps.log`) times the filter and the uploads to the graphics card on their own, so a
+  slow picture shows where its time goes.
 - **The next extra life** on the right side panel: how much more score it takes ("1UP IN"; the game gives one at
   6,000,000 and one at 20,000,000), with a dotted line on the score graph once it is in sight.
 - **The FPS meter moved off the game**: with the side panels on, F9's meter is drawn on the right panel instead of

@@ -111,6 +111,15 @@
         third frame of 120,000 VBLANKs of the test player); a picture of 1-3's mesh over the ground (MMPX: crossing
         lines clean by layer, blobbed over the whole picture); about 4 ms a frame against 1 over the whole picture
         (the cloud's 2 cores). Not seen yet on the owner's PC
+  - [x] **The filters cheaper** (owner, 21-11-2026: a high priority; his FPS log with xBR 4x: SHOW 11.7 ms of a
+        17.4 ms frame, 201 late frames in 7.5 minutes). xBR: only the sub-pixels a corner's lines reach are worked
+        out (the rest written as the pixel), luma kept in bytes: about a quarter less time (xBR 4x 4.84 to 3.70 ms on
+        the cloud's 2 cores; the same pictures, every one of 600 frames compared); the work shared across up to 8
+        threads (was 4). The FPS log now times FILTER and UPLOAD (the pictures given to the graphics card) inside
+        SHOW, to see where the rest goes
+  - [ ] Next, by the owner's new log: if UPLOAD or PRESENT is the cost (the 4x picture is 4.9 MB a frame to the
+        graphics card), the scaler on the graphics card instead (a shader: SDL2's renderer has none, so OpenGL or
+        Direct3D directly, or SDL3's GPU API), or a renderer that uploads quicker
 - [x] **The side panels, DoDonPachi's own** (18-11-2026; `ports/sdl2/widgets.c`, GRAPHICS > SIDE PANELS,
       `[video] side_panels`, on by default): as wide as the screen leaves room for (owner: DonPachi's left black at
       the sides of a 16:9 screen): main.c works the width out from the screen's shape, WIDGET_W (120) to 256 game

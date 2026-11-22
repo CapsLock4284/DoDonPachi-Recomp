@@ -653,7 +653,7 @@ static SDL_Renderer *renderer;
 static SDL_Texture *texture;
 
 /* the PC's time in each part of a frame, for the FPS meter's log (counter ticks, added up over its second) */
-enum { SPENT_RUN, SPENT_LOOK_AHEAD, SPENT_DRAW, SPENT_SHOW, SPENT_PRESENT, SPENT_PARTS };
+enum { SPENT_RUN, SPENT_LOOK_AHEAD, SPENT_DRAW, SPENT_SHOW, SPENT_PRESENT, SPENT_FILTER, SPENT_UPLOAD, SPENT_PARTS };
 static Uint64 spent[SPENT_PARTS], spent_most[SPENT_PARTS];
 
 static void spend(int part, Uint64 since)
@@ -747,7 +747,10 @@ static void draw_panels(float *x, float y, float *w, float scale_x, float scale_
 	widgets_draw(panel_pixels[0], panel_pixels[1], panel_width);
 	for (int side = 0; side < 2; side++)
 	{
+		const Uint64 began = SDL_GetPerformanceCounter();
+
 		SDL_UpdateTexture(panel_textures[side], &source, panel_pixels[side], panel_width * (int)sizeof(uint32_t));
+		spend(SPENT_UPLOAD, began);
 		SDL_SetTextureScaleMode(panel_textures[side], options.smooth ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
 		SDL_RenderCopyF(renderer, panel_textures[side], &source, side ? &right : &left);
 	}
@@ -812,9 +815,16 @@ static SDL_Texture *filtered_picture(const uint32_t *pixels, float shown_w)
 		filtered_factor = factor;
 	}
 	/* (by layer when it is on and can be: else over the whole picture) */
-	if (!options.filter_layers || !layer_filter_scale(options.filter, pixels, picture, filtered_pixels))
-		scaler_run(options.filter, pixels, VIDEO_HEIGHT, VIDEO_WIDTH, filtered_pixels);
-	SDL_UpdateTexture(filtered, NULL, filtered_pixels, VIDEO_HEIGHT * factor * (int)sizeof(uint32_t));
+	{
+		Uint64 began = SDL_GetPerformanceCounter();
+
+		if (!options.filter_layers || !layer_filter_scale(options.filter, pixels, picture, filtered_pixels))
+			scaler_run(options.filter, pixels, VIDEO_HEIGHT, VIDEO_WIDTH, filtered_pixels);
+		spend(SPENT_FILTER, began);
+		began = SDL_GetPerformanceCounter();
+		SDL_UpdateTexture(filtered, NULL, filtered_pixels, VIDEO_HEIGHT * factor * (int)sizeof(uint32_t));
+		spend(SPENT_UPLOAD, began);
+	}
 	SDL_SetTextureScaleMode(filtered, options.smooth || shown_w < (float)(VIDEO_HEIGHT * factor) - 0.5f
 		? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
 	return filtered;
@@ -827,7 +837,12 @@ static void show_picture(const uint32_t *pixels)
 	float scale_x, scale_y, w, h, x, y, cx, cy;
 	SDL_FRect unturned;
 
-	SDL_UpdateTexture(texture, NULL, pixels, VIDEO_HEIGHT * (int)sizeof(uint32_t));
+	{
+		const Uint64 began = SDL_GetPerformanceCounter();
+
+		SDL_UpdateTexture(texture, NULL, pixels, VIDEO_HEIGHT * (int)sizeof(uint32_t));
+		spend(SPENT_UPLOAD, began);
+	}
 	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 	SDL_RenderClear(renderer);
 	SDL_GetRendererOutputSize(renderer, &out_w, &out_h);
@@ -1093,7 +1108,8 @@ static void meter_log_open(void)
 		settings_scanline_names[options.scanlines & 3], settings_rotate_names[options.rotate],
 		options.arcade_timing ? "arcade" : "fast", options.slowdown ? "on" : "off", audio ? "on" : "off");
 	fputs("each second: GAME the game's frames, BOARD the board's (57.55), WINDOW the pictures shown, LATE the frames"
-		" the PC ran late, WORK a frame's ms (average / most); then each part's ms a frame (average / most)\n",
+		" the PC ran late, WORK a frame's ms (average / most); then each part's ms a frame (average / most); SHOW"
+		" holds PRESENT, FILTER (the pixel-art scaler) and UPLOAD (the pictures given to the graphics card)\n",
 		meter_log);
 	fflush(meter_log);
 }
@@ -1101,7 +1117,7 @@ static void meter_log_open(void)
 static void meter_log_second(double seconds)
 {
 	const double ms = 1000.0 / (double)SDL_GetPerformanceFrequency();
-	static const char *const names[SPENT_PARTS] = { "run", "look", "draw", "show", "present" };
+	static const char *const names[SPENT_PARTS] = { "run", "look", "draw", "show", "present", "filter", "upload" };
 	const unsigned windows = meter.windows ? meter.windows : 1u;
 	char when[16];
 	const time_t now = time(NULL);
