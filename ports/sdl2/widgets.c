@@ -13,6 +13,7 @@
  */
 #include "widgets.h"
 #include "file_save.h"
+#include "loop2.h"
 #include "paths.h"
 
 #include "cave/board.h"
@@ -884,7 +885,9 @@ static void draw_input(panel *p, int top)
 /* ---- the right panel: the score chasing the high scores, its graph, this stage ---- */
 
 #define GRAPH_TOP    100         /* (under the next extra life's line) */
-#define GRAPH_HEIGHT 78
+#define GRAPH_HEIGHT 56          /* (the second loop's lines under it, LOOP2_TOP) */
+#define LOOP2_TOP    (GRAPH_TOP + GRAPH_HEIGHT + 5)
+#define METER_HEIGHT 78          /* the FPS meter, over the graph and the second loop's lines */
 
 /* the score of the player's next extend, as the score is kept (game_memory.h: $101950 / $101954, BCD; func_044BBE
    gives the life when the score reaches it), or 0 when there are none left ($FFFF) */
@@ -1052,6 +1055,74 @@ static void draw_stages(panel *p, uint32_t score)
 	}
 }
 
+/* The second loop (loop2.h): in the first loop, whether this game still gets it and how; in the second, Hibachi.
+   One line under the section's name, 13 characters at most (the narrowest panel's) */
+static void draw_loop2(panel *p)
+{
+	const unsigned loop = word(LOOP), stage = word(STAGE);
+	char text[24];
+	const char *show = "-";
+	uint32_t colour = DIM;
+
+	if (run.on && in_game() && loop == 1u && (stage < STAGES || gm_word(LOOP2_HIDDEN_STAGE) == 1u))
+	{
+		/* the second loop: no continue there, and 2-6 cleared is all Hibachi asks */
+		const bool hidden = stage >= STAGES;
+
+		section(p, LOOP2_TOP, "HIBACHI");
+		put_centre(p, LOOP2_TOP + 11, hidden ? "2-7 NOW!" : "AFTER 2-6", hidden ? GOLD : WHITE, 1);
+		return;
+	}
+	section(p, LOOP2_TOP, "LOOP 2");
+	if (run.on && in_game() && loop <= 1u)
+	{
+		const loop2_status s = loop2_now(run.player);
+
+		switch (s.state)
+		{
+		case LOOP2_OUT_CONTINUED:
+			show = "NO: CONTINUED";
+			colour = RED;
+			break;
+		case LOOP2_OUT_TWO_PLAYERS:
+			show = "NO: 2 PLAYERS";
+			colour = RED;
+			break;
+		case LOOP2_IN:
+			snprintf(text, sizeof(text), "YES: %s", s.by);
+			show = text;
+			colour = GOLD;
+			break;
+		case LOOP2_ON_TRACK:
+		{
+			const unsigned left = LOOP2_MISSES - s.misses;
+
+			snprintf(text, sizeof(text), "%u MISS%s LEFT", left, left == 1u ? "" : "ES");
+			show = text;
+			colour = left == 2u ? GREEN : left == 1u ? YELLOW : ORANGE;
+			break;
+		}
+		default:
+		{
+			/* (too many misses: the three others, a few seconds each) */
+			const unsigned which = (unsigned)(cave_board.frame / (3u * SECOND_FRAMES)) % 3u;
+
+			if (which == 0u)
+				snprintf(text, sizeof(text), "HITS %u/%u", s.hits, s.hits_needed);
+			else if (which == 1u)
+				snprintf(text, sizeof(text), "SCORE %uM/50M", (unsigned)(gm_bcd(SCORE + 4u * (unsigned)run.player)
+					/ 100000u));
+			else
+				snprintf(text, sizeof(text), "BEE STAGE %u/%u", s.bee_stages, LOOP2_BEE_STAGES);
+			show = text;
+			colour = ORANGE;
+			break;
+		}
+		}
+	}
+	put_centre(p, LOOP2_TOP + 11, show, colour, 1);
+}
+
 static void draw_right(panel *p)
 {
 	const bool showing = run.on;
@@ -1107,7 +1178,7 @@ static void draw_right(panel *p)
 		put_right(p, 86, extend ? value : "NO MORE", extend ? WHITE : DIM, 1);
 	}
 	draw_graph(p, score);
-
+	draw_loop2(p);
 	draw_stages(p, score);
 }
 
@@ -1178,7 +1249,7 @@ void widgets_set_meter(const widgets_meter *now)
 
 static void draw_meter(panel *p)
 {
-	const int top = GRAPH_TOP - 3, bottom = GRAPH_TOP + GRAPH_HEIGHT + 3, w = p->w;
+	const int top = GRAPH_TOP - 3, bottom = GRAPH_TOP + METER_HEIGHT + 3, w = p->w;
 	char text[24];
 	const struct { const char *name; double value; const char *format; uint32_t colour; } rows[6] = {
 		{ "GAME", meter.game, "%.1f", meter.game < meter.board - 0.5 ? YELLOW : GREEN },

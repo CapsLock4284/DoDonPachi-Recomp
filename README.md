@@ -238,11 +238,21 @@ and the panels only take the black space at its sides (as wide as the screen lea
   life takes ("1UP IN": the game gives one at 6,000,000 and one at 20,000,000; NO MORE after them), also a dotted
   line on the graph when it is in sight. The graph shows the score through the
   game against the place being chased (the dashed line at the top); each place passed leaves a line in its colour
-  where it was passed, with its number. Below: the loop's six stages one under the other, a record of the game so
+  where it was passed, with its number. Under it, LOOP 2: whether this game still gets the second loop, from the
+  game's own rule (below), in the first loop: YES and how once it is sure, the misses left while those alone would
+  do it, or what is still short; NO after a continue or with two players. In the second loop it is HIBACHI: AFTER
+  2-6, then 2-7 NOW! Below: the loop's six stages one under the other, a record of the game so
   far: each stage finished with its score and how it went against the best ever for that stage (+ or -, gold for a
   new best), the stage being played as it goes (yellow), and those to come with their best to beat. The stages' best
   scores are kept in `ddonpach.stages` beside the program, from clean
   games only (no cheat, no save state, the slowdown on); a stage after a continue doesn't count either.
+
+**The second loop** comes after 1-6 when the player played alone, never continued, and has any one of: 2 misses or
+fewer (lives lost); a MAX HIT of 624 or more with type A, 768 with B or 816 with C; a score of 50,000,000 or more; 4
+or more stages with all 13 bees (the 13th taken with no miss since the stage began). That is the game's own check,
+read from its program and tested against it at each edge (`tests/loop2_check`); the 270, 300 and 330 hits some
+guides give are not what the game asks. The second loop can't be continued, and nothing more is asked for Hibachi:
+clear 2-6 and 2-7 follows.
 
 If the game stops or crashes, it says so in a message box, and leaves two files beside the program: `ddonpach.log`
 (what happened and where) and `ddonpach_crash_DATE_TIME.inp`, the inputs since the last reset. The game is the same

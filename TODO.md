@@ -168,10 +168,13 @@
       a frame otherwise). Checked: each counted bullet marked on the picture lands on one (114 in 1-2's boss fight);
       the table at $10A9F6 ($20 each, 160, tested after them with the ship's box moved) is not the bullets. Found
       with it: the slowdown isn't only bullets (1-2: 33% slowed with 9 on screen, a crowd of tanks and explosions)
-- [ ] **The second loop's qualification** (owner, 18-11-2026: maybe; 21-11-2026: wanted, "absolutely"): whether this game can still reach loop 2
-      ("LOOP 2: ON TRACK, 1 MORE MISS ALLOWED"), from the game's own rule (the lives lost and bombs used in loop 1, a
-      continue; to read from the code that decides it at 1-6's end, not from memory), and the true last boss's own
-      conditions in loop 2 the same way
+- [x] **The second loop's qualification** (owner, 18-11-2026: maybe; 21-11-2026: wanted, "absolutely"; done
+      22-11-2026): `ports/sdl2/loop2.h`, the right panel's LOOP 2 (`widgets.c`, under a shorter score graph). The
+      game's rule, read from its program (World 040A00 on, Japanese the same; the hits' table 040038 / 03FCC0): at
+      1-6's end, alone ($1017A8 bit 6), first credit ($10174E = $0100) and any of misses ($101948) <= 2, MAX HIT >=
+      624 / 768 / 816 by the ship's record +$1C, score >= $05000000, stages of all 13 bees ($1017C2) >= 4. Not the
+      guides' 270 / 300 / 330. Loop 2 can't be continued (the count down ends the game) and Hibachi asks nothing
+      more: 2-6 cleared, 2-7 next. `tests/loop2_check`: the game's choice against loop2.h at each edge, PASS
 - [ ] **MAYBE: a death map** (owner, 18-11-2026: maybe; 21-11-2026: to decide once he sees how it looks): where each life was lost and each bomb used in a stage, as
       marks on a bar of the stage's progress (its scroll position, $10198E), kept across games (in a file beside
       `ddonpach.stages`), so the stages' hard places show

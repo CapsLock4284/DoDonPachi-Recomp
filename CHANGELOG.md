@@ -10,6 +10,11 @@ notes). The release zip carries this file as `CHANGES.txt`.
 - **Help in the menus**, as DonPachi Recomp has: while a menu page is up (with the side panels on), the right panel
   explains the chosen entry: its name, then what it does. Every entry has one, from the training's places and ON
   PACE to the sound's groups, BY LAYER and VERSION.
+- **LOOP 2 on the right panel**: whether this game still gets the second loop, from the game's own rule read from
+  its program: YES (and how) once it is sure, the misses left while those alone would do it ("1 MISS LEFT"), what is
+  still short otherwise, NO after a continue or with two players. In the second loop it becomes HIBACHI: AFTER 2-6,
+  then 2-7 NOW!. The rule: alone, no continue, and any one of 2 misses or fewer, MAX HIT 624 / 768 / 816 (types A, B,
+  C), 50,000,000 points or 4 stages with all 13 bees (README). The score graph is a little shorter for it.
 
 ## v0.3.0 (2026-11-21)
 
