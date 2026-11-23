@@ -100,6 +100,11 @@ contents in `ddonpach.dat` beside the program; it reads that from then on.
 | Start, coin | 1, 5 | Start |
 | Service switch (held 2 s at the title: the test mode) | F2 | |
 
+Any other gamepad or arcade stick works too: those SDL knows by their layout (more of them from
+`gamecontrollerdb.txt`, shipped beside the program), and any other read as it is: its d-pad and stick move, buttons
+1-3 are shot, bomb and auto-fire, its last two coin and start, and its buttons, hats and axes can be bound on the
+CONTROLS page (BTN 3, HAT UP, AXIS 2+). `ddonpach.log` names each device found and how it is read.
+
 Training (TRAINING on the main menu): any stage of either loop, from its start or at its boss (from its WARNING,
 as the boss comes), and 2-7, the second loop's hidden Area 7: its boss Hachi, or the true last boss Hibachi (Hachi
 shot down for you on the way). The ship, its style (shot or laser), the power (ON PACE, the default: what a player

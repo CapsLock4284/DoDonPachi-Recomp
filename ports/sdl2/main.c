@@ -75,6 +75,7 @@
 #include "ui_sound.h"
 #include "scaler.h"
 #include "settings.h"
+#include "pads.h"
 #include "window_icon.h"
 
 #include "cave/boards.h"
@@ -118,65 +119,14 @@ static bool state_loaded;    /* this game went back to a save state, or had a ch
                                 (until the next game: hiscore.h) */
 static bool reset_asked;    /* a reset asked for this frame (the look-ahead's state would undo it: look_ahead) */
 
-/* ---- the gamepads ---- */
+/* ---- the gamepads (pads.h) ---- */
 
-static SDL_GameController *pads[2];    /* player 1's, player 2's: the first two plugged in */
-
-/* A gamepad plugged in (SDL also tells of those there at the start): the first free player's */
-static void pad_added(int device)
-{
-	SDL_GameController *pad;
-
-	for (int player = 0; player < 2; player++)
-		if (pads[player] && SDL_JoystickGetDeviceInstanceID(device)
-				== SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(pads[player])))
-			return;    /* (already open) */
-	for (int player = 0; player < 2; player++)
-		if (!pads[player])
-		{
-			if ((pad = SDL_GameControllerOpen(device)) == NULL)
-				fprintf(stderr, "gamepad %d: %s\n", device, SDL_GetError());
-			pads[player] = pad;
-			return;
-		}
-}
-
-static void pad_removed(SDL_JoystickID instance)
-{
-	for (int player = 0; player < 2; player++)
-		if (pads[player] && SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(pads[player])) == instance)
-		{
-			SDL_GameControllerClose(pads[player]);
-			pads[player] = NULL;
-		}
-}
+static pad_device pads[2];    /* player 1's, player 2's: the first two plugged in */
 
 static uint16_t pad_inputs(int player)
 {
-	SDL_GameController *const pad = pads[player];
-	const int dead = options.stick_dead[player] * 32767 / 100;
-	uint16_t pressed = 0;
-	int x, y;
-
-	if (!pad)
-		return 0;
-	for (int action = 0; action < ACTIONS; action++)
-		for (int binding = 0; binding < BINDINGS_MAX; binding++)
-			if (settings_pad_pressed(pad, options.buttons[player][action][binding]))
-				pressed |= settings_action_bits[action];
-	if (!options.left_stick[player])
-		return pressed;
-	x = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_LEFTX);
-	y = SDL_GameControllerGetAxis(pad, SDL_CONTROLLER_AXIS_LEFTY);
-	if (x < -dead)
-		pressed |= CAVE_LEFT;
-	else if (x > dead)
-		pressed |= CAVE_RIGHT;
-	if (y < -dead)
-		pressed |= CAVE_UP;
-	else if (y > dead)
-		pressed |= CAVE_DOWN;
-	return pressed;
+	return pads_board_inputs(&pads[player], (const pad_input (*)[BINDINGS_MAX])options.buttons[player],
+		options.left_stick[player], options.stick_dead[player]);
 }
 
 /* ---- the hotkeys: what the port does itself ([hotkeys]) ---- */
@@ -202,7 +152,7 @@ static bool hotkey_down(int hotkey)
 		if (key != SDL_SCANCODE_UNKNOWN && keys[key])
 			return true;
 		for (int player = 0; player < 2; player++)
-			if (pads[player] && settings_pad_pressed(pads[player], options.hot_buttons[hotkey][binding]))
+			if (pads_pressed(&pads[player], options.hot_buttons[hotkey][binding]))
 				return true;
 	}
 	return false;
@@ -1702,6 +1652,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "SDL: %s\n", SDL_GetError());
 		return 1;
 	}
+	pads_load_mappings(paths_folder());    /* (before the devices' events are read: pads.h) */
 	if (options.version != 0 && !program_has_version(options.version))
 	{
 		fprintf(stderr, "no Japanese program in this build: the World version\n");
@@ -1858,10 +1809,10 @@ int main(int argc, char **argv)
 				crt_reset();    /* (its textures lost: made again) */
 			if (event.type == SDL_QUIT)
 				running = 0;
-			else if (event.type == SDL_CONTROLLERDEVICEADDED)
-				pad_added(event.cdevice.which);
-			else if (event.type == SDL_CONTROLLERDEVICEREMOVED)
-				pad_removed(event.cdevice.which);
+			else if (event.type == SDL_JOYDEVICEADDED)
+				pads_added(pads, event.jdevice.which);    /* (every device: a game controller's comes too) */
+			else if (event.type == SDL_JOYDEVICEREMOVED)
+				pads_removed(pads, event.jdevice.which);
 			else if (event.type == SDL_KEYDOWN && !event.key.repeat
 					&& event.key.keysym.sym == SDLK_F9)
 				options.show_fps = !options.show_fps;    /* (the FPS meter: for this run; the menu's is kept) */

@@ -7,6 +7,14 @@ notes). The release zip carries this file as `CHANGES.txt`.
 ## Unreleased
 
 ### New
+- **Any gamepad or arcade stick** (a DonPachi Recomp player's report: a controller the game didn't see). Before,
+  only devices SDL knows by their layout were opened. Now `gamecontrollerdb.txt` (the SDL community's list of
+  layouts, over 2,000) comes beside the program and gives many more their Xbox layout; and any other device with a
+  stick or d-pad and buttons is read as it is: its d-pad and stick move, buttons 1, 2 and 3 are shot, bomb and
+  auto-fire, its last button start and the one before coin, its first button chooses in the menus and its second
+  goes back. Its buttons, d-pad and stick can be set on the CONTROLS page as any other (shown as BTN 3, HAT UP,
+  AXIS 2+; kept in `ddonpach.ini` as `joy_button_3`, `joy_hat_1_up`, `joy_axis_2+`), beside a gamepad's own.
+  `ddonpach.log` names each device the game finds and how it reads it.
 - **Help in the menus**, as DonPachi Recomp has: while a menu page is up (with the side panels on), the right panel
   explains the chosen entry: its name, then what it does. Every entry has one, from the training's places and ON
   PACE to the sound's groups, BY LAYER and VERSION.

@@ -90,6 +90,15 @@
       (ddonpach.ini), the EEPROM kept, save states, fast forward, MAME's cheat files, the ROM drop window, its own
       icon. The test mode: the service switch held 2 seconds at the title (the game ignores it on its warning screen
       and at the reset, so F4 holds it instead of resetting).
+- [x] **Any gamepad or arcade stick** (owner, 23-11-2026, from a DonPachi Recomp player's report: a controller not
+      seen): `ports/sdl2/pads.c`, as DonPachi Recomp's. gamecontrollerdb.txt (SDL_GameControllerDB, zlib, 2,310
+      layouts as of 23-11-2026: `ports/sdl2/release/`, copied beside the program by the build and the release
+      scripts) loaded at the start; every device opened on SDL_JOYDEVICEADDED, a plain joystick when SDL has no
+      layout for it (one with no stick or hat, or fewer than 2 buttons, left alone); its buttons, axes and hats
+      bound by number on the CONTROLS page (`joy_button_N`, `joy_axis_N+/-`, `joy_hat_N_dir`), beside the gamepad's
+      named ones; defaults until bound. The log names each device. Checked by DonPachi Recomp's
+      `tests/harness/pads_check` (SDL's virtual joysticks: the same pads.c). Not done: a plain joystick's button to
+      open the options menu (Esc does)
 - [x] Auto-fire on button C (owner): the test mode's "C BUTTON FULL-AUTO", as DonPachi Recomp's home default (EEPROM
       words 1 and 4, bit 2 of word 4); [game] c_button_full_auto, on by default, sets it as the game starts.
 - [x] Type C's pods (owner): they showed for a frame and never fired. A translation bug: the jump table at 00E008

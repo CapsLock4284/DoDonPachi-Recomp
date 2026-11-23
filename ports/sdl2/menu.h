@@ -16,6 +16,7 @@
 #define DDONPACH_MENU_H
 
 #include "settings.h"
+#include "pads.h"
 
 #include <SDL.h>
 
@@ -28,7 +29,7 @@ typedef struct
 	settings *options;          /* the settings in use (the file's, and the command line's over them) */
 	settings *file;             /* the file's: the menu's changes go to both, and this is saved */
 	const char *path;           /* ddonpach.ini */
-	SDL_GameController *const *pads;    /* the two players' gamepads (NULL: none) */
+	const pad_device *pads;     /* the two players' gamepads and joysticks (pads.h; .joy NULL: none) */
 	void (*reset)(void);        /* the board's reset */
 	void (*test_mode)(void);    /* the service switch held for the player until the test mode comes up */
 	void (*apply_window)(void); /* the window's size and full screen from options */
