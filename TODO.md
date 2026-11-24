@@ -97,7 +97,7 @@
       layout for it (one with no stick or hat, or fewer than 2 buttons, left alone); its buttons, axes and hats
       bound by number on the CONTROLS page (`joy_button_N`, `joy_axis_N+/-`, `joy_hat_N_dir`), beside the gamepad's
       named ones; defaults until bound. The log names each device. Checked by DonPachi Recomp's
-      `tests/harness/pads_check` (SDL's virtual joysticks: the same pads.c). Not done: a plain joystick's button to
+      `tests/harness/pads_check` (SDL's virtual joysticks: the same pads.c). Fixed 23-11-2026: a device plugged in before the first run was missed (the ROM drop window took its SDL_JOYDEVICEADDED): `pads_scan` once that window may have run. Not done: a plain joystick's button to
       open the options menu (Esc does)
 - [x] Auto-fire on button C (owner): the test mode's "C BUTTON FULL-AUTO", as DonPachi Recomp's home default (EEPROM
       words 1 and 4, bit 2 of word 4); [game] c_button_full_auto, on by default, sets it as the game starts.
