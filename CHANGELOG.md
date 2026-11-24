@@ -6,6 +6,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
+Nothing yet.
+
+## v0.4.0 (2026-11-23)
+
 ### New
 - **Any gamepad or arcade stick** (a DonPachi Recomp player's report: a controller the game didn't see). Before,
   only devices SDL knows by their layout were opened. Now `gamecontrollerdb.txt` (the SDL community's list of
