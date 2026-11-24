@@ -6,6 +6,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
+Nothing yet.
+
+## v0.4.2 (2026-11-23)
+
 ### Fixed
 - **Short "fast forward" jumps after a hitch** (a player's report on GitHub): when the PC finished a frame late
   (another program busy for a moment), the game ran the frames it owed at once, one after another, until it was back

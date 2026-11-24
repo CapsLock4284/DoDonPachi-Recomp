@@ -17,7 +17,7 @@
 # folder holding it). The translated program comes first: python tools/decompile.py writes src/.
 cmake_minimum_required(VERSION 3.20)
 # The version: the one place it is set
-project(ddonpach VERSION 0.4.1 LANGUAGES C)
+project(ddonpach VERSION 0.4.2 LANGUAGES C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
