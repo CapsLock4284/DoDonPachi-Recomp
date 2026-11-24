@@ -1,5 +1,15 @@
 # TODO
 
+## Next
+
+- [ ] **The picture and the slowdown against the real MAME** (owner, 23-11-2026: first on the list): a Lua script for
+      the owner's own MAME (`mame ddonpach -autoboot_script ...`) that plays tests/player.h's inputs by the VBLANK,
+      holds P1's time without harm at $80 from VBLANK 2,500 as cref_timed's INVINCIBLE=1 does, saves the picture at
+      chosen frames through both loops (and 2-7) and logs the frames MAME's own machine slows down on. The port's
+      pictures at the same frames (a test tool) compared pixel by pixel; the slowdown log against slowdown_check's.
+      Covers "The picture side by side with MAME's own" and "The slowdown against the real MAME" below: our checks so
+      far run MAME's 68000 core on Cave68kSDK's board model, so MAME's own drawing and timing are not yet compared
+
 ## Translating the program (step 4 of the SDK plan)
 
 - [x] The ROM set read (both versions); the program's chips interleaved, checked by the reset vector.
@@ -74,8 +84,10 @@
       its caller's stack, the core's DIVU by a constant (it lost the remainder), a jump table whose fourth case is the
       code after its three stubs (053E20: sprites of priority 3), and four object types whose first pointer is code,
       not a count (147, 149, 180, 206: made by 03622A, which calls that pointer at 036278).
-- [ ] The same check with a player that goes further into the game (the test player only plays the first stage's
-      start; the busiest scenes are later): the attract demo and the first minutes are matched now.
+- [x] The same check with a player that goes further into the game (done 18-11-2026, ticked 23-11-2026): P1 kept from
+      harm from VBLANK 2,500 in both (cref_timed and slowdown_check, INVINCIBLE=1, the same write on the same frame),
+      the test players through both loops, 2-7, Hibachi and the ending with every ship and style: the same board at
+      every frame and every lagged VBLANK (commit 66d772f, "Full-game check against MAME")
 - [x] The YMZ280B sound chip (in Cave68kSDK, after MAME's ymz280b.cpp): its voices, the mix, and its interrupt at the
       sample a voice ends, in the port and in tools/cref alike. DoDonPachi's interrupt handler tells the chip's
       interrupt from the VBLANK's by the time (the cause's bit 2), so it is part of the slowdown: checked again over
