@@ -224,6 +224,21 @@
       the picture's corner, on the game's area; it is to go onto the side panels instead (a section of its own,
       or over a panel's top as the achievement toast is), so the game is never covered. Over the picture only when
       the panels are off or the picture is rotated. DonPachi Recomp to get the same meter and log (its TODO)
+- [ ] **Gadget-style side panels, our own** (owner, 23-11-2026: an idea, not now; the look of M2's ShotTriggers
+      "gadgets", Dai-Fukkatsu's shown, but our own design, nothing of M2's art or layout): in BLUE (owner: it fits the
+      game), brushed-metal frames, header strips, gauges, big outlined score digits, an open-licence font built in
+      (SIL OFL), drawn at the screen's own resolution (not the game's 8x8 font scaled up); the game's own sprites from
+      the player's ROM for ships, enemies, bees and items. A full-screen mockup first, agreed before any code.
+      Gadgets, easiest first: rank gauge; GPS / the last enemy destroyed and its points; music info (the track from
+      the sound commands, our own title table); hits by weapon and the chain's timer; achievements by area; which bee
+      of a stage was missed; a stage map (the whole stage drawn from its data, "you are here") with its enemies and
+      their points (names our own: they are not in the ROM). No painted art (portraits): an artist's, loaded from a
+      folder, if ever
+- [ ] **A rank gauge** (owner, 25-11-2026: a player's request; for the gadget-style panels above, the first of
+      their gadgets): the game's rank as a gauge, how hard the game is making itself now (bullet speed, intervals).
+      To find first: where DoDonPachi keeps its rank and its range (DonPachi Recomp's is $101A32, 0-63, its low
+      byte), and what raises and lowers it, from the program, checked over the test players' games. Could go in
+      today's right panel first, then move to the gadgets when they come
 - [ ] Side panel ideas still open: the lives; the hit counter's chain (the GP gauge's DoDonPachi equivalent);
       the boss's health; the stage's progress (its scroll position); the run's statistics (bombs used, misses by
       stage); the high score chase and the stage bests per ship and style
