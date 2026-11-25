@@ -24,7 +24,15 @@
             every slowed VBLANK), then at VBLANK 4,149 (1-1) MAME's own machine slowed down a frame where the port,
             and MAME's 68000 core on Cave68kSDK's board, didn't: the board model takes a little less time there than
             MAME's machine. Everything after differs from that alone (the games go apart)
-      - [ ] A second run with ddp_check.lua 0.2.0 (mame_compare should then say "0 VBLANKs later")
+      - [x] A second run with ddp_check.lua 0.2.0 (25-11-2026): "0 VBLANKs later", the inputs lined up. The same
+            until VBLANK 3,188 (another place: the first run's inputs were a VBLANK late, so its game went another
+            way), where again MAME's machine slowed down a frame and the port didn't: the same way both times
+      - [ ] Step 1 of finding it: ddp_check.lua 0.3.0 writes waits.txt, each game frame's end in the 68000's cycles
+            (MAME's time in the write tap, the CPU's own), and mame_compare sets it beside the port's (m68k_time at
+            its wait) for every frame before the two part: mame_compare_waits.txt, the difference and the port's
+            spare to the next VBLANK. Its shape tells the cause (the same each frame: the VBLANK's place or the
+            interrupt's answer; more on busy frames: wait states; at the sound's starts: the YMZ280B). Checked on
+            itself (MAKE=1: 0 cycles every frame). The owner's third run
       - [ ] VBLANK 4,149: how near its time the frame came in the port, what ran in it, and what MAME's machine
             spends there that the board model doesn't (wait states, the VBLANK's place in the frame, the YMZ280B's
             interrupt); fixed in Cave68kSDK if so, then checked again to the end

@@ -14,7 +14,11 @@
  *    MAME's may be: lined up all the same).
  *    MAME's VBLANKs are counted from its first frame, the port's from the power on: the two are lined up by the first
  *    VBLANK the game comes to its wait at (after the board's self-test, which reads no inputs). Writes the first pictures that
- *    differ as mame_N.ppm, port_N.ppm and diff_N.ppm (white where they differ) where it runs. Prints what it finds
+ *    differ as mame_N.ppm, port_N.ppm and diff_N.ppm (white where they differ) where it runs. Prints what it finds.
+ *    With waits.txt (ddp_check.lua 0.3.0): when each frame's work ended in MAME against the port, in the 68000's
+ *    cycles from the power on, for every frame of the game before the two part; each frame's in
+ *    mame_compare_waits.txt where it runs ("game_frame vblank mame port mame-port port's_spare", the spare the
+ *    cycles from the port's end of the frame to the next VBLANK)
  */
 #include "cave/boards.h"
 #include "cave/machine.h"
@@ -46,10 +50,23 @@ static unsigned mame_vblanks;
 
 static bool arrived;
 
+/* each frame of the game's end (its wait made ready), in the 68000's cycles from the power on: the port's (counted
+   from the power on in each run) and MAME's (waits.txt) */
+#define WAITS_MOST 1000000u
+#define FRAME_CYCLES ((uint64_t)CAVE_CPU_CLOCK * CAVE_FRAME_USEC / 1000000u)
+extern uint64_t m68k_time;
+static uint64_t *port_waits, *mame_waits;
+static unsigned port_wait_count, mame_wait_count;
+
 static void at_wait(void)
 {
 	if (!arrived && (*cave_work_ram_byte(READY + 1u) & 1u))
+	{
 		arrived = true;
+		if (port_waits && port_wait_count < WAITS_MOST)
+			port_waits[port_wait_count] = m68k_time;
+		port_wait_count++;
+	}
 }
 
 static unsigned word(uint32_t address)
@@ -78,6 +95,7 @@ static bool start(const char *rom)
 		return false;
 	}
 	program_at_wait = at_wait;
+	port_wait_count = 0;
 	cave_board.in0 = cave_board.in1 = 0xFFFFu;
 	return true;
 }
@@ -131,6 +149,7 @@ static int make(const char *dir, const char *rom)
 	snprintf(path, sizeof(path), "%s/log.txt", dir);
 	if (!(log = fopen(path, "w")))
 		return 1;
+	port_waits = calloc(WAITS_MOST, sizeof(*port_waits));
 	fputs("; mame_compare MAKE=1: the port, written as ddp_check.lua writes MAME's\n", log);
 	while (cave_board.frame < frames)
 	{
@@ -180,6 +199,13 @@ static int make(const char *dir, const char *rom)
 		}
 	}
 	fclose(log);
+	snprintf(path, sizeof(path), "%s/waits.txt", dir);
+	if ((log = fopen(path, "w")) != NULL)
+	{
+		for (unsigned k = 0; k < port_wait_count && k < WAITS_MOST; k++)
+			fprintf(log, "%u %" PRIu64 "\n", k + 1u, port_waits[k]);
+		fclose(log);
+	}
 	printf("written: %s (%u VBLANKs)\n", dir, frames);
 	return 0;
 }
@@ -215,6 +241,22 @@ static bool read_log(const char *dir)
 			mame_vblanks = (unsigned)vblank;
 	}
 	fclose(log);
+	snprintf(path, sizeof(path), "%s/waits.txt", dir);
+	if ((log = fopen(path, "r")) != NULL)
+	{
+		unsigned long frame;
+		unsigned long long cycle;
+
+		mame_waits = calloc(WAITS_MOST, sizeof(*mame_waits));
+		while (fgets(line, sizeof(line), log))
+			if (sscanf(line, "%lu %llu", &frame, &cycle) == 2 && frame >= 1 && frame <= WAITS_MOST)
+			{
+				mame_waits[frame - 1u] = cycle;
+				if (frame > mame_wait_count)
+					mame_wait_count = (unsigned)frame;
+			}
+		fclose(log);
+	}
 	return mame_vblanks > 0;
 }
 
@@ -328,6 +370,53 @@ static void find_kept(const char *dir)
 			kept[vblank] = 1;
 	}
 	closedir(folder);
+}
+
+/* When each frame's work ended, MAME's against the port's, for the first 'frames' frames of the game (both the same
+   game there): how much later MAME's ends, and how near its VBLANK the port's came */
+static void report_waits(unsigned frames, long offset)
+{
+	FILE *const out = fopen("mame_compare_waits.txt", "w");
+	long long least = 0, most = 0, sum = 0;
+	unsigned compared = 0, worst = 0, at_most = 0;
+	uint64_t least_spare = UINT64_MAX;
+	unsigned least_spare_frame = 0;
+
+	if (out)
+		fputs("; game_frame vblank mame port mame-port port's_spare (cycles; the VBLANK the port's frame ended in, "
+			"MAME's count)\n", out);
+	for (unsigned k = 0; k < frames && k < mame_wait_count; k++)
+	{
+		const long long difference = (long long)mame_waits[k] - (long long)port_waits[k];
+		const uint64_t vblank = port_waits[k] / FRAME_CYCLES, spare = (vblank + 1u) * FRAME_CYCLES - port_waits[k];
+
+		if (!compared || difference < least)
+			least = difference;
+		if (!compared || difference > most)
+		{
+			most = difference;
+			at_most = k + 1u;
+		}
+		sum += difference;
+		compared++;
+		if (spare < least_spare)
+		{
+			least_spare = spare;
+			least_spare_frame = k + 1u;
+		}
+		if (out)
+			fprintf(out, "%u %lld %" PRIu64 " %" PRIu64 " %lld %" PRIu64 "\n", k + 1u, (long long)vblank + offset,
+				mame_waits[k], port_waits[k], difference, spare);
+		(void)worst;
+	}
+	if (out)
+		fclose(out);
+	if (!compared)
+		return;
+	printf("the frames' ends, %u frames of the game before the two part: MAME's later by %lld to %lld cycles "
+		"(%.1f on average; the most at frame %u); the port's least spare before a VBLANK %" PRIu64 " cycles (frame "
+		"%u). Each frame in mame_compare_waits.txt\n", compared, least, most, (double)sum / compared, at_most,
+		least_spare, least_spare_frame);
 }
 
 typedef struct
@@ -451,6 +540,15 @@ int main(int argc, char **argv)
 	}
 	printf("MAME's game read the log's inputs %ld VBLANK%s later than the port's would\n", delay, delay == 1 ? "" : "s");
 
+	port_waits = calloc(WAITS_MOST, sizeof(*port_waits));
+	{
+		/* (the port's waits until the two part: the frames before it, one game in both) */
+		const result until = run(dir, rom, offset, delay, (long)mame_vblanks, true, false);
+		const unsigned frames = port_wait_count < WAITS_MOST ? port_wait_count : WAITS_MOST;
+
+		if (mame_waits)
+			report_waits(frames > 0 && (until.lag_differ || until.sig_differ) ? frames - 1u : frames, offset);
+	}
 	r = run(dir, rom, offset, delay, (long)mame_vblanks, false, true);
 	printf("compared %u VBLANKs\n", r.compared);
 	if (r.lag_differ || r.sig_differ)

@@ -1,7 +1,7 @@
 -- Name:        ddp_check.lua
 -- Description: DoDonPachi on the real MAME, played as the port's checks play it, for tests/mame_compare: the
 --              picture, the work RAM and the slowdown of MAME's own ddonpach, against the port's
--- Version:     0.2.0 (0.2.0: the inputs on the port's VBLANK, not one later)
+-- Version:     0.3.0 (0.2.0: the inputs on the port's VBLANK, not one later; 0.3.0: waits.txt)
 -- Created:     25-11-2026
 --
 -- license:BSD-3-Clause
@@ -24,6 +24,9 @@
 --     ram_N.bin      the work RAM ($100000-$10FFFF, 64 KB) at VBLANK N, every DDP_EVERY VBLANKs (5,000)
 --     screen_N.bin   MAME's picture then: its screen's pixels as MAME keeps them (32-bit, little endian), with
 --                    screen_size.txt
+--     waits.txt      a line a frame of the game: "game_frame cycle", the 68000's cycle from the power on (MAME's time
+--                    there, at the CPU's own instruction, times its clock) as the game makes its wait ready: when each
+--                    frame's work ended, to set beside the port's (tests/slowdown_check's CYCLELOG, mame_compare)
 -- and quits at DDP_FRAMES VBLANKs (300,000: both loops, 2-7 and the ending, about 87 minutes of the game; about 10
 -- to 20 minutes with -nothrottle). Zip the folder and send it; tests/mame_compare plays the port the same way.
 --
@@ -81,8 +84,28 @@ end
 
 -- ---- the game's frames: its wait made ready ($10120C bit 0, as tests/slowdown_check's at_wait) ----
 local arrived = false
+local game_frames = 0
+local waits = io.open(out .. "/waits.txt", "w")
+local clock = cpu.clock    -- (16,000,000: DoDonPachi's 68000)
+-- MAME's time now, in the 68000's cycles from the power on. In a tap it is the running CPU's own, to its instruction
+-- (the scheduler's time() while a CPU executes). attotime's seconds and attoseconds, exact (as_double, a cycle or
+-- so off this far into a run, if this MAME has no such fields)
+local attos_per_cycle = 1000000000000000000 // clock
+local function cycle_now()
+	local now = machine.time
+	local ok, cycle = pcall(function() return now.seconds * clock + now.attoseconds // attos_per_cycle end)
+	if ok and type(cycle) == "number" then return cycle end
+	return math.floor(now:as_double() * clock + 0.5)
+end
+
 local ready_tap = space:install_write_tap(0x10120c, 0x10120d, "ddp_check_ready", function(offset, data, mask)
-	if (data & 1) ~= 0 and (mask & 1) ~= 0 then arrived = true end
+	if (data & 1) ~= 0 and (mask & 1) ~= 0 then
+		arrived = true
+		game_frames = game_frames + 1
+		if waits then
+			waits:write(string.format("%d %d\n", game_frames, cycle_now()))
+		end
+	end
 end)
 
 local function signature()
@@ -103,7 +126,7 @@ if not log then
 	machine:exit()
 	return
 end
-log:write("; ddp_check.lua: MAME " .. emu.app_version() .. ", " .. emu.romname() .. "\n")
+log:write("; ddp_check.lua: MAME " .. emu.app_version() .. ", " .. emu.romname() .. ", 68000 at " .. clock .. " Hz\n")
 
 -- The inputs: the port gives player_inputs(N) after its VBLANK N, for the game's interrupt at the next VBLANK to read.
 -- MAME's frame notifier for VBLANK N comes after that VBLANK's interrupt has read them already, so here the inputs
@@ -127,6 +150,7 @@ local function on_frame()
 	end
 	if vblank >= frames then
 		log:close()
+		if waits then waits:close() end
 		emu.print_info("ddp_check: done, " .. vblank .. " VBLANKs in " .. out)
 		machine:exit()
 	end
