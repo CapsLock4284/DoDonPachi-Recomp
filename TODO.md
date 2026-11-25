@@ -32,7 +32,18 @@
             its wait) for every frame before the two part: mame_compare_waits.txt, the difference and the port's
             spare to the next VBLANK. Its shape tells the cause (the same each frame: the VBLANK's place or the
             interrupt's answer; more on busy frames: wait states; at the sound's starts: the YMZ280B). Checked on
-            itself (MAKE=1: 0 cycles every frame). The owner's third run
+            itself (MAKE=1: 0 cycles every frame). The owner's third run (25-11-2026, 0.3.1), the 3,047 frames
+            before the two part: MAME's frames ended about 1,460 cycles sooner, steadily; now and then a pair of
+            frames 1,400 shorter and 1,400 longer; from frame 1,840 on, some busy frames up to 30,000 cycles longer
+      - [ ] Found, 1: MAME's VBLANK interrupt comes 90 us (1,440 cycles) before the frame's end, not at it (cave.cpp:
+            cave_state::interrupt sets the interrupt's timer to 17376 - m_time_vblank_irq us after the screen's
+            VBLANK; init_donpachi, which init_ddonpach calls, sets m_time_vblank_irq = 90: DonPachi's too). The phase
+            matters against the YMZ280B's interrupts (its clock runs from the power on) and the 2,000 us window after
+            the VBLANK (agallet_vblank_irq). Tried in a copy of game_program.c (the VBLANK at FRAME_CYCLES - 1,440):
+            the steady 1,460 gone (about -50 cycles left), the two still part at VBLANK 3,188. Not in Cave68kSDK yet
+      - [ ] Then the pairs and the large ones (1,848: +18,800): ddp_check.lua 0.4.0 writes irq.txt, each read of the
+            interrupt's cause and of the YMZ280B with its cycle, for the first 6,000 VBLANKs, to set beside the
+            port's (a probe build with a hook in a copy of machine.c's irq_cause). The owner's fourth run
       - [ ] VBLANK 4,149: how near its time the frame came in the port, what ran in it, and what MAME's machine
             spends there that the board model doesn't (wait states, the VBLANK's place in the frame, the YMZ280B's
             interrupt); fixed in Cave68kSDK if so, then checked again to the end

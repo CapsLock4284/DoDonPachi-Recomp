@@ -1,7 +1,8 @@
 -- Name:        ddp_check.lua
 -- Description: DoDonPachi on the real MAME, played as the port's checks play it, for tests/mame_compare: the
 --              picture, the work RAM and the slowdown of MAME's own ddonpach, against the port's
--- Version:     0.3.1 (0.2.0: the inputs on the port's VBLANK, not one later; 0.3.0: waits.txt; 0.3.1: no device clock)
+-- Version:     0.4.0 (0.2.0: the inputs on the port's VBLANK, not one later; 0.3.0: waits.txt; 0.3.1: no device clock;
+--              0.4.0: irq.txt)
 -- Created:     25-11-2026
 --
 -- license:BSD-3-Clause
@@ -27,6 +28,9 @@
 --     waits.txt      a line a frame of the game: "game_frame cycle", the 68000's cycle from the power on (MAME's time
 --                    there, at the CPU's own instruction, times its clock) as the game makes its wait ready: when each
 --                    frame's work ended, to set beside the port's (tests/slowdown_check's CYCLELOG, mame_compare)
+--     irq.txt        for the first DDP_IRQ_UNTIL VBLANKs (6,000): each read of the interrupt's cause ($800000-$800007)
+--                    and of the YMZ280B ($300000-$300003), "cycle address value", and "vblank N" as each VBLANK
+--                    passes: when the interrupts came and what the game was told, to set beside the port's
 -- and quits at DDP_FRAMES VBLANKs (300,000: both loops, 2-7 and the ending, about 87 minutes of the game; about 10
 -- to 20 minutes with -nothrottle). Zip the folder and send it; tests/mame_compare plays the port the same way.
 --
@@ -36,6 +40,7 @@
 -- how they line up with the port's from the frames before the first coin, where nothing is pressed.
 
 local out = os.getenv("DDP_OUT") or "build/mame_check"
+local irq_until = tonumber(os.getenv("DDP_IRQ_UNTIL") or "6000")
 local frames = tonumber(os.getenv("DDP_FRAMES") or "300000")
 local every = tonumber(os.getenv("DDP_EVERY") or "5000")
 
@@ -111,6 +116,18 @@ local ready_tap = space:install_write_tap(0x10120c, 0x10120d, "ddp_check_ready",
 	end
 end)
 
+-- the interrupt's cause and the sound chip, read by the game: when, and what it was told (irq.txt)
+local irq_file = io.open(out .. "/irq.txt", "w")
+local irq_vblank = 0
+local function irq_read(offset, data, mask)
+	if irq_file and irq_vblank < irq_until then
+		irq_file:write(string.format("%d %06x %04x\n", cycle_now(), offset, data))
+	end
+	return data
+end
+local cause_tap = space:install_read_tap(0x800000, 0x800007, "ddp_check_cause", irq_read)
+local ymz_tap = space:install_read_tap(0x300000, 0x300003, "ddp_check_ymz", irq_read)
+
 local function signature()
 	local sum = 0
 	for address = 0x102c8c, 0x102d0a, 2 do sum = sum + space:read_u16(address) end
@@ -138,6 +155,11 @@ log:write("; ddp_check.lua: MAME " .. emu.app_version() .. ", " .. emu.romname()
 local vblank = 0
 local function on_frame()
 	vblank = vblank + 1
+	irq_vblank = vblank
+	if irq_file then
+		if vblank < irq_until then irq_file:write(string.format("vblank %d\n", vblank))
+		elseif vblank == irq_until then irq_file:close(); irq_file = nil end
+	end
 	local held = player_inputs(vblank)
 	set_inputs(player_inputs(vblank + 1))
 	if vblank > 2500 then space:write_u8(0x102cca, 0x80) end    -- (player 1's time without harm: held)
@@ -166,3 +188,5 @@ else
 	emu.register_frame_done(on_frame)
 end
 ddp_check_tap = ready_tap
+ddp_check_cause_tap = cause_tap
+ddp_check_ymz_tap = ymz_tap
