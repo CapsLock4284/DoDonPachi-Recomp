@@ -2,8 +2,9 @@
    INPUT TIMING settings. From the power on (tests/player.h, player 1 kept from harm as INVINCIBLE=1 does), two
    runs, the second holding the key from VBLANK on (no direction or shot in either for the 60 VBLANKs before), each
    run in a process of its own (a look-ahead's state must not reach the other run). The first picture that differs:
-     the board (MAME the same): the picture after each VBLANK, drawn as its vblank interrupt returns (the sprites
-       latched at VBLANK, the interrupt's scroll and palette), from the VBLANK whose interrupt first reads the key
+     the board (MAME the same): the picture after each VBLANK, drawn at the screen's VBLANK 90 us after its vblank
+       interrupt (program_at_screen_vblank: the sprites latched at the interrupt, its scroll and palette), from the
+       VBLANK whose interrupt first reads the key
        (the game reads IN0 in level_1_interrupt);
      the port: main.c's loop (read_keys, program_run_frame, the sprites latched, then the look-ahead's picture for
        FAST or the real frame's for ARCADE, shown), from the window frame that read the key.
@@ -37,7 +38,7 @@ static uint32_t pixels[VIDEO_WIDTH * VIDEO_HEIGHT];
 static uint64_t drawn;
 static int wanted;
 
-static void after_vblank(void)
+static void at_screen_vblank(void)
 {
 	uint64_t hash = 1469598103934665603ull;
 
@@ -61,7 +62,7 @@ static void run(int mode, long press, unsigned key, int pressing, uint64_t *out)
 	if (rom_set_load("ddonpach.zip") || program_start())
 		exit(1);
 	program_set_slowdown(true);
-	program_after_vblank = after_vblank;
+	program_at_screen_vblank = at_screen_vblank;
 	cave_board.in0 = cave_board.in1 = 0xFFFF;
 	for (long it = 0; it < first + SPAN; it++)
 	{

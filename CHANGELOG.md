@@ -14,6 +14,11 @@ notes). The release zip carries this file as `CHANGES.txt`.
   MAME's 68000 at the board's timing over 100,000 frames: the same frames slow down at the same moments.
 - **Replays and crash files** now note this. Replays saved by older versions still play, with the old timing, so
   they stay in step; replays saved from now on need this version or newer to play.
+- **The picture is drawn at the same moment the board's screen takes it**, 90 microseconds after that interrupt
+  rather than right as the game finishes handling it. Now and then the game changes something in those 90
+  microseconds (a step of a fade, for one), and the picture shows that now, as on the board. Compared with MAME's own
+  DoDonPachi picture by picture: the same to the pixel everywhere the two games are still the same game. The game
+  itself, its timing and the input latency are unchanged.
 
 ## v0.4.2 (2026-11-23)
 

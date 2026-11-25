@@ -933,14 +933,16 @@ static void window_title(void)
 	SDL_SetWindowTitle(window, title);
 }
 
-/* As the vblank interrupt returns: the picture drawn there, as the board shows it (the sprites latched as VBLANK
-   began, the layers' scroll and the palette as the interrupt has just set them) */
+/* At the screen's own VBLANK, 90 us after the vblank interrupt came (cave/program.h's program_at_screen_vblank): the
+   picture drawn there, as the board shows it and MAME draws it (the sprites latched as the interrupt came, the
+   layers' scroll and the palette as the interrupt has set them, and what the program wrote in those 90 us: a fade's
+   step). Checked against MAME's own ddonpach: the same to the pixel at every picture before the games part */
 /* Drawn only when it will be shown: the look-ahead's picture, or with arcade_timing the last frame's of the window's
    frame (not the frames fast forward or the warning's skip run unseen, nor the real frame's the look-ahead's
    replaces: the drawing is the most of a frame's work) */
 static bool picture_wanted = true;
 
-static void after_vblank(void)
+static void at_screen_vblank(void)
 {
 	if (picture_wanted)
 		draw_picture();
@@ -950,9 +952,9 @@ static void after_vblank(void)
 
 
 /* The board shows a frame as its VBLANK comes: the sprites latched then, the layers' scroll and the palette as the
-   vblank interrupt sets them just after (its first 2 ms). program_run_frame returns at that VBLANK, before the
-   interrupt, so a picture drawn as the interrupt returns (after_vblank) comes a frame later, after the next frame's
-   work. Here the program runs on through that next frame with the state saved first, its interrupt drawing the
+   vblank interrupt sets them just after, drawn at the screen's VBLANK 90 us after the interrupt. program_run_frame
+   returns at the interrupt, so a picture drawn at the screen's VBLANK (at_screen_vblank) comes a frame later, after
+   the next frame's work. Here the program runs on through that next frame with the state saved first, its interrupt drawing the
    picture the board shows now, and the state is put back: the game goes on exactly as it would without it (the next
    frame is run again, for real, with the inputs then; checked: the same game at every frame over 30,000 VBLANKs, and
    the same picture as the frame after draws at each). Its sound is not kept (cave_sound_quiet). Costs the game's
@@ -962,7 +964,7 @@ static void look_ahead(void)
 	program_state *state;
 
 	if (options.arcade_timing)
-		return;    /* (the picture drawn as the last frame's interrupt returned) */
+		return;    /* (the picture drawn at the last frame's screen VBLANK) */
 	if (reset_asked || !(state = program_state_save()))
 	{
 		draw_picture();    /* (no look-ahead: the board as it is at the VBLANK) */
@@ -970,7 +972,7 @@ static void look_ahead(void)
 	}
 	cave_sound_quiet = true;
 	picture_wanted = true;
-	program_run_frame();    /* (its interrupt draws the picture: after_vblank) */
+	program_run_frame();    /* (the screen's VBLANK in it draws the picture: at_screen_vblank) */
 	picture_wanted = false;
 	cave_sound_quiet = false;
 	program_state_load(state);
@@ -1771,7 +1773,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "side panels: %s\n", SDL_GetError());    /* (their place left black then) */
 	if (SDL_RenderSetVSync(renderer, options.vsync ? 1 : 0) != 0)
 		fprintf(stderr, "vsync: %s\n", SDL_GetError());
-	program_after_vblank = after_vblank;
+	program_at_screen_vblank = at_screen_vblank;
 	{
 		menu_host menu = { 0 };
 

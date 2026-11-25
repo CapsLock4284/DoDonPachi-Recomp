@@ -62,6 +62,26 @@
             (MAME's updates don't fall on every tick). So the parting is MAME's emulation, not the board's: the
             port stays as the chip. Comparisons with the real MAME hold only to the first frame the late interrupt
             tips over
+      - [x] The pictures (owner's sixth run, 25-11-2026: DDP_EVERY=100, DDP_FRAMES=4000, build/mame_pics). MAME's
+            picture at its VBLANK N is the port's as interrupt N-1 ends (mame_compare compares N with N and N-1 as the
+            port is at the VBLANK, not as it shows it). Probed (copies, not kept): the port's picture drawn at the
+            screen's own VBLANK (the interrupt's 90 us lead after it) is MAME's to the pixel at all 19 pictures to
+            1,900 (the warning, the attract mode, the title); drawn as the interrupt ends, as the port does now, 18
+            (1,400: a step of the warning's fade the game writes in those 90 us). From 2,000 on (the ship select,
+            stage 1) what moves differs (explosions' debris, bullets, the select's radar, a text typed in): the
+            game's own state, not the drawing (the layers, colours and sprites line up; latching the sprites later
+            is worse). With the sound interrupt held to MAME's updates (the probe above) 2,300-2,500 come out the
+            same too; the rest is not separated from MAME's sound updates. The work RAM's snapshots don't compare:
+            ddp_check.lua reads them at another point of the frame (counters one apart even at VBLANK 200)
+      - [x] The picture drawn at the screen's VBLANK (the frame's end) instead of as the interrupt ends (25-11-2026):
+            Cave68kSDK's program_at_screen_vblank (the frame's end, the lead after the interrupt; with no lead, as
+            the interrupt returns), main.c's at_screen_vblank and look_ahead on it, latency_check too. mame_compare
+            compares MAME's N against the port's picture so drawn after interrupt N-1, counts the pictures before
+            the two part apart from those after, and no longer compares the RAM. The sixth run: 20 of 31 the same
+            before the parting (all to 1,900, and 2,100); the 11 that differ from 2,000 on are the game's state
+            (above). Checked: MAKE=1 (and SHIFT=3) the same; slowdown_check with the hook drawing writes the same
+            waits as without; cref_timed against slowdown_check 20,000 the same; replay_check's six in step;
+            latency_check: the board 2 frames, FAST 1, ARCADE 2, as before. DonPachi Recomp's port doesn't use it yet
       - [ ] VBLANK 4,149: how near its time the frame came in the port, what ran in it, and what MAME's machine
             spends there that the board model doesn't (wait states, the VBLANK's place in the frame, the YMZ280B's
             interrupt); fixed in Cave68kSDK if so, then checked again to the end

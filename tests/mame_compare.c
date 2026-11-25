@@ -4,7 +4,7 @@
  *                 player (tests/player.h's inputs, as MAME was given them, VBLANK by VBLANK) and player 1 kept from harm
  *                 the same way, then each VBLANK compared: the slowdown (whether the game came to its wait for a frame
  *                 since the last VBLANK), the ships' records and the scores (a sum, the signature), and at every
- *                 VBLANK MAME kept them, the whole work RAM and the picture
+ *                 VBLANK MAME kept one, the picture
  *    Created:     25-11-2026
  *
  *    license:BSD-3-Clause
@@ -13,8 +13,13 @@
  *    to check this tool: compared with itself, everything the same (SHIFT=N: MAME's count N ahead of the port's, as
  *    MAME's may be: lined up all the same).
  *    MAME's VBLANKs are counted from its first frame, the port's from the power on: the two are lined up by the first
- *    VBLANK the game comes to its wait at (after the board's self-test, which reads no inputs). Writes the first pictures that
- *    differ as mame_N.ppm, port_N.ppm and diff_N.ppm (white where they differ) where it runs. Prints what it finds.
+ *    VBLANK the game comes to its wait at (after the board's self-test, which reads no inputs). MAME's picture at its
+ *    VBLANK N (its frame notifier) is the screen it drew at its VBLANK before, 90 us after that interrupt: the port's
+ *    as it draws it, at the screen's VBLANK after interrupt N-1 (cave/program.h's program_at_screen_vblank), with the
+ *    sprites latched as that interrupt came. Writes the first pictures that differ as mame_N.ppm, port_N.ppm and
+ *    diff_N.ppm (white where they differ) where it runs. Prints what it finds. (The work RAM ddp_check.lua keeps is
+ *    not compared: it reads it at another point of the game's frame, counters one apart even where the games and
+ *    their pictures are the same; it marks the VBLANKs kept)
  *    With waits.txt (ddp_check.lua 0.3.0): when each frame's work ended in MAME against the port, in the 68000's
  *    cycles from the power on, for every frame of the game before the two part; each frame's in
  *    mame_compare_waits.txt where it runs ("game_frame vblank mame port mame-port port's_spare", the spare the
@@ -70,6 +75,24 @@ static void at_wait(void)
 	}
 }
 
+/* the picture MAME has at its VBLANK 'next', as the port draws it (main.c's at_screen_vblank): drawn at the screen's
+   VBLANK after the interrupt before it, when 'shown_wanted' says it is one kept */
+static long shown_offset;                 /* MAME's VBLANK count less the port's */
+static bool (*shown_wanted)(long vblank);
+static uint32_t shown_picture[VIDEO_WIDTH * VIDEO_HEIGHT];
+static long shown_for = -1;               /* MAME's VBLANK shown_picture is for */
+
+static void at_screen_vblank(void)
+{
+	const long next = (long)cave_board.frame + shown_offset + 1;
+
+	if (shown_wanted && next >= 1 && shown_wanted(next))
+	{
+		video_draw(shown_picture);
+		shown_for = next;
+	}
+}
+
 static unsigned word(uint32_t address)
 {
 	return (unsigned)*cave_work_ram_byte(address) << 8 | *cave_work_ram_byte(address + 1u);
@@ -96,6 +119,9 @@ static bool start(const char *rom)
 		return false;
 	}
 	program_at_wait = at_wait;
+	program_at_screen_vblank = at_screen_vblank;
+	shown_wanted = NULL;
+	shown_for = -1;
 	port_wait_count = 0;
 	cave_board.in0 = cave_board.in1 = 0xFFFFu;
 	return true;
@@ -136,17 +162,26 @@ static void write_ppm(const char *path, const uint32_t *pixels, int width, int h
 
 /* ---- MAKE=1: the folder ddp_check.lua would write, from the port ---- */
 
+static unsigned make_every;
+
+static bool make_wanted(long vblank)
+{
+	return vblank % (long)make_every == 0;
+}
+
 static int make(const char *dir, const char *rom)
 {
 	const unsigned frames = getenv("DDP_FRAMES") ? (unsigned)atoi(getenv("DDP_FRAMES")) : 300000u;
 	const unsigned every = getenv("DDP_EVERY") ? (unsigned)atoi(getenv("DDP_EVERY")) : 5000u;
 	const uint64_t shift = getenv("SHIFT") ? strtoull(getenv("SHIFT"), NULL, 10) : 0u;    /* (MAME's count ahead) */
-	static uint32_t frame[VIDEO_WIDTH * VIDEO_HEIGHT];
 	char path[1024];
 	FILE *log;
 
 	if (!start(rom))
 		return 1;
+	make_every = every ? every : 1u;
+	shown_offset = (long)shift;
+	shown_wanted = make_wanted;
 	snprintf(path, sizeof(path), "%s/log.txt", dir);
 	if (!(log = fopen(path, "w")))
 		return 1;
@@ -158,6 +193,7 @@ static int make(const char *dir, const char *rom)
 
 		program_run_frame();
 		cave_sound_drop();
+		video_latch_sprites();    /* (as the interrupt comes: main.c's) */
 		held = player_inputs(cave_board.frame + shift);
 		cave_board.in0 = (uint16_t)~held;
 		if (cave_board.frame + shift > 2500u)
@@ -175,14 +211,12 @@ static int make(const char *dir, const char *rom)
 					fputc(*cave_work_ram_byte(0x100000u + at), file);
 				fclose(file);
 			}
-			video_latch_sprites();
-			video_draw(frame);
 			snprintf(path, sizeof(path), "%s/screen_%" PRIu64 ".bin", dir, cave_board.frame + shift);
-			if ((file = fopen(path, "wb")) != NULL)
+			if (shown_for == (long)(cave_board.frame + shift) && (file = fopen(path, "wb")) != NULL)
 			{
 				for (int i = 0; i < VIDEO_WIDTH * VIDEO_HEIGHT; i++)
 				{
-					const uint32_t pixel = frame[i] | 0xFF000000u;
+					const uint32_t pixel = shown_picture[i] | 0xFF000000u;
 
 					fputc(pixel & 255, file);
 					fputc(pixel >> 8 & 255, file);
@@ -261,9 +295,8 @@ static bool read_log(const char *dir)
 	return mame_vblanks > 0;
 }
 
-/* MAME's picture at VBLANK 'vblank' against the port's now and a VBLANK before: the pixels that differ */
-static void compare_picture(const char *dir, unsigned vblank, const uint32_t *now, const uint32_t *before,
-	unsigned *same, unsigned *differ)
+/* MAME's picture at VBLANK 'vblank' against the port's (shown_picture): the pixels that differ */
+static void compare_picture(const char *dir, unsigned vblank, const uint32_t *now, unsigned *same, unsigned *differ)
 {
 	static uint32_t mame[VIDEO_WIDTH * VIDEO_HEIGHT], diff[VIDEO_WIDTH * VIDEO_HEIGHT];
 	static bool written;
@@ -272,7 +305,7 @@ static void compare_picture(const char *dir, unsigned vblank, const uint32_t *no
 	uint8_t *data;
 	int width = 0, height = 0;
 	FILE *file;
-	unsigned differ_now = 0, differ_before = 0;
+	unsigned differ_now = 0;
 
 	snprintf(path, sizeof(path), "%s/screen_size.txt", dir);
 	if ((file = fopen(path, "r")) != NULL)
@@ -295,7 +328,6 @@ static void compare_picture(const char *dir, unsigned vblank, const uint32_t *no
 	{
 		mame[i] = (uint32_t)data[4 * i] | (uint32_t)data[4 * i + 1] << 8 | (uint32_t)data[4 * i + 2] << 16;
 		differ_now += mame[i] != (now[i] & 0xFFFFFFu);
-		differ_before += mame[i] != (before[i] & 0xFFFFFFu);
 		diff[i] = mame[i] != (now[i] & 0xFFFFFFu) ? 0xFFFFFFu : (mame[i] >> 2 & 0x3F3F3Fu);
 	}
 	free(data);
@@ -304,7 +336,7 @@ static void compare_picture(const char *dir, unsigned vblank, const uint32_t *no
 	else
 	{
 		(*differ)++;
-		printf("  picture %u: %u pixels differ (the port's a VBLANK before: %u)\n", vblank, differ_now, differ_before);
+		printf("  picture %u: %u pixels differ\n", vblank, differ_now);
 		if (!written)
 		{
 			written = true;
@@ -318,6 +350,7 @@ static void compare_picture(const char *dir, unsigned vblank, const uint32_t *no
 	}
 }
 
+#if 0    /* (the work RAM's snapshots: not compared, see the top) */
 static void compare_ram(const char *dir, unsigned vblank, unsigned *same, unsigned *differ)
 {
 	char path[1024];
@@ -350,6 +383,7 @@ static void compare_ram(const char *dir, unsigned vblank, unsigned *same, unsign
 		printf("  RAM %u: %u bytes differ\n", vblank, count);
 	}
 }
+#endif
 
 /* the VBLANKs MAME kept the RAM and the picture at (ram_N.bin in the folder) */
 static uint8_t *kept;
@@ -427,27 +461,39 @@ static void report_waits(unsigned frames, long offset)
 typedef struct
 {
 	unsigned compared, lag_mame, lag_port, lag_differ, first_lag_differ, sig_differ, first_sig_differ;
-	unsigned ram_same, ram_differ, pictures_same, pictures_differ;
+	unsigned pictures_same, pictures_differ;         /* (while the two are the same game) */
+	unsigned later_same, later_differ;               /* (after they part: what differs follows from that) */
 } result;
+
+static bool run_wanted(long vblank);
 
 /* the port from the power on, MAME's inputs at MAME's VBLANKs ('offset': MAME's count less the port's), each read
    'delay' VBLANKs later than the log has them (the script's own timing: see main); up to MAME's VBLANK 'last', or
-   to the first that differs ('stop'); 'full': the RAM and the pictures too */
+   to the first that differs ('stop'); 'full': the pictures too */
+static bool run_wanted(long vblank)
+{
+	return vblank <= (long)MOST && kept[vblank];
+}
+
 static result run(const char *dir, const char *rom, long offset, long delay, long last, bool stop, bool full)
 {
-	static uint32_t now[VIDEO_WIDTH * VIDEO_HEIGHT], before[VIDEO_WIDTH * VIDEO_HEIGHT];
 	result r = { 0 };
 
 	if (!start(rom))
 		exit(1);
+	shown_offset = offset;
+	shown_wanted = full ? run_wanted : NULL;
 	arrived = false;
 	for (;;)
 	{
 		long v;
+		bool parted;
 
 		program_run_frame();
 		cave_sound_drop();
+		video_latch_sprites();    /* (as the interrupt comes: main.c's) */
 		v = (long)cave_board.frame + offset;
+		parted = r.lag_differ || r.sig_differ;    /* (before this VBLANK: its picture from the same game) */
 		if (v > last)
 			break;
 		if (v >= 1)
@@ -467,21 +513,13 @@ static result run(const char *dir, const char *rom, long offset, long delay, lon
 				r.first_sig_differ = (unsigned)v;
 			if (stop && (r.lag_differ || r.sig_differ))
 				break;
-			if (full && (kept[v] || (v + 1 <= (long)MOST && kept[v + 1])))
+			if (full && kept[v] && shown_for == v)
 			{
-				/* (the picture drawn only where MAME kept one, and a VBLANK before it) */
-				if (kept[v + 1])
-				{
-					video_latch_sprites();
-					video_draw(before);
-				}
-				if (kept[v])
-				{
-					video_latch_sprites();
-					video_draw(now);
-					compare_ram(dir, (unsigned)v, &r.ram_same, &r.ram_differ);
-					compare_picture(dir, (unsigned)v, now, before, &r.pictures_same, &r.pictures_differ);
-				}
+				/* (drawn as the port draws it, at the screen's VBLANK after the last interrupt: at_screen_vblank) */
+				if (!parted)
+					compare_picture(dir, (unsigned)v, shown_picture, &r.pictures_same, &r.pictures_differ);
+				else
+					compare_picture(dir, (unsigned)v, shown_picture, &r.later_same, &r.later_differ);
 			}
 		}
 		arrived = false;
@@ -572,8 +610,9 @@ int main(int argc, char **argv)
 	printf("\nthe ships and scores: %u VBLANKs differ", r.sig_differ);
 	if (r.sig_differ)
 		printf(" (the first at MAME's VBLANK %u)", r.first_sig_differ);
-	printf("\nwork RAM: %u the same, %u differ\npictures: %u the same, %u differ\n", r.ram_same, r.ram_differ,
-		r.pictures_same, r.pictures_differ);
-	printf("%s\n", r.lag_differ || r.sig_differ || r.ram_differ || r.pictures_differ ? "DIFFERENT" : "the same");
+	printf("\npictures while the two are the same game: %u the same, %u differ", r.pictures_same, r.pictures_differ);
+	if (r.later_same || r.later_differ)
+		printf("; after they part: %u the same, %u differ", r.later_same, r.later_differ);
+	printf("\n%s\n", r.lag_differ || r.sig_differ || r.pictures_differ ? "DIFFERENT" : "the same");
 	return 0;
 }
