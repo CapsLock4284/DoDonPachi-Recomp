@@ -47,12 +47,21 @@
             VBLANKs and INVINCIBLE=1 100,000 (94,987 game frames, 5,012 lagged in both), the same at every frame;
             replay_check's six games in step; DonPachi's 20,000 (19,562 frames, 437 VBLANKs without one in both),
             its replays, training replays and crash files the same
-      - [ ] Then the pairs and the large ones (1,848: +18,800): ddp_check.lua 0.4.0 writes irq.txt, each read of the
+      - [x] Then the pairs and the large ones (1,848: +18,800): ddp_check.lua 0.4.0 writes irq.txt, each read of the
             interrupt's cause and of the YMZ280B with its cycle, for the first 6,000 VBLANKs, to set beside the
             port's (a probe build with a hook in a copy of machine.c's irq_cause). The owner's fourth run (-sound
             none): MAME's YMZ280B raises its interrupt only at its next stream update (ymz280b.cpp: "signaled on next
             CPU execution"), so it comes late by however long that is: an emulation artifact, not the board's, and
-            not copied. To confirm: the fifth run with the sound on (the same command without -sound none)
+            not copied. The fifth run (sound on, 25-11-2026): the same to the cycle as the fourth (MAME's sound
+            output changes nothing). Confirmed with a probe (a copy of the port's sound.c and machine.c, not kept):
+            814 of MAME's 1,127 sound interrupts in the first 6,000 VBLANKs come on a 20 ms tick (every 320,000
+            cycles from the power on: MAME's 50 Hz stream update), the rest just after the program touches the chip;
+            the port's at the voice's last sample, as the chip does. With the port's sound interrupt held to MAME's
+            updates the same way, the two stayed the same past 3,188 to VBLANK 4,159 (frames' ends -0.2 cycles apart
+            on average, from +144), and 305 of 452 sound interrupts came on the same cycle; the rest a tick apart
+            (MAME's updates don't fall on every tick). So the parting is MAME's emulation, not the board's: the
+            port stays as the chip. Comparisons with the real MAME hold only to the first frame the late interrupt
+            tips over
       - [ ] VBLANK 4,149: how near its time the frame came in the port, what ran in it, and what MAME's machine
             spends there that the board model doesn't (wait states, the VBLANK's place in the frame, the YMZ280B's
             interrupt); fixed in Cave68kSDK if so, then checked again to the end
