@@ -9,6 +9,14 @@
       pictures at the same frames (a test tool) compared pixel by pixel; the slowdown log against slowdown_check's.
       Covers "The picture side by side with MAME's own" and "The slowdown against the real MAME" below: our checks so
       far run MAME's 68000 core on Cave68kSDK's board model, so MAME's own drawing and timing are not yet compared
+      - [x] Written 25-11-2026: `tools/mame/ddp_check.lua` (MAME 0.254+; its header has the command line) writes
+            build/mame_check: log.txt (a line a VBLANK: the inputs, whether the game came to its wait since the last
+            VBLANK, a signature of both ships' records and the scores), and every 5,000 VBLANKs the work RAM and
+            MAME's picture. `tests/mame_compare DIR` plays the port with MAME's logged inputs, lines the two up by the
+            game's first wait (after the self-test), and compares each VBLANK's slowdown and signature, and the RAM and
+            the pictures where MAME kept them (the first pictures that differ written as PPMs). Checked on itself:
+            MAKE=1 writes the folder from the port (SHIFT=N: MAME's count N ahead), compared the same
+      - [ ] The owner's run on his MAME, and what it finds
 
 ## Translating the program (step 4 of the SDK plan)
 

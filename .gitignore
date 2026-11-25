@@ -13,3 +13,5 @@ __pycache__/
 *.log
 # private notes for the assistant
 /CLAUDE.md
+# the test tools, built on Linux or WSL (tests/build.sh)
+/tests/bin/
