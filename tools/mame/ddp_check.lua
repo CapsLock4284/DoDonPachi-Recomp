@@ -1,7 +1,7 @@
 -- Name:        ddp_check.lua
 -- Description: DoDonPachi on the real MAME, played as the port's checks play it, for tests/mame_compare: the
 --              picture, the work RAM and the slowdown of MAME's own ddonpach, against the port's
--- Version:     0.3.0 (0.2.0: the inputs on the port's VBLANK, not one later; 0.3.0: waits.txt)
+-- Version:     0.3.1 (0.2.0: the inputs on the port's VBLANK, not one later; 0.3.0: waits.txt; 0.3.1: no device clock)
 -- Created:     25-11-2026
 --
 -- license:BSD-3-Clause
@@ -86,7 +86,10 @@ end
 local arrived = false
 local game_frames = 0
 local waits = io.open(out .. "/waits.txt", "w")
-local clock = cpu.clock    -- (16,000,000: DoDonPachi's 68000)
+-- DoDonPachi's 68000, 16 MHz (cave.cpp: 16_MHz_XTAL; Cave68kSDK's CAVE_CPU_CLOCK). MAME 0.289's Lua has no clock
+-- on a device (nil): the board's own number then
+local clock = 16000000
+if type(cpu.clock) == "number" and cpu.clock > 0 then clock = cpu.clock end
 -- MAME's time now, in the 68000's cycles from the power on. In a tap it is the running CPU's own, to its instruction
 -- (the scheduler's time() while a CPU executes). attotime's seconds and attoseconds, exact (as_double, a cycle or
 -- so off this far into a run, if this MAME has no such fields)
