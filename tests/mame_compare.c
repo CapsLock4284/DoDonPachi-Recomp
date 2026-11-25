@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dirent.h>
 
 #define READY      0x10120Cu    /* bit 0: the frame made ready for the interrupt (wait_for_frame) */
 #define RAM_SIZE   0x10000u
@@ -307,20 +308,107 @@ static void compare_ram(const char *dir, unsigned vblank, unsigned *same, unsign
 	}
 }
 
+/* the VBLANKs MAME kept the RAM and the picture at (ram_N.bin in the folder) */
+static uint8_t *kept;
+
+static void find_kept(const char *dir)
+{
+	DIR *const folder = opendir(dir);
+	struct dirent *entry;
+
+	kept = calloc(MOST + 2u, 1);
+	if (!folder)
+		return;
+	while ((entry = readdir(folder)) != NULL)
+	{
+		unsigned long vblank;
+		char tail[8];
+
+		if (sscanf(entry->d_name, "ram_%lu.%7s", &vblank, tail) == 2 && !strcmp(tail, "bin") && vblank <= MOST)
+			kept[vblank] = 1;
+	}
+	closedir(folder);
+}
+
+typedef struct
+{
+	unsigned compared, lag_mame, lag_port, lag_differ, first_lag_differ, sig_differ, first_sig_differ;
+	unsigned ram_same, ram_differ, pictures_same, pictures_differ;
+} result;
+
+/* the port from the power on, MAME's inputs at MAME's VBLANKs ('offset': MAME's count less the port's), each read
+   'delay' VBLANKs later than the log has them (the script's own timing: see main); up to MAME's VBLANK 'last', or
+   to the first that differs ('stop'); 'full': the RAM and the pictures too */
+static result run(const char *dir, const char *rom, long offset, long delay, long last, bool stop, bool full)
+{
+	static uint32_t now[VIDEO_WIDTH * VIDEO_HEIGHT], before[VIDEO_WIDTH * VIDEO_HEIGHT];
+	result r = { 0 };
+
+	if (!start(rom))
+		exit(1);
+	arrived = false;
+	for (;;)
+	{
+		long v;
+
+		program_run_frame();
+		cave_sound_drop();
+		v = (long)cave_board.frame + offset;
+		if (v > last)
+			break;
+		if (v >= 1)
+		{
+			const bool lag_m = !mame_arrived[v], lag_p = !arrived;
+
+			/* (as ddp_check.lua: the inputs for the next VBLANK and player 1's time without harm, then the rest) */
+			cave_board.in0 = (uint16_t)~(v - delay >= 1 ? inputs[v - delay] : 0u);
+			if (v > 2500)
+				*cave_work_ram_byte(0x102CCAu) = 0x80u;
+			r.compared++;
+			r.lag_mame += v > 1 && lag_m;
+			r.lag_port += v > 1 && lag_p;
+			if (v > 1 && lag_m != lag_p && !r.lag_differ++)
+				r.first_lag_differ = (unsigned)v;
+			if (signature() != mame_signature[v] && !r.sig_differ++)
+				r.first_sig_differ = (unsigned)v;
+			if (stop && (r.lag_differ || r.sig_differ))
+				break;
+			if (full && (kept[v] || (v + 1 <= (long)MOST && kept[v + 1])))
+			{
+				/* (the picture drawn only where MAME kept one, and a VBLANK before it) */
+				if (kept[v + 1])
+				{
+					video_latch_sprites();
+					video_draw(before);
+				}
+				if (kept[v])
+				{
+					video_latch_sprites();
+					video_draw(now);
+					compare_ram(dir, (unsigned)v, &r.ram_same, &r.ram_differ);
+					compare_picture(dir, (unsigned)v, now, before, &r.pictures_same, &r.pictures_differ);
+				}
+			}
+		}
+		arrived = false;
+	}
+	return r;
+}
+
 int main(int argc, char **argv)
 {
 	const char *const dir = argc > 1 ? argv[1] : "build/mame_check";
 	const char *const rom = argc > 2 ? argv[2] : "ddonpach.zip";
-	static uint32_t now[VIDEO_WIDTH * VIDEO_HEIGHT], before[VIDEO_WIDTH * VIDEO_HEIGHT];
 	unsigned port_first = 0, mame_first = 0;
-	long offset;
-	unsigned compared = 0, lag_mame = 0, lag_port = 0, lag_differ = 0, first_lag_differ = 0;
-	unsigned sig_differ = 0, first_sig_differ = 0, ram_same = 0, ram_differ = 0, pictures_same = 0, pictures_differ = 0;
+	long offset, delay = 0;
+	unsigned best = 0;
+	result r;
 
 	if (getenv("MAKE"))
 		return make(dir, rom);
 	if (!read_log(dir))
 		return 1;
+	find_kept(dir);
 	for (unsigned v = 1; v <= mame_vblanks && !mame_first; v++)
 		if (mame_arrived[v])
 			mame_first = v;
@@ -345,59 +433,44 @@ int main(int argc, char **argv)
 	printf("MAME's log: %u VBLANKs. The first wait: MAME's VBLANK %u, the port's %u (MAME's = the port's %+ld)\n",
 		mame_vblanks, mame_first, port_first, offset);
 
-	/* again from the power on, MAME's inputs at MAME's VBLANKs */
-	if (!start(rom))
-		return 1;
-	arrived = false;
-	for (;;)
+	/* when MAME's game read the inputs the log gives: ddp_check.lua 0.1.0 set them a VBLANK late (MAME's frame
+	   notifier comes after the VBLANK's interrupt has read them); 0.2.0 on time. The delay that keeps the two the same
+	   longest, of 0, 1 and 2 (the ship answers the stick from about VBLANK 2,000) */
+	for (long d = 0; d <= 2; d++)
 	{
-		long v;
+		const result tried = run(dir, rom, offset, d, mame_vblanks < 30000u ? (long)mame_vblanks : 30000, true, false);
+		const unsigned until = tried.lag_differ || tried.sig_differ ? (tried.first_sig_differ && (!tried.first_lag_differ
+			|| tried.first_sig_differ < tried.first_lag_differ) ? tried.first_sig_differ : tried.first_lag_differ)
+			: 0xFFFFFFFFu;
 
-		memcpy(before, now, sizeof(now));
-		program_run_frame();
-		cave_sound_drop();
-		v = (long)cave_board.frame + offset;
-		if (v > (long)mame_vblanks)
-			break;
-		if (v >= 1)
+		if (until > best)
 		{
-			const bool lag_m = !mame_arrived[v], lag_p = !arrived;
-
-			/* (as ddp_check.lua: the inputs for the next VBLANK and player 1's time without harm, then the rest) */
-			cave_board.in0 = (uint16_t)~inputs[v];
-			if (v > 2500)
-				*cave_work_ram_byte(0x102CCAu) = 0x80u;
-			compared++;
-			lag_mame += v > 1 && lag_m;
-			lag_port += v > 1 && lag_p;
-			if (v > 1 && lag_m != lag_p)
-			{
-				if (!lag_differ)
-					first_lag_differ = (unsigned)v;
-				lag_differ++;
-			}
-			if (signature() != mame_signature[v])
-			{
-				if (!sig_differ)
-					first_sig_differ = (unsigned)v;
-				sig_differ++;
-			}
-			video_latch_sprites();
-			video_draw(now);
-			compare_ram(dir, (unsigned)v, &ram_same, &ram_differ);
-			compare_picture(dir, (unsigned)v, now, before, &pictures_same, &pictures_differ);
+			best = until;
+			delay = d;
 		}
-		arrived = false;
 	}
-	printf("compared %u VBLANKs\n", compared);
-	printf("slowdown: MAME %u VBLANKs lagged, the port %u; %u differ", lag_mame, lag_port, lag_differ);
-	if (lag_differ)
-		printf(" (the first at MAME's VBLANK %u)", first_lag_differ);
-	printf("\nthe ships and scores: %u VBLANKs differ", sig_differ);
-	if (sig_differ)
-		printf(" (the first at MAME's VBLANK %u)", first_sig_differ);
-	printf("\nwork RAM: %u the same, %u differ\npictures: %u the same, %u differ\n", ram_same, ram_differ,
-		pictures_same, pictures_differ);
-	printf("%s\n", lag_differ || sig_differ || ram_differ || pictures_differ ? "DIFFERENT" : "the same");
+	printf("MAME's game read the log's inputs %ld VBLANK%s later than the port's would\n", delay, delay == 1 ? "" : "s");
+
+	r = run(dir, rom, offset, delay, (long)mame_vblanks, false, true);
+	printf("compared %u VBLANKs\n", r.compared);
+	if (r.lag_differ || r.sig_differ)
+	{
+		const unsigned parted = r.first_sig_differ && (!r.first_lag_differ || r.first_sig_differ < r.first_lag_differ)
+			? r.first_sig_differ : r.first_lag_differ;
+
+		printf("the same until MAME's VBLANK %u: there %s (after it the two games go apart: what follows differs "
+			"from that alone)\n", parted, parted == r.first_lag_differ
+			? (mame_arrived[parted] ? "the port slowed down and MAME didn't" : "MAME slowed down and the port didn't")
+			: "the ships or the scores differ");
+	}
+	printf("slowdown: MAME %u VBLANKs lagged, the port %u; %u differ", r.lag_mame, r.lag_port, r.lag_differ);
+	if (r.lag_differ)
+		printf(" (the first at MAME's VBLANK %u)", r.first_lag_differ);
+	printf("\nthe ships and scores: %u VBLANKs differ", r.sig_differ);
+	if (r.sig_differ)
+		printf(" (the first at MAME's VBLANK %u)", r.first_sig_differ);
+	printf("\nwork RAM: %u the same, %u differ\npictures: %u the same, %u differ\n", r.ram_same, r.ram_differ,
+		r.pictures_same, r.pictures_differ);
+	printf("%s\n", r.lag_differ || r.sig_differ || r.ram_differ || r.pictures_differ ? "DIFFERENT" : "the same");
 	return 0;
 }

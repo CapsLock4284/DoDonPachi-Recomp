@@ -1,7 +1,7 @@
 -- Name:        ddp_check.lua
 -- Description: DoDonPachi on the real MAME, played as the port's checks play it, for tests/mame_compare: the
 --              picture, the work RAM and the slowdown of MAME's own ddonpach, against the port's
--- Version:     0.1.0
+-- Version:     0.2.0 (0.2.0: the inputs on the port's VBLANK, not one later)
 -- Created:     25-11-2026
 --
 -- license:BSD-3-Clause
@@ -105,11 +105,15 @@ if not log then
 end
 log:write("; ddp_check.lua: MAME " .. emu.app_version() .. ", " .. emu.romname() .. "\n")
 
+-- The inputs: the port gives player_inputs(N) after its VBLANK N, for the game's interrupt at the next VBLANK to read.
+-- MAME's frame notifier for VBLANK N comes after that VBLANK's interrupt has read them already, so here the inputs
+-- for VBLANK N + 1 are given at N (0.1.0 gave N's at N: read a VBLANK late). The log's line N names N's, as the port
+-- gives them
 local vblank = 0
 local function on_frame()
 	vblank = vblank + 1
 	local held = player_inputs(vblank)
-	set_inputs(held)
+	set_inputs(player_inputs(vblank + 1))
 	if vblank > 2500 then space:write_u8(0x102cca, 0x80) end    -- (player 1's time without harm: held)
 	log:write(string.format("%d %04x %d %08x\n", vblank, held, arrived and 1 or 0, signature()))
 	arrived = false
@@ -128,7 +132,7 @@ local function on_frame()
 	end
 end
 
-set_inputs(0)
+set_inputs(player_inputs(1))
 if emu.add_machine_frame_notifier then
 	ddp_check_frames = emu.add_machine_frame_notifier(on_frame)    -- (kept: the subscription ends when collected)
 else

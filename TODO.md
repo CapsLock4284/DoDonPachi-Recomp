@@ -16,7 +16,18 @@
             game's first wait (after the self-test), and compares each VBLANK's slowdown and signature, and the RAM and
             the pictures where MAME kept them (the first pictures that differ written as PPMs). Checked on itself:
             MAKE=1 writes the folder from the port (SHIFT=N: MAME's count N ahead), compared the same
-      - [ ] The owner's run on his MAME, and what it finds
+      - [x] The owner's first run (MAME 0.289, 25-11-2026; run without -noplugin / -nocheat, which his MAME
+            hasn't: the high score table was the game's own all the same). Found: (1) the script gave the inputs a
+            VBLANK late (MAME's frame notifier comes after the VBLANK's interrupt read them): ddp_check.lua 0.2.0 gives
+            the next VBLANK's, and mame_compare finds the delay itself (0, 1 or 2: the one that keeps the two the same
+            longest) so either script's log compares; (2) with that, the same for 4,148 VBLANKs (the ship, the scores,
+            every slowed VBLANK), then at VBLANK 4,149 (1-1) MAME's own machine slowed down a frame where the port,
+            and MAME's 68000 core on Cave68kSDK's board, didn't: the board model takes a little less time there than
+            MAME's machine. Everything after differs from that alone (the games go apart)
+      - [ ] A second run with ddp_check.lua 0.2.0 (mame_compare should then say "0 VBLANKs later")
+      - [ ] VBLANK 4,149: how near its time the frame came in the port, what ran in it, and what MAME's machine
+            spends there that the board model doesn't (wait states, the VBLANK's place in the frame, the YMZ280B's
+            interrupt); fixed in Cave68kSDK if so, then checked again to the end
 
 ## Translating the program (step 4 of the SDK plan)
 
