@@ -64,6 +64,7 @@ typedef struct
 {
 	uint16_t eeprom[64];
 	bool slowdown, has_table;
+	bool vblank_lead;           /* program_set_vblank_lead for it: false in a replay from before 25-11-2026 (format 1) */
 	uint8_t table[100];
 	uint32_t game_begins;       /* its game's first frame: the frames before it are run unseen */
 } replay_start;

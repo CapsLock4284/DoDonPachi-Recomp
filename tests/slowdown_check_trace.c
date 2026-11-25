@@ -7,6 +7,7 @@
      slowdown_check 18000
      python3 tests/slowdown_compare.py mame_waits.txt slowdown_waits.txt
    DUMPFRAME=N: the board's memories at game frame N's wait in port_dump.bin (cref_timed's: mame_dump.bin) */
+#include "cave/board.h"
 #include "cave/boards.h"
 #include "cave/machine.h"
 #include "cave/program.h"
@@ -34,7 +35,11 @@ extern uint64_t m68k_time;
 
 static uint64_t vblanks_by_now(void)
 {
-	return m68k_time / ((uint64_t)CAVE_CPU_CLOCK * CAVE_FRAME_USEC / 1000000u);
+	/* (the VBLANKs a lead early, as the runtime has them: cave/program.h's program_set_vblank_lead) */
+	const uint64_t lead = program_vblank_lead()
+		? (uint64_t)cave_board_description->vblank_lead_usec * (CAVE_CPU_CLOCK / 1000000u) : 0u;
+
+	return (m68k_time + lead) / ((uint64_t)CAVE_CPU_CLOCK * CAVE_FRAME_USEC / 1000000u);
 }
 static uint64_t game_frames;
 static bool arrived;

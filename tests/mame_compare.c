@@ -20,6 +20,7 @@
  *    mame_compare_waits.txt where it runs ("game_frame vblank mame port mame-port port's_spare", the spare the
  *    cycles from the port's end of the frame to the next VBLANK)
  */
+#include "cave/board.h"
 #include "cave/boards.h"
 #include "cave/machine.h"
 #include "cave/program.h"
@@ -388,7 +389,11 @@ static void report_waits(unsigned frames, long offset)
 	for (unsigned k = 0; k < frames && k < mame_wait_count; k++)
 	{
 		const long long difference = (long long)mame_waits[k] - (long long)port_waits[k];
-		const uint64_t vblank = port_waits[k] / FRAME_CYCLES, spare = (vblank + 1u) * FRAME_CYCLES - port_waits[k];
+		/* (the VBLANKs a lead early, as the runtime has them: cave/program.h's program_set_vblank_lead) */
+		const uint64_t lead = program_vblank_lead()
+			? (uint64_t)cave_board_description->vblank_lead_usec * (CAVE_CPU_CLOCK / 1000000u) : 0u;
+		const uint64_t vblank = (port_waits[k] + lead) / FRAME_CYCLES;
+		const uint64_t spare = (vblank + 1u) * FRAME_CYCLES - lead - port_waits[k];
 
 		if (!compared || difference < least)
 			least = difference;

@@ -46,7 +46,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "replay_crash FILE.inp [--rom PATH]\n");
 		return 1;
 	}
-	if (fread(header, 1, 16, file) != 16 || memcmp(header, "DDPINP01", 8) || fread(eeprom, 1, 128, file) != 128
+	if (fread(header, 1, 16, file) != 16 || memcmp(header, "DDPINP0", 7) || (header[7] != '1' && header[7] != '2') || fread(eeprom, 1, 128, file) != 128
 			|| fread(table, 1, sizeof(table), file) != sizeof(table))
 	{
 		fprintf(stderr, "%s: not a run's inputs\n", name);
@@ -62,6 +62,7 @@ int main(int argc, char **argv)
 	printf("%s: %lu frames (%.1f minutes), slowdown %s, version %d, high score table %s\n", name, (unsigned long)count,
 		count / 57.55 / 60.0, header[12] ? "on" : "off", header[13], header[14] ? "put back" : "the game's own");
 	cave_board_describe(&cave_board_ddonpach);
+	program_set_vblank_lead(header[15] != 0);    /* (0 in a DDPINP01 file: from before the VBLANK came early) */
 	if (rom_set_load(rom) || program_start())
 		return 1;
 	for (int word = 0; word < CAVE_EEPROM_WORDS; word++)

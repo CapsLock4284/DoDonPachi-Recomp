@@ -6,7 +6,14 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
-Nothing yet.
+### Changed
+- **The arcade's slowdown, timed closer still:** on the real board the VBLANK interrupt (the "next frame" signal the
+  game waits for) comes 90 microseconds before the end of the frame, not right at its end. A check of the port
+  against MAME, running the same inputs side by side, found it; the port now does the same, so a frame that only
+  just fits, or only just misses, falls the same way it does on the board. Most frames are unchanged. Checked against
+  MAME's 68000 at the board's timing over 100,000 frames: the same frames slow down at the same moments.
+- **Replays and crash files** now note this. Replays saved by older versions still play, with the old timing, so
+  they stay in step; replays saved from now on need this version or newer to play.
 
 ## v0.4.2 (2026-11-23)
 

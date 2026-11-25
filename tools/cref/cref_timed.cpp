@@ -333,6 +333,11 @@ int main(int argc, char **argv)
 	cpu.reset();
 
 	const uint64_t frame_cycles = uint64_t(CAVE_CPU_CLOCK) * CAVE_FRAME_USEC / 1000000u;
+	/* (the VBLANK's interrupt early by the board's description, as the port's runtime has it: cave/program.h's
+	   program_set_vblank_lead; NO_VBLANK_LEAD=1: at the frame's end, as before 25-11-2026) */
+	const uint64_t lead = getenv("NO_VBLANK_LEAD") ? 0u
+		: uint64_t(cave_board_description->vblank_lead_usec) * (CAVE_CPU_CLOCK / 1000000u);
+	const auto vblank_cycle = [&](uint64_t number) { return number * frame_cycles - lead; };
 	uint64_t lagged = 0, busiest = 0;
 
 	for (uint64_t vblank = 1; vblank <= frames; vblank++)
@@ -342,7 +347,7 @@ int main(int argc, char **argv)
 		{
 			const uint64_t sound = g_sound_due != UINT64_MAX ? UINT64_MAX : cave_sound_event_at();
 
-			if (sound <= g_total && sound < vblank * frame_cycles)
+			if (sound <= g_total && sound < vblank_cycle(vblank))
 			{
 				/* (its interrupt line now; the chip there as the next instruction begins) */
 				g_sound_due = sound;
@@ -350,9 +355,9 @@ int main(int argc, char **argv)
 				sync_irq();
 				continue;
 			}
-			if (g_total >= vblank * frame_cycles)
+			if (g_total >= vblank_cycle(vblank))
 				break;
-			uint64_t end = sound < vblank * frame_cycles ? sound : vblank * frame_cycles;
+			uint64_t end = sound < vblank_cycle(vblank) ? sound : vblank_cycle(vblank);
 			if (g_sound_due != UINT64_MAX && end > g_total + 4u)
 				end = g_total + 4u;    /* (on to the next instruction, a little at a time, for the next event) */
 
@@ -376,7 +381,7 @@ int main(int argc, char **argv)
 		if (was_waiting && g_last_busy > int64_t(busiest))
 			busiest = uint64_t(g_last_busy);
 		cave_vblank_start();
-		cave_board.vblank_began = vblank * frame_cycles;    /* (its own cycle: the run may stop a few after it) */
+		cave_board.vblank_began = vblank_cycle(vblank);    /* (its own cycle: the run may stop a few after it) */
 		if (getenv("DUMP") && vblank == std::strtoull(getenv("DUMP"), nullptr, 10))
 			cave_dump("mame_dump.bin");
 		if (hashes)

@@ -74,6 +74,7 @@ int main(int argc, char **argv)
 		program_reset();
 		memcpy(cave_board.eeprom.words, start.eeprom, sizeof(start.eeprom));
 		program_set_slowdown(start.slowdown);
+		program_set_vblank_lead(start.vblank_lead);
 		while (replay_next(&in0, &in1))
 		{
 			cave_board.in0 = in0;

@@ -6,11 +6,11 @@
  *
  *    license:BSD-3-Clause
  *    The file (little endian):
- *      "DDREPLAY", the format (16 bits: 1), the port's version (16 bytes), the date (20 bytes, "2026-11-18 18:40"),
+ *      "DDREPLAY", the format (16 bits: 2; 1 before 25-11-2026, still played), the port's version (16 bytes), the date (20 bytes, "2026-11-18 18:40"),
  *      player 1's best score (32), the stage reached (8: 0-11), the ship (8), the style (8: 1 laser), its end (8: 1 a
  *      game over, 2 all clear: 2-6 cleared), the game's first frame (32: its ship select), the frames in all (32)
- *      the run's start: the slowdown (8: 1 on), the game's version (8), the high score table put back (8: 1), a byte
- *      unused, the EEPROM (64 words of 16), the high score table (100 bytes)
+ *      the run's start: the slowdown (8: 1 on), the game's version (8), the high score table put back (8: 1), the VBLANK
+ *      early (8: 1, program_set_vblank_lead; 0 in format 1), the EEPROM (64 words of 16), the high score table (100 bytes)
  *      the checks: their count (32), then each: the frame after which (32), cave_state_hash() then (64)
  *      the inputs: each frame's IN0 and IN1 (16 each, active low), from the board's reset
  *    The file's name: the date and time it was saved, "2026-11-18_184012.ddreplay"
@@ -40,7 +40,7 @@
 #define DDONPACH_VERSION "0.0.0"
 #endif
 
-#define FORMAT      1u
+#define FORMAT      2u    /* (2 from 25-11-2026: the VBLANK early; 1 played with it off) */
 #define CHECK_EVERY 600u        /* frames between checks (about 10 seconds) */
 #define GAME_MODE   0x1017A6u
 #define SCORE       0x10161Eu   /* player 1's (BCD long) */
@@ -258,7 +258,7 @@ const char *replay_keep(bool keep)
 	put(file, run.slowdown ? 1u : 0u, 1);
 	put(file, (uint64_t)run.version, 1);
 	put(file, run.has_table ? 1u : 0u, 1);
-	put(file, 0, 1);
+	put(file, run.vblank_lead ? 1u : 0u, 1);
 	for (unsigned at = 0; at < CAVE_EEPROM_WORDS; at++)
 		put(file, run.eeprom[at], 2);
 	fwrite(run.table, 1, 100, file);
@@ -311,9 +311,10 @@ static bool read_header(FILE *file, replay_info *info, uint32_t *begins, uint32_
 {
 	char header[8], text[20];
 	bool ok = true;
+	uint64_t format;
 
 	if (fread(header, 1, sizeof(header), file) != sizeof(header) || memcmp(header, replay_magic, sizeof(replay_magic))
-			|| get(file, 2, &ok) != FORMAT)
+			|| ((format = get(file, 2, &ok)) != FORMAT && format != 1u))
 		return false;
 	if (fread(text, 1, 16, file) != 16 || fread(text, 1, 20, file) != 20)
 		return false;
@@ -433,7 +434,7 @@ const char *replay_play(const char *file_name, replay_start *start)
 	start->slowdown = get(file, 1, &ok) != 0;
 	get(file, 1, &ok);
 	start->has_table = get(file, 1, &ok) != 0;
-	get(file, 1, &ok);
+	start->vblank_lead = get(file, 1, &ok) == 1u;    /* (0 in format 1: before the VBLANK came early) */
 	for (unsigned at = 0; at < CAVE_EEPROM_WORDS; at++)
 		start->eeprom[at] = (uint16_t)get(file, 2, &ok);
 	if (fread(start->table, 1, sizeof(start->table), file) != sizeof(start->table))

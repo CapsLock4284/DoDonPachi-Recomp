@@ -1247,6 +1247,7 @@ static void replay_restore(void)
 	replay_stop();
 	memcpy(cave_board.eeprom.words, own_eeprom, sizeof(own_eeprom));
 	program_set_slowdown(options.slowdown);
+	program_set_vblank_lead(true);
 	hiscores_open();    /* (the file's table, and its saving, back) */
 }
 
@@ -1472,6 +1473,7 @@ static bool menu_play_replay(const char *file)
 	state_loaded = false;
 	memcpy(cave_board.eeprom.words, start.eeprom, sizeof(start.eeprom));
 	program_set_slowdown(start.slowdown);
+	program_set_vblank_lead(start.vblank_lead);    /* (taken at the reset asked above, before its first frame) */
 	replay_has_table = start.has_table;
 	hiscore_use_table(start.has_table ? start.table : NULL);
 	hiscore_reset();

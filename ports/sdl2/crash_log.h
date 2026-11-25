@@ -11,8 +11,9 @@
  *    The run's inputs: the game is the same from a reset with the same EEPROM and the same inputs at each frame (the
  *    board's time is the program's own count), so the inputs since the reset are the run. Kept in memory (4 bytes a
  *    frame: about 830 KB an hour), and written only when the program stops or crashes, to
- *    ddonpach_crash_DATE_TIME.inp beside the program: "DDPINP01", the frames (a 32-bit count, little endian), the
- *    slowdown setting, the game's version, 1 when a high score table is put back after the boot, a byte unused, the
+ *    ddonpach_crash_DATE_TIME.inp beside the program: "DDPINP02", the frames (a 32-bit count, little endian), the
+ *    slowdown setting, the game's version, 1 when a high score table is put back after the boot, 1 when the VBLANK comes early (program_set_vblank_lead;
+ *    always 0 in a "DDPINP01" file, from before 25-11-2026), the
  *    EEPROM as the run began (128 bytes), the high score table (100 bytes: hiscore.h), then each frame's IN0 and IN1
  *    (16 bits each, little endian, active low: as the board reads them). tests/replay_crash plays it again. A run
  *    that went back to a save state or had a cheat on is not the same from its inputs: the log says so.
@@ -51,6 +52,7 @@ typedef struct
 	uint32_t count;
 	const uint16_t *eeprom;
 	bool slowdown, has_table, replayable;
+	bool vblank_lead;           /* the VBLANK early as the run began (program_set_vblank_lead) */
 	int version;
 	const uint8_t *table;
 } crash_log_run;
