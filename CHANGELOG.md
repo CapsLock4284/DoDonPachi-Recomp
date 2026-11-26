@@ -10,6 +10,8 @@ notes). The release zip carries this file as `CHANGES.txt`.
 - **SCORE GRAPH on the gadget panels** (the one thing the classic panels had that the gadgets didn't): under SCORE,
   your score through the game against the high score place you're chasing (dashed at the top), a line in each
   place's colour where you passed it, marks where each stage began, and the next extra life's score (dotted).
+- **SESSION on the gadget panels**, under BEES: since you started the program, the time you've played, the games
+  and credits (each continue is one), and your best score.
 
 ### Changed
 - **The LOOP 2 line shows every way in** (the owner's idea): besides the misses left, it now takes turns showing

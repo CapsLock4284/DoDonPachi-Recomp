@@ -129,6 +129,11 @@ typedef struct
 	int graph_count;
 	uint32_t graph[WIDGET_GRAPH_POINTS];
 	int marks[WIDGET_GRAPH_MARKS], mark_count;
+	/* the session, since the program started: the time played (the board's frames), games, credits, the best score
+	   (as the game counts it) */
+	uint32_t session_frames;
+	unsigned session_games, session_credits;
+	uint32_t session_best;
 	char loop2_title[12], loop2_text[24];
 	uint32_t loop2_colour;
 	/* the loop's stages */

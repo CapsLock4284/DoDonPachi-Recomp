@@ -29,6 +29,11 @@
 #define SCORE_GRAPH 1
 #endif
 
+/* The SESSION gadget under BEES (owner, 26-11-2026: kept; 0 takes it out, the left panel as before) */
+#ifndef SESSION_LINE
+#define SESSION_LINE 1
+#endif
+
 /* ---- the look ---- */
 
 #define BACK_TOP    0x0B1A36u
@@ -683,10 +688,56 @@ static float bees_least(float w)
 	return HEADER + 2.0f * FRAME + 1.6f * PAD + 2.0f * ((w - 2.0f * FRAME - 2.0f * PAD - 9.6f) / 7.0f) + 1.6f;
 }
 
+/* the session, since the program started: the time played, the games and credits, the best score */
+static float session_height(void)
+{
+	return HEADER + 2.0f * FRAME + 1.6f * PAD + 2.0f * (VALUE + 1.2f);
+}
+
+static void draw_session(gcanvas *c, const widgets_view *v, float x, float y, float w, float h)
+{
+	const unsigned long seconds = (unsigned long)((double)v->session_frames / 57.55);
+	char cells[4][2][24];
+	body b;
+
+	b = gadget(c, x, y, w, h, "SESSION", NULL);
+	if (chrome_pass)
+		return;
+	snprintf(cells[0][0], sizeof(cells[0][0]), "PLAYED");
+	if (seconds >= 3600u)
+		snprintf(cells[0][1], sizeof(cells[0][1]), "%lu:%02lu:%02lu", seconds / 3600u, seconds / 60u % 60u,
+			seconds % 60u);
+	else
+		snprintf(cells[0][1], sizeof(cells[0][1]), "%lu:%02lu", seconds / 60u, seconds % 60u);
+	snprintf(cells[1][0], sizeof(cells[1][0]), "GAMES");
+	snprintf(cells[1][1], sizeof(cells[1][1]), "%u", v->session_games);
+	snprintf(cells[2][0], sizeof(cells[2][0]), "CREDITS");
+	snprintf(cells[2][1], sizeof(cells[2][1]), "%u", v->session_credits);
+	snprintf(cells[3][0], sizeof(cells[3][0]), "BEST");
+	points_text(cells[3][1], sizeof(cells[3][1]), v->session_best, false);
+	{
+		/* two columns, two rows */
+		const float gap = 4.0f, column = (b.w - gap) * 0.5f;
+
+		for (int cell = 0; cell < 4; cell++)
+		{
+			const float cx = b.x + (float)(cell % 2) * (column + gap), top = b.y + (float)(cell / 2) * (VALUE + 1.2f);
+			const float label_w = gc_text_width(GC_FONT_TEXT, SMALL, cells[cell][0]) + 1.5f;
+
+			gc_text(c, GC_FONT_TEXT, SMALL, cx, gc_middle(GC_FONT_TEXT, SMALL, top, VALUE), cells[cell][0], LABEL,
+				GC_LEFT);
+			gc_text(c, GC_FONT_TEXT, gc_fit(GC_FONT_TEXT, VALUE, cells[cell][1], column - label_w), cx + column,
+				gc_middle(GC_FONT_TEXT, VALUE, top, VALUE), cells[cell][1], cell == 3 && v->session_best ? GOLD : NUMBER,
+				GC_RIGHT);
+		}
+	}
+}
+
 static void draw_left(gcanvas *full, const widgets_view *v, float width)
 {
 	const float heights[4] = { ship_height(), rank_height(), chain_height(), board_height() };
-	const float fixed = heights[0] + heights[1] + heights[2] + heights[3] + 4.0f * GAP;
+	const float fixed = heights[0] + heights[1] + heights[2] + heights[3] + 4.0f * GAP
+		+ (SESSION_LINE ? session_height() + GAP : 0.0f);
 	float height, w, used, gap, y = MARGIN;
 	gcanvas zoom, *c = &zoom;
 
@@ -696,7 +747,9 @@ static void draw_left(gcanvas *full, const widgets_view *v, float width)
 	zoom = zoomed(full, fixed + bees_least(width - 2.0f * MARGIN), &width, &height);
 	w = width - 2.0f * MARGIN;
 	used = heights[0] + heights[1] + heights[2] + heights[3] + bees_least(w);
-	gap = (height - 2.0f * MARGIN - used) / 4.0f;
+	if (SESSION_LINE)
+		used += session_height();
+	gap = (height - 2.0f * MARGIN - used) / (SESSION_LINE ? 5.0f : 4.0f);
 	if (gap > 12.0f)
 		gap = 12.0f;
 	if (gap < GAP * 0.5f)
@@ -709,7 +762,13 @@ static void draw_left(gcanvas *full, const widgets_view *v, float width)
 	y += heights[2] + gap;
 	part(c, 3, draw_board, v, MARGIN, y, w, heights[3]);
 	y += heights[3] + gap;
+#if SESSION_LINE
+	part(c, 4, draw_bees, v, MARGIN, y, w, height - MARGIN - y - gap - session_height());
+	y = height - MARGIN - session_height();
+	part(c, 5, draw_session, v, MARGIN, y, w, session_height());
+#else
 	part(c, 4, draw_bees, v, MARGIN, y, w, height - MARGIN - y);
+#endif
 }
 
 /* ---- the right panel ---- */

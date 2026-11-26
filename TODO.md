@@ -341,11 +341,13 @@
       a hash first), at k the scale rounded (3 at 1080p). The owner's FPS logs (26-11-2026, 1080p, xbr3x, D3D12)
       before that: 16.55 ms of work a frame and 11.6 frames a second late with gadgets, 11.0 ms and none with the
       classic panels. The stage map stays below, after the stages
-      - [ ] MAYBE (owner, 25-11-2026), gadgets to add later: a boss's timer (the time left before it leaves by
-            itself, about 3 minutes: the kill's bonus); a boss's health (its hit points, as the playtest's aim reads
-            DonPachi's); the misses and bombs this stage (the second loop's 2, the no-miss and no-bomb achievements,
-            the rank); the lives (and the next extra life); each stage's time against its best (a split, gold when
-            quicker); a line for the session (play time, games, credits, the best today); the classic panels'
+      - [x] MAYBE (owner, 25-11-2026), gadgets to add later: a line for the session (play time, games, credits,
+            the best today): the one kept (owner, 26-11-2026: "seems good"); DONE 26-11-2026, kept ("I like it"):
+            SESSION under BEES (PLAYED, GAMES, CREDITS, BEST since the program started; SESSION_LINE 0 in gadgets.c
+            takes it out, the panel exactly as before). Dropped (owner, 26-11-2026): a boss's
+            timer (not really used), a boss's health (the game shows it on screen), the misses and bombs this stage
+            and the lives (not as important as the rest), each stage's time against its best (an auto-scrolling
+            game: almost always the same). Done: the classic panels'
             score graph (owner, 25-11-2026: the one thing the gadgets don't have; DONE 26-11-2026, kept (owner: "I like it"); the
             owner's "easily removable": SCORE_GRAPH 0 in gadgets.c takes it out, the panel exactly as before): the score
             through the game against the place chased, a line where each place was passed, the 1UP dotted line;

@@ -334,8 +334,19 @@ void widgets_reset(void)
 	attract_seen = was_in_game = false;
 }
 
+/* the session: since the program started (a reset or the main menu keep it): the time played, the games and
+   credits (a game's start, and each continue), the best score */
+static struct
+{
+	uint32_t frames;
+	unsigned games, credits;
+	uint32_t best;
+} session;
+
 static void run_begin(void)
 {
+	session.games++;
+	session.credits++;
 	memset(&chain, 0, sizeof(chain));
 	memset(&run, 0, sizeof(run));
 	run.area = -1;
@@ -439,6 +450,7 @@ void widgets_frame(bool clean)
 		run_begin();    /* (a game begins) */
 	was_in_game = true;
 	speed_frame(lagged, true);
+	session.frames++;    /* (played: slowed frames too, the time as it passed) */
 	if (lagged)
 		return;    /* (the game's memory is half way through its frame: looked at again next) */
 	{
@@ -449,10 +461,13 @@ void widgets_frame(bool clean)
 		if (score < run.last_score_seen)
 		{
 			/* a continue (the score starts again from 0): this stage doesn't count, and is measured from here */
+			session.credits++;
 			run.stage_start = score;
 			run.stage_counts = false;
 		}
 		run.last_score_seen = score;
+		if (score > session.best)
+			session.best = score;
 		chain_frame(player, score);
 		if (!clean)
 			run.stage_counts = false;
@@ -1476,6 +1491,10 @@ void widgets_view_now(widgets_view *v)
 	v->chasing = run.chasing;
 	v->chase = run.chasing >= 0 ? run.table[run.chasing] : 0u;
 	memcpy(v->table, run.table, sizeof(v->table));
+	v->session_frames = session.frames;
+	v->session_games = session.games;
+	v->session_credits = session.credits;
+	v->session_best = session.best;
 	memcpy(v->passed_at, run.passed_at, sizeof(v->passed_at));
 	v->graph_count = run.count;
 	memcpy(v->graph, run.points, sizeof(uint32_t) * (size_t)run.count);

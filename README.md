@@ -263,7 +263,8 @@ the screen's own resolution (not the game's 8 x 8 letters scaled up), in Chakra 
 built into the program). Left: 1P SHIP (the style, shot, laser, bombs); RANK (a bar, green to red); CHAIN (the hits
 in big digits, the chain's time left as a bar, and the hits made with the shot, the laser and bombs; the best
 chain of the game); BOARD (the frames a second, the slowdown, the bullets graph); BEES (the game's own bee sprite,
-from your ROM set: grey until taken, gold-framed when taken, a red cross once the stage's chance is gone). Right:
+from your ROM set: grey until taken, gold-framed when taken, a red cross once the stage's chance is gone); SESSION
+(since you started the program: the time played, the games and credits, and your best score). Right:
 SCORE (the score in big digits, the place chased, 1UP IN and the second loop's line); SCORE GRAPH (as the classic
 panel's: the score through the game against the place chased, the places passed, where each stage began and the next
 extra life); STAGES (each stage against its
