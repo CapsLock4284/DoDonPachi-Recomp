@@ -349,8 +349,8 @@
             score graph (owner, 25-11-2026: the one thing the gadgets don't have; mock it up first): the score
             through the game against the place chased, a line where each place was passed, the 1UP dotted line;
             under SCORE, minding the room it takes from the stages and goals on narrow screens
-            The goals gadget showing the unearned achievements you're closest to (owner, 25-11-2026: "I really like
-            that idea"): today it is the same five each stage (NO MISS, NO BOMB, ALL 13 BEES, the next HITS goal,
+            DONE (26-11-2026): the goals gadget showing the unearned achievements you're closest to (owner,
+            25-11-2026: "I really like that idea"; achievements_goal in achievements.c, goals_choose in gadgets.c): today it is the same five each stage (NO MISS, NO BOMB, ALL 13 BEES, the next HITS goal,
             SURVIVOR); instead, lines that change with the game, each with how far there is to go: SCORE 10,000,000
             and the score still to make, FULL POWER once one weapon is MAX, BOMB HOARDER at 5 bombs, ONE CREDIT on a
             first credit near 1-6, PERFECT LOOP while the first loop has no miss, QUEEN BEE while no bee is missed,

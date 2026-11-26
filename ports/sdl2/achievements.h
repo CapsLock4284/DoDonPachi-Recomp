@@ -32,4 +32,20 @@ const char *achievements_text(int index);       /* what it asks for */
 const char *achievements_date(int index);       /* when it was earned ("2026-11-18"), or NULL */
 int achievements_find(const char *id);          /* the index of the one kept as 'id' ("no_miss_stage"), or -1 */
 
+/* How far the game being played has come towards an achievement: for the gadget panels' goals (gadgets.h), the
+   ones nearest to being earned shown */
+enum { GOAL_GOING, GOAL_KEPT, GOAL_LOST };    /* under way; met (or held so far, a stage's NO MISS); out of reach */
+
+typedef struct
+{
+	const char *label;          /* short, as "SCORE 10M" */
+	char value[24];             /* where it stands, as "BEST 85" or "2,340,000 TO GO" */
+	float part;                 /* 0-1: how near */
+	int state;                  /* GOAL_GOING, GOAL_KEPT, GOAL_LOST */
+} achievement_goal;
+
+/* The achievement 'index' as this game stands (game_watch.h): false when it can't be had in this game, or isn't
+   the next of its kind (500 HITS before 100 HITS is earned, say) */
+bool achievements_goal(int index, achievement_goal *out);
+
 #endif

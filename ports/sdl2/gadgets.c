@@ -940,32 +940,85 @@ static float goals_height(void)
 	return HEADER + 2.0f * FRAME + 1.6f * PAD + 5.0f * 6.6f;
 }
 
-/* the stage's achievements as they stand: kept so far (a tick), lost (a cross), or under way (its count); a gold
-   dot after the name when it was earned before */
+/* The goals: the achievements not yet earned that this game is nearest to (achievements_goal), chosen again as a
+   stage begins and every 10 seconds (between, a line keeps its place: met, it is ticked; lost, crossed); under
+   them, to make five, the stage's own (NO MISS, NO BOMB, ALL 13 BEES, the next HITS, SURVIVOR) with a gold dot when
+   earned before. With no game that counts (training, a replay, a cheat): the stage's own, as they stand */
+#define GOALS 5
+#define GOALS_EVERY 575    /* (frames drawn: 10 seconds) */
+
+static struct
+{
+	int index[GOALS], count;
+	int stage;
+	unsigned frames;
+} goals;
+
+static void goals_choose(void)
+{
+	const game_watch_state *const g = &game_watch;
+	static const char *const own[5] = { "no_miss_stage", "no_bomb_stage", "bees_stage", "hit100", "survivor" };
+	int order[64], found = 0;
+	float parts[64];
+
+	goals.frames++;
+	if (!g->on || !g->counts || g->stage < 0)
+	{
+		goals.count = 0;
+		return;
+	}
+	if (goals.count && goals.stage == g->stage && goals.frames < GOALS_EVERY)
+		return;
+	goals.stage = g->stage;
+	goals.frames = 0;
+	/* (the ones not earned and in reach, nearest first) */
+	for (int index = 0; index < achievements_count() && found < 64; index++)
+	{
+		achievement_goal goal;
+
+		if (achievements_date(index) || !achievements_goal(index, &goal) || goal.state == GOAL_LOST)
+			continue;
+		{
+			int at = found++;
+
+			while (at > 0 && parts[at - 1] < goal.part)
+			{
+				order[at] = order[at - 1];
+				parts[at] = parts[at - 1];
+				at--;
+			}
+			order[at] = index;
+			parts[at] = goal.part;
+		}
+	}
+	goals.count = 0;
+	for (int at = 0; at < found && goals.count < GOALS; at++)
+		goals.index[goals.count++] = order[at];
+	/* (the stage's own after them: the next HITS as achievements_goal has it) */
+	for (int at = 0; at < 5 && goals.count < GOALS; at++)
+	{
+		int index = achievements_find(own[at]);
+		bool shown = false;
+
+		if (at == 3)
+			for (int step = 0; step < 2 && index >= 0 && achievements_date(index); step++)
+				index++;    /* (hit100, hit500, hit1000: one after another in the list) */
+		for (int other = 0; other < goals.count; other++)
+			shown |= goals.index[other] == index;
+		if (index >= 0 && !shown)
+			goals.index[goals.count++] = index;
+	}
+}
+
 static void draw_goals(gcanvas *c, const widgets_view *v, float x, float y, float w, float h, bool narrow)
 {
 	enum { KEPT, LOST, GOING };
 	const game_watch_state *const g = &game_watch;
 	const bool on = v->showing && g->on;
-	char title[48], note[24], value[5][24];
-	int state[5];
-	const char *ids[5] = { "no_miss_stage", "no_bomb_stage", "bees_stage", "hit100", "survivor" };
-	const char *names[5] = { "NO MISS", "NO BOMB", "ALL 13 BEES", "100 HITS", "SURVIVOR" };
-	static const unsigned hit_goals[3] = { 100u, 500u, 1000u };
-	static const char *const hit_ids[3] = { "hit100", "hit500", "hit1000" };
-	static const char *const hit_names[3] = { "100 HITS", "500 HITS", "1000 HITS" };
+	static const char *const fixed[5] = { "no_miss_stage", "no_bomb_stage", "bees_stage", "hit100", "survivor" };
+	char title[48], note[24];
 	body b;
 
-	/* (the next combo not yet earned: 100, then 500, then 1000) */
-	for (int at = 0; at < 3; at++)
-	{
-		const int index = achievements_find(hit_ids[at]);
-
-		ids[3] = hit_ids[at];
-		names[3] = hit_names[at];
-		if (index < 0 || !achievements_date(index))
-			break;
-	}
 	snprintf(title, sizeof(title), narrow ? "GOALS" : "ACHIEVEMENTS");
 	if (v->showing && v->bee_area >= 0)
 		snprintf(title + strlen(title), sizeof(title) - strlen(title), " \x80 %s", stage_name(v->bee_area));
@@ -973,56 +1026,82 @@ static void draw_goals(gcanvas *c, const widgets_view *v, float x, float y, floa
 	b = gadget(c, x, y, w, h, title, note);
 	if (chrome_pass)
 		return;
-	state[0] = g->stage_misses == 0u ? KEPT : LOST;
-	snprintf(value[0], sizeof(value[0]), "%u", g->stage_misses);
-	state[1] = g->stage_bombs == 0u ? KEPT : LOST;
-	snprintf(value[1], sizeof(value[1]), "%u", g->stage_bombs);
-	state[2] = v->bees_taken >= 13u ? KEPT : v->bee_area_over ? LOST : GOING;
-	snprintf(value[2], sizeof(value[2]), "%u/13", v->bees_taken);
-	{
-		unsigned goal = 100u;
-
-		for (int at = 0; at < 3; at++)
-			if (ids[3] == hit_ids[at])
-				goal = hit_goals[at];
-		state[3] = g->max_hit >= goal ? KEPT : GOING;
-		snprintf(value[3], sizeof(value[3]), "BEST %u", g->max_hit);
-	}
-	{
-		const unsigned seconds = (unsigned)((double)g->life_frames / 57.55);
-
-		state[4] = seconds >= 300u ? KEPT : GOING;
-		snprintf(value[4], sizeof(value[4]), "%u:%02u", seconds / 60u, seconds % 60u);
-	}
-	for (int line = 0; line < 5; line++)
+	for (int line = 0; line < GOALS; line++)
 	{
 		const float top = b.y + (float)line * 6.6f, box_size = 4.4f;
-		const int index = achievements_find(ids[line]);
-		const bool earned = index >= 0 && achievements_date(index) != NULL;
-		const uint32_t name_colour = !on ? DIM : state[line] == LOST ? 0x7F98C2u : NUMBER;
+		int index = goals.count ? (line < goals.count ? goals.index[line] : -1) : achievements_find(fixed[line]);
+		achievement_goal goal;
+		bool earned, have;
+		int state;
+		uint32_t name_colour;
 
+		if (!goals.count && line == 3)
+			for (int step = 0; step < 2 && index >= 0 && achievements_date(index); step++)
+				index++;    /* (the next HITS) */
+		if (index < 0)
+			continue;
+		have = achievements_goal(index, &goal);
+		if (!have && !goals.count)
+		{
+			/* (no game: the stage's own, by name) */
+			static const char *const labels[5] = { "NO MISS", "NO BOMB", "ALL 13 BEES", "HITS", "SURVIVOR" };
+			static const char *const hit_labels[3] = { "100 HITS", "500 HITS", "1000 HITS" };
+
+			const int hit = index - achievements_find("hit100");
+
+			goal.label = line == 3 ? hit_labels[hit > 2 ? 2 : hit < 0 ? 0 : hit] : labels[line];
+			goal.value[0] = '\0';
+			goal.state = GOAL_GOING;
+			goal.part = 0.0f;
+		}
+		else if (!have)
+		{
+			/* (out of this game's reach since it was chosen: its name, crossed) */
+			goal.label = achievements_name(index);
+			goal.value[0] = '\0';
+			goal.state = GOAL_LOST;
+			goal.part = 0.0f;
+		}
+		earned = achievements_date(index) != NULL;
+		state = goal.state == GOAL_LOST ? LOST : goal.state == GOAL_KEPT ? KEPT : GOING;
+		if (index == achievements_find("bees_stage") && state == GOING && v->bee_area_over)
+			state = LOST;    /* (the stage's bees over: one was missed) */
+		name_colour = !on ? DIM : state == LOST ? 0x7F98C2u : NUMBER;
 		if (!on)
 			gc_box(c, b.x, top, box_size, box_size, 0.8f, 0x1C3A6Bu, 255u);
-		else if (state[line] == KEPT)
+		else if (state == KEPT)
 		{
 			gc_box(c, b.x, top, box_size, box_size, 0.8f, TEAL, 255u);
 			gc_line(c, b.x + 0.9f, top + 2.3f, b.x + 1.9f, top + 3.3f, 0.6f, INNER, 255u);
 			gc_line(c, b.x + 1.9f, top + 3.3f, b.x + 3.6f, top + 1.0f, 0.6f, INNER, 255u);
 		}
-		else if (state[line] == LOST)
+		else if (state == LOST)
 		{
 			gc_box(c, b.x, top, box_size, box_size, 0.8f, 0x5A1620u, 255u);
 			gc_line(c, b.x + 1.1f, top + 1.1f, b.x + 3.3f, top + 3.3f, 0.6f, RED, 255u);
 			gc_line(c, b.x + 3.3f, top + 1.1f, b.x + 1.1f, top + 3.3f, 0.6f, RED, 255u);
 		}
 		else
+		{
+			/* (under way: the box filled up from the bottom as it nears) */
+			const float filled = (box_size - 1.0f) * (goal.part < 0.0f ? 0.0f : goal.part > 1.0f ? 1.0f : goal.part);
+
 			gc_box(c, b.x, top, box_size, box_size, 0.8f, 0x1C3A6Bu, 255u);
-		gc_text(c, GC_FONT_TEXT, 4.0f, b.x + box_size + 2.0f, top + 3.7f, names[line], name_colour, GC_LEFT);
+			if (filled > 0.15f)
+				gc_box(c, b.x + 0.5f, top + box_size - 0.5f - filled, box_size - 1.0f, filled, 0.4f, 0x3B7CF0u, 255u);
+		}
+		gc_text(c, GC_FONT_TEXT, 4.0f, b.x + box_size + 2.0f, top + 3.7f, goal.label, name_colour, GC_LEFT);
 		if (earned)
-			gc_disc(c, b.x + box_size + 2.0f + gc_text_width(GC_FONT_TEXT, 4.0f, names[line]) + 1.8f, top + 2.2f, 0.9f,
+			gc_disc(c, b.x + box_size + 2.0f + gc_text_width(GC_FONT_TEXT, 4.0f, goal.label) + 1.8f, top + 2.2f, 0.9f,
 				GOLD, 255u);
-		if (on)
-			gc_text(c, GC_FONT_TEXT, 3.6f, b.x + b.w, top + 3.7f, value[line], LABEL, GC_RIGHT);
+		if (on && goal.value[0])
+		{
+			/* (the value made to fit beside the name) */
+			const float room = b.w - box_size - 2.0f - gc_text_width(GC_FONT_TEXT, 4.0f, goal.label) - 4.5f;
+
+			gc_text(c, GC_FONT_TEXT, gc_fit(GC_FONT_TEXT, 3.6f, goal.value, room), b.x + b.w, top + 3.7f, goal.value,
+				LABEL, GC_RIGHT);
+		}
 	}
 }
 
@@ -1164,6 +1243,7 @@ void gadgets_draw(uint32_t *left, uint32_t *right, int width, int k, gadgets_dir
 		}
 	}
 	/* (the right side whole while an achievement's box is over it and the frame after, and after the help) */
+	goals_choose();
 	if (v.toast_frames > 0 || kept.toast || kept.help)
 		kept.fresh[1] = false;
 	kept.toast = v.toast_frames > 0;

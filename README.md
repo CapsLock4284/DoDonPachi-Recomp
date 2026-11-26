@@ -265,8 +265,11 @@ chain of the game); BOARD (the frames a second, the slowdown, the bullets graph)
 from your ROM set: grey until taken, gold-framed when taken, a red cross once the stage's chance is gone). Right:
 SCORE (the score in big digits, the place chased, 1UP IN and the second loop's line); STAGES (each stage against its
 best, as above); LAST SCORED (the last points scored and the chain they came at); INPUT (the stick and buttons);
-GOALS (the stage's achievements: NO MISS, NO BOMB, ALL 13 BEES, the next hits goal, SURVIVOR; a gold dot on those
-already earned). The panels grow to fill the screen's height; the narrowest screens get a two-line stage list.
+GOALS (the five achievements you're nearest to and haven't earned yet, each with where it stands, as "SCORE 10M
+2,340,000 TO GO", "100 HITS BEST 49" or "CLEAR 1-6 AT 1-2", and its box filling as it nears: ticked when met or held
+so far, crossed when this game can no longer get it; chosen again as each stage begins and every 10 seconds, so
+the lines don't jump about; under them, to make five, the stage's own NO MISS, NO BOMB, ALL 13 BEES, next hits
+goal and SURVIVOR, with a gold dot on those earned before; with cheats, a replay or training, just those). The panels grow to fill the screen's height; the narrowest screens get a two-line stage list.
 
 **The second loop** comes after 1-6 when the player played alone, never continued, and has any one of: 2 misses or
 fewer (lives lost); a MAX HIT of 624 or more with type A, 768 with B or 816 with C; a score of 50,000,000 or more; 4

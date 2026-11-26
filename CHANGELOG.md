@@ -6,7 +6,14 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
-Nothing yet.
+### Changed
+- **The gadget panels' GOALS show the achievements you're closest to** (the owner's idea): instead of the same five
+  every stage, the five you haven't earned yet that this game is nearest to, each with how far there is to go
+  ("SCORE 10M 2,340,000 TO GO", "100 HITS BEST 49", "CLEAR 1-6 AT 1-2", "SURVIVOR 2:50"), its box filling up as it
+  nears. Met (or held so far, as a stage's NO MISS), it's ticked; out of this game's reach (a continue for ONE
+  CREDIT, say), crossed. The list is chosen again as each stage begins and every 10 seconds, so lines don't jump
+  about. Once few are left, the stage's own (NO MISS, NO BOMB, ALL 13 BEES, the next hits goal, SURVIVOR) fill the
+  rest, with a gold dot on those earned before.
 
 ## v0.6.0 (2026-11-26)
 

@@ -10,6 +10,7 @@
 #include "achievements.h"
 #include "file_save.h"
 #include "game_watch.h"
+#include "loop2.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -256,4 +257,247 @@ int achievements_find(const char *id)
 const char *achievements_date(int index)
 {
 	return index >= 0 && index < ACHIEVEMENTS && dates[index][0] ? dates[index] : NULL;
+}
+
+/* ---- how near each is (the gadget panels' goals) ---- */
+
+/* (a score as shown, a tenth's last digit put back: "2,340,000") */
+static void shown_points(char *out, size_t size, uint32_t kept)
+{
+	char digits[16], with[24];
+	int length, at = 0;
+	const unsigned long long shown = (unsigned long long)kept * 10ull;
+
+	length = snprintf(digits, sizeof(digits), "%llu", shown);
+	for (int i = 0; i < length; i++)
+	{
+		if (i && (length - i) % 3 == 0)
+			with[at++] = ',';
+		with[at++] = digits[i];
+	}
+	with[at] = '\0';
+	snprintf(out, size, "%s", with);
+}
+
+static unsigned bits(unsigned value)
+{
+	unsigned count = 0;
+
+	for (; value; value >>= 1)
+		count += value & 1u;
+	return count;
+}
+
+static float share(double now, double goal)
+{
+	return goal <= 0.0 ? 1.0f : now >= goal ? 1.0f : (float)(now / goal);
+}
+
+bool achievements_goal(int index, achievement_goal *out)
+{
+	const game_watch_state *const g = &game_watch;
+	const int stage = g->stage;
+	const bool loop1 = stage >= 0 && stage < 6;
+	const loop2_status l2 = loop2_now(0);
+	const bool loop2_out = l2.state == LOOP2_OUT_CONTINUED || l2.state == LOOP2_OUT_TWO_PLAYERS;
+	static const unsigned hits[3] = { 100u, 500u, 1000u };
+	static const uint32_t scores[3] = { 1000000u, 5000000u, 10000000u };    /* (kept: a tenth of shown) */
+	static const char *const hit_labels[3] = { "100 HITS", "500 HITS", "1000 HITS" };
+	static const char *const score_labels[3] = { "SCORE 10M", "SCORE 50M", "SCORE 100M" };
+
+	if (index < 0 || index >= ACHIEVEMENTS || !g->on || stage < 0)
+		return false;
+	out->value[0] = '\0';
+	out->state = GOAL_GOING;
+	out->part = 0.0f;
+	switch (index)
+	{
+	case A_STAGE1:
+		if (stage != 0)
+			return false;
+		out->label = "CLEAR 1-1";
+		out->part = 0.5f;
+		snprintf(out->value, sizeof(out->value), "THIS STAGE");
+		break;
+	case A_LOOP1:
+		if (!loop1)
+			return false;
+		out->label = "CLEAR 1-6";
+		out->part = ((float)stage + 0.5f) / 6.0f;
+		snprintf(out->value, sizeof(out->value), "AT 1-%d", stage + 1);
+		break;
+	case A_LOOP2:
+		if (!loop1)
+			return false;
+		out->label = "LOOP 2";
+		out->state = loop2_out ? GOAL_LOST : l2.state == LOOP2_IN ? GOAL_KEPT : GOAL_GOING;
+		out->part = ((float)stage + (l2.state == LOOP2_IN ? 1.0f : 0.3f)) / 6.5f;
+		if (loop2_out)
+			snprintf(out->value, sizeof(out->value), "NO");
+		else if (l2.state == LOOP2_IN)
+			snprintf(out->value, sizeof(out->value), "YES: %s", l2.by ? l2.by : "");
+		else if (l2.state == LOOP2_ON_TRACK)
+			snprintf(out->value, sizeof(out->value), "%u MISS%s LEFT", LOOP2_MISSES - l2.misses,
+				LOOP2_MISSES - l2.misses == 1u ? "" : "ES");
+		else
+			snprintf(out->value, sizeof(out->value), "SHORT");
+		break;
+	case A_ALL:
+		if (loop1 && loop2_out)
+			return false;
+		out->label = "CLEAR 2-6";
+		out->part = ((float)(stage % 12) + 0.5f) / 12.0f;
+		snprintf(out->value, sizeof(out->value), "AT %d-%d", stage / 6 + 1, stage % 6 + 1);
+		break;
+	case A_ONE_CREDIT:
+	case A_ONE_CREDIT_ALL:
+	{
+		const bool all = index == A_ONE_CREDIT_ALL;
+
+		if ((!all && !loop1) || (all && loop1 && loop2_out))
+			return false;
+		out->label = all ? "1 CREDIT 2-6" : "1 CREDIT 1-6";
+		out->state = g->continued_ever ? GOAL_LOST : GOAL_GOING;
+		out->part = ((float)stage + 0.5f) / (all ? 12.0f : 6.0f);
+		snprintf(out->value, sizeof(out->value), g->continued_ever ? "CONTINUED" : "AT %d-%d", stage / 6 + 1,
+			stage % 6 + 1);
+		break;
+	}
+	case A_NO_MISS_STAGE:
+		out->label = "NO MISS";
+		out->state = g->stage_misses ? GOAL_LOST : GOAL_KEPT;
+		out->part = 0.55f;
+		snprintf(out->value, sizeof(out->value), "%u", g->stage_misses);
+		break;
+	case A_NO_BOMB_STAGE:
+		out->label = "NO BOMB";
+		out->state = g->stage_bombs ? GOAL_LOST : GOAL_KEPT;
+		out->part = 0.5f;
+		snprintf(out->value, sizeof(out->value), "%u", g->stage_bombs);
+		break;
+	case A_NO_MISS_LOOP:
+		if (!loop1)
+			return false;
+		out->label = "NO MISS LOOP";
+		out->state = g->loop1_misses || g->continued_ever ? GOAL_LOST : GOAL_KEPT;
+		out->part = ((float)stage + 0.5f) / 6.0f;
+		snprintf(out->value, sizeof(out->value), "%u", g->loop1_misses);
+		break;
+	case A_BEES_STAGE:
+		out->label = "ALL 13 BEES";
+		out->state = g->stage_bees >= 13u ? GOAL_KEPT : GOAL_GOING;
+		out->part = share(g->stage_bees, 13.0);
+		snprintf(out->value, sizeof(out->value), "%u/13", g->stage_bees);
+		break;
+	case A_BEES_LOOP:
+		if (!loop1)
+			return false;
+		out->label = "ALL BEES LOOP";
+		out->state = g->loop1_full_bees < (unsigned)stage ? GOAL_LOST : GOAL_GOING;
+		out->part = ((float)g->loop1_full_bees + share(g->stage_bees, 13.0)) / 6.0f;
+		snprintf(out->value, sizeof(out->value), "%u/6", g->loop1_full_bees);
+		break;
+	case A_HIT100:
+	case A_HIT500:
+	case A_HIT1000:
+	{
+		const int step = index - A_HIT100;
+
+		if (step > 0 && !dates[index - 1][0])
+			return false;    /* (the next one only) */
+		out->label = hit_labels[step];
+		out->state = g->max_hit >= hits[step] ? GOAL_KEPT : GOAL_GOING;
+		out->part = share(g->max_hit, hits[step]);
+		snprintf(out->value, sizeof(out->value), "BEST %u", g->max_hit);
+		break;
+	}
+	case A_SCORE10M:
+	case A_SCORE50M:
+	case A_SCORE100M:
+	{
+		const int step = index - A_SCORE10M;
+		char points[20];
+
+		if (step > 0 && !dates[index - 1][0])
+			return false;
+		out->label = score_labels[step];
+		out->part = share(g->score, scores[step]);
+		if (g->score >= scores[step])
+			out->state = GOAL_KEPT;
+		shown_points(points, sizeof(points), g->score >= scores[step] ? 0u : scores[step] - g->score);
+		snprintf(out->value, sizeof(out->value), "%s TO GO", points);
+		break;
+	}
+	case A_FULL_POWER:
+		out->label = "FULL POWER";
+		out->part = share(g->own_power + g->other_power, 8.0);
+		snprintf(out->value, sizeof(out->value), "%u/8", g->own_power + g->other_power);
+		break;
+	case A_BOMB_SLOTS:
+		/* (the bomb slots grow from 3 to 6, a life lost with them full: then all 6 carried) */
+		out->label = "6 BOMBS";
+		out->part = ((float)(g->bomb_most > 3u ? g->bomb_most - 3u : 0u) + (float)(g->bombs > 3u ? g->bombs - 3u : 0u))
+			/ 6.0f;
+		snprintf(out->value, sizeof(out->value), "SLOTS %u/6", g->bomb_most > g->bombs ? g->bomb_most : g->bombs);
+		break;
+	case A_EXTEND:
+	{
+		char points[20];
+
+		out->label = "EXTRA LIFE";
+		out->part = share(g->score, 600000.0);
+		shown_points(points, sizeof(points), g->score >= 600000u ? 0u : 600000u - g->score);
+		snprintf(out->value, sizeof(out->value), "%s TO GO", points);
+		break;
+	}
+	case A_EVERY_SHIP:
+	case A_BOTH_STYLES:
+	{
+		const bool ships = index == A_EVERY_SHIP;
+		const unsigned done = ships ? ships_cleared : styles_cleared;
+		const unsigned now = ships ? 1u << g->ship : g->laser ? 2u : 1u;
+
+		if (stage != 0 || (done & now))
+			return false;    /* (only in 1-1, with a ship or style not yet cleared with) */
+		out->label = ships ? "ALL 3 SHIPS" : "BOTH STYLES";
+		out->part = ((float)bits(done) + 0.5f) / (ships ? 3.0f : 2.0f);
+		snprintf(out->value, sizeof(out->value), "%u/%u", bits(done), ships ? 3u : 2u);
+		break;
+	}
+	case A_SURVIVOR:
+	{
+		const unsigned seconds = (unsigned)((double)g->life_frames / 57.55);
+
+		out->label = "SURVIVOR";
+		out->part = share(g->life_frames, SURVIVOR_FRAMES);
+		out->state = g->life_frames >= SURVIVOR_FRAMES ? GOAL_KEPT : GOAL_GOING;
+		snprintf(out->value, sizeof(out->value), "%u:%02u", seconds / 60u, seconds % 60u);
+		break;
+	}
+	case A_HIDDEN_EXTEND:
+		if (stage % 6 != 2)
+			return false;
+		out->label = "HIDDEN 1UP";
+		out->part = 0.3f;
+		snprintf(out->value, sizeof(out->value), "THIS STAGE");
+		break;
+	case A_AREA7:
+		if (loop1)
+			return false;
+		out->label = "REACH 2-7";
+		out->part = 0.4f + (float)(stage - 6) / 12.0f;
+		snprintf(out->value, sizeof(out->value), g->in_area7 ? "HERE" : "AFTER 2-6");
+		break;
+	case A_HIBACHI:
+	case A_HIBACHI_DOWN:
+		if (!g->in_area7 || (index == A_HIBACHI_DOWN && !g->hibachi))
+			return false;
+		out->label = index == A_HIBACHI ? "HIBACHI" : "DOWN HIBACHI";
+		out->part = index == A_HIBACHI ? 0.8f : 0.9f;
+		snprintf(out->value, sizeof(out->value), "2-7");
+		break;
+	default:
+		return false;    /* (TEAM WORK: two players) */
+	}
+	return true;
 }
