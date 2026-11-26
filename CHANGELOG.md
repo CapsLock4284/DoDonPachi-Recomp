@@ -6,6 +6,12 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
+### Added
+- **`--playtest`**: the game plays itself all the way through, as fast as your PC can run it, to check a build:
+  both loops, 2-7, Hibachi and the ending, with every ship and style (or one: `--playtest B-laser`). Player 1 is kept
+  from harm and nothing is saved; a message at the end says whether it passed, and `ddonpach_playtest.txt` has each
+  stage's time.
+
 ### Changed
 - **The arcade's slowdown, timed closer still:** on the real board the VBLANK interrupt (the "next frame" signal the
   game waits for) comes 90 microseconds before the end of the frame, not right at its end. A check of the port

@@ -13,7 +13,7 @@
  *    main menu, training, replays, achievements, statistics, the side panels, the hitbox.
  *
  *    Usage: ddonpach [--settings PATH] [--rom PATH] [--scale N] [--no-sound] [--eeprom PATH] [--cheats FILE]
- *                    [--cheat NAME ...] [--list-cheats]
+ *                    [--cheat NAME ...] [--list-cheats] [--playtest [WHICH]]
  *      --settings PATH the settings file (default: ddonpach.ini beside the program (paths.h); settings.h): the options
  *                      below and the keys and gamepad buttons of both players. Written with the defaults when it is
  *                      not there; the options below go over it for the run
@@ -29,6 +29,9 @@
  *                      NAME=VALUE picks a value where the cheat asks for one
  *      --cheats FILE   the cheat file, MAME's format (default: cheats/ddonpach.xml)
  *      --list-cheats   lists the cheat file's cheats
+ *      --playtest [WHICH]  plays the game through by itself, as fast as the PC goes, player 1 kept from harm, to see
+ *                      a build go all the way (playtest.h): every ship and style (all, the default) or one (B-laser);
+ *                      nothing saved; the report in ddonpach_playtest.txt; Esc stops it
  *
  *    Controls (the defaults: ddonpach.ini changes them): keys arrows, Z shot (held: the laser), X bomb, C auto-fire,
  *          1 start,
@@ -76,6 +79,7 @@
 #include "scaler.h"
 #include "settings.h"
 #include "pads.h"
+#include "playtest.h"
 #include "window_icon.h"
 
 #include "cave/boards.h"
@@ -1592,10 +1596,63 @@ static bool menu_state_used(int slot)
 
 #define CHEATS_MAX 16
 
+/* --playtest: the game played through by itself (playtest.h), shown in the window now and then, as fast as it goes:
+   no sound, nothing saved. Its exit code: 0 every run passed */
+static int run_playtest(void)
+{
+	char path[1100], message[1600];
+	const Uint64 began = SDL_GetPerformanceCounter(), tick = SDL_GetPerformanceFrequency();
+	Uint64 shown = 0;
+	bool stopped = false;
+	int result = PLAYTEST_GOING;
+
+	snprintf(path, sizeof(path), "%sddonpach_playtest.txt", paths_folder());
+	playtest_begin(path, rom_set.version);
+	program_set_slowdown(true);    /* (the arcade's: whatever the settings say) */
+	SDL_RenderSetVSync(renderer, 0);
+	picture_wanted = false;        /* (drawn here, now and then) */
+	crash_log_not_replayable("a playtest (player 1 kept from harm)");
+	while (result == PLAYTEST_GOING && !stopped)
+	{
+		SDL_Event event;
+
+		while (SDL_PollEvent(&event))
+			if (event.type == SDL_QUIT || (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE))
+				stopped = true;
+		for (int count = 0; count < 64 && result == PLAYTEST_GOING; count++)
+		{
+			cave_board.in0 = (uint16_t)~playtest_inputs();
+			cave_board.in1 = 0xFFFFu;
+			crash_log_frame();
+			program_run_frame();
+			cave_sound_drop();
+			video_latch_sprites();
+			result = playtest_frame();
+		}
+		if (SDL_GetPerformanceCounter() - shown >= tick / 30u)
+		{
+			char title[192];
+
+			shown = SDL_GetPerformanceCounter();
+			draw_picture();
+			show_picture(picture);
+			present();
+			snprintf(title, sizeof(title), "DoDonPachi PLAYTEST  %s  (Esc: stop)", playtest_status());
+			SDL_SetWindowTitle(window, title);
+		}
+	}
+	crash_log_finish();    /* (no crash: the run's inputs not written) */
+	fputs(playtest_finish((double)(SDL_GetPerformanceCounter() - began) / (double)tick, stopped), stderr);
+	snprintf(message, sizeof(message), "%s\n\nThe report, stage by stage: %s", playtest_summary(), path);
+	SDL_ShowSimpleMessageBox(result == PLAYTEST_PASSED ? SDL_MESSAGEBOX_INFORMATION : SDL_MESSAGEBOX_WARNING,
+		"DoDonPachi playtest", message, window);
+	return result == PLAYTEST_PASSED ? 0 : 1;
+}
+
 int main(int argc, char **argv)
 {
 	const char *cheat_names[CHEATS_MAX];
-	bool rom_given = false;
+	bool rom_given = false, playtest = false;
 	int cheat_count = 0, list_cheats = 0;
 	bool settings_written;
 	const char *problem;
@@ -1651,6 +1708,17 @@ int main(int argc, char **argv)
 			snprintf(options.cheats, sizeof(options.cheats), "%s", argv[++index]);
 		else if (!strcmp(argv[index], "--list-cheats"))
 			list_cheats = 1;
+		else if (!strcmp(argv[index], "--playtest"))
+		{
+			const char *const which = value && value[0] != '-' ? argv[++index] : "all";
+
+			playtest = true;
+			if (!playtest_choose(which))
+			{
+				fprintf(stderr, "--playtest %s: all, or a ship and style (A-shot ... C-laser)\n", which);
+				return 1;
+			}
+		}
 		else if (!strcmp(argv[index], "--no-sound"))
 			options.sound = false;
 		else if (!strcmp(argv[index], "--eeprom") && value)
@@ -1704,11 +1772,15 @@ int main(int argc, char **argv)
 		SDL_Quit();
 		return 0;
 	}
-	eeprom_open(options.eeprom[0] ? options.eeprom : NULL);
-	hiscores_open();
+	if (!playtest)
+	{
+		/* (a playtest: the ROM set's own EEPROM, the game's own high scores, nothing kept) */
+		eeprom_open(options.eeprom[0] ? options.eeprom : NULL);
+		hiscores_open();
+	}
 	{
 		/* the files an update left (.old) deleted; the newest release looked up (on its thread: the game goes on) */
-		char *const base = SDL_GetBasePath();
+		char *const base = playtest ? NULL : SDL_GetBasePath();
 
 		if (base)
 		{
@@ -1721,11 +1793,12 @@ int main(int argc, char **argv)
 		}
 	}
 	/* (the run's inputs kept from its first frame) */
-	crash_log_reset(options.slowdown, rom_set.version, options.save_high_scores ? hiscore_table() : NULL);
+	crash_log_reset(playtest || options.slowdown, rom_set.version,
+		!playtest && options.save_high_scores ? hiscore_table() : NULL);
 	replay_reset();
 	game_watch_reset();
 	cheats_load(options.cheats);
-	for (int cheat = 0; cheat < cheat_count; cheat++)
+	for (int cheat = 0; cheat < (playtest ? 0 : cheat_count); cheat++)
 		if ((problem = cheats_enable(options.cheats, cheat_names[cheat])) != NULL)
 		{
 			show_problem(problem);
@@ -1774,6 +1847,13 @@ int main(int argc, char **argv)
 	if (SDL_RenderSetVSync(renderer, options.vsync ? 1 : 0) != 0)
 		fprintf(stderr, "vsync: %s\n", SDL_GetError());
 	program_at_screen_vblank = at_screen_vblank;
+	if (playtest)
+	{
+		const int code = run_playtest();
+
+		SDL_Quit();
+		return code;
+	}
 	{
 		menu_host menu = { 0 };
 

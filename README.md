@@ -290,6 +290,23 @@ about 1,100 frames), from the finished frame to the screen:
 
 With vsync off the picture can tear (a line where two frames meet); VSYNC ON stops that for a little delay.
 
+## Playtest: the whole game, by itself
+
+To see a new build go all the way through without playing it, start it with `--playtest`:
+
+```powershell
+build\bin\ddonpach.exe --playtest            # every ship and style, one after another
+build\bin\ddonpach.exe --playtest B-laser    # or one: A-shot, A-laser, B-shot, B-laser, C-shot, C-laser
+```
+
+The game plays itself as fast as the PC can run it, showing the picture now and then, with player 1 kept from harm
+and at MAX power: both loops, 2-7, Hibachi and the ending, for each ship. The window's title shows where it is, and
+a message at the end says whether every run passed, with each stage's time in `ddonpach_playtest.txt` beside the
+program. It uses the board's own settings and saves nothing (no high scores, achievements, statistics, replays or
+settings). Esc stops it. A run takes this player about an hour and a quarter of the game's time; at about 40 times
+the arcade's speed, all six take around 10 minutes. It fails if the ship is lost, the game ends early, the ending
+comes without Hibachi, or a stage doesn't move on for 35 minutes of the game's time.
+
 ## Running it headless
 
 For the checks (Linux or MSYS2; the board from `runtime/`, the C from `src/`):
