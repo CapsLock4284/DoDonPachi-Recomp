@@ -162,7 +162,14 @@
       the priorities are MAME's (cave_v.cpp, sprite013.cpp, init_ddonpach). The small dark shapes are the wrecks
       ground enemies leave (their colour bank is dark). The layers' row-scroll and row-select added to Cave68kSDK
       (MAME's), in case a later stage uses them (the first stage and the demo do not).
-- [ ] The picture side by side with MAME's own, from a later stage (needs a player that gets further).
+- [ ] The picture side by side with MAME's own, from a later stage. (Not a player that gets further: the full-game
+      check below has one, and the real MAME's game drifts from the port's within a few thousand VBLANKs, its YMZ280B
+      interrupt held to MAME's own sound updates.) The way (26-11-2026): tools/mame/ddp_check.lua 0.5.0 keeps the
+      board's video memories (video_N.bin: sprites, layers, their registers, palette, video registers, work RAM) with
+      MAME's picture every DDP_VIDEO_EVERY VBLANKs (2,500) and the one before; tests/mame_redraw puts each in the
+      port's board, draws it as the port does and compares it with MAME's picture: MAME's own drawing against the
+      port's at every stage the run reaches, however far the games have parted. Checked on itself (MAKE=1: 12 states
+      from the port, all drawn the same). Waiting for the owner's MAME run
 - [x] **The arcade's slowdown matched** (owner: very important, for every game on this board). The original program on
       MAME's 68000 core at the board's timing (tools/cref/cref_timed) against the port (tests/slowdown_check), the
       same inputs (tests/player.h): over 150,000 VBLANKs (about 42 minutes), the same board at all 147,446 game
@@ -180,7 +187,8 @@
       interrupt from the VBLANK's by the time (the cause's bit 2), so it is part of the slowdown: checked again over
       150,000 VBLANKs, the same at all 147,505 game frames (2,494 lagged in both), and 147,399 of 147,399 with the
       second player (2,600 lagged).
-- [ ] Listen to it against MAME (the levels, and the samples' order u6 then u7).
+- [ ] Listen to it against MAME (the levels, and the samples' order u6 then u7): by ear, or recordings of the two
+      side by side (MAME's -wavwrite against the port's).
 
 ## The port
 

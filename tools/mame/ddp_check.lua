@@ -1,8 +1,8 @@
 -- Name:        ddp_check.lua
 -- Description: DoDonPachi on the real MAME, played as the port's checks play it, for tests/mame_compare: the
 --              picture, the work RAM and the slowdown of MAME's own ddonpach, against the port's
--- Version:     0.4.0 (0.2.0: the inputs on the port's VBLANK, not one later; 0.3.0: waits.txt; 0.3.1: no device clock;
---              0.4.0: irq.txt)
+-- Version:     0.5.0 (0.2.0: the inputs on the port's VBLANK, not one later; 0.3.0: waits.txt; 0.3.1: no device clock;
+--              0.4.0: irq.txt; 0.5.0: video_N.bin, for tests/mame_redraw)
 -- Created:     25-11-2026
 --
 -- license:BSD-3-Clause
@@ -28,6 +28,13 @@
 --     waits.txt      a line a frame of the game: "game_frame cycle", the 68000's cycle from the power on (MAME's time
 --                    there, at the CPU's own instruction, times its clock) as the game makes its wait ready: when each
 --                    frame's work ended, to set beside the port's (tests/slowdown_check's CYCLELOG, mame_compare)
+--     video_N.bin    the board's video memories at VBLANK N, every DDP_VIDEO_EVERY VBLANKs (2,500) and the VBLANK before:
+--                    "DDPVID01", then the sprite RAM ($400000, 64 KB), the layers' RAM ($500000 and $600000, 32 KB each;
+--                    $700000, 64 KB), their registers ($900000, $A00000, $B00000, 6 bytes each), the palette ($C00000,
+--                    64 KB), the video registers (128 bytes, from MAME's own copy: reading $800000 would answer the
+--                    interrupt) and the work RAM ($100000, 64 KB), each as the 68000 reads them (big endian); with
+--                    screen_N.bin beside each. tests/mame_redraw draws them as the port does, against MAME's pictures:
+--                    MAME's own drawing, all through the game, however far the two games have gone apart
 --     irq.txt        for the first DDP_IRQ_UNTIL VBLANKs (6,000): each read of the interrupt's cause ($800000-$800007)
 --                    and of the YMZ280B ($300000-$300003), "cycle address value", and "vblank N" as each VBLANK
 --                    passes: when the interrupts came and what the game was told, to set beside the port's
@@ -43,6 +50,7 @@ local out = os.getenv("DDP_OUT") or "build/mame_check"
 local irq_until = tonumber(os.getenv("DDP_IRQ_UNTIL") or "6000")
 local frames = tonumber(os.getenv("DDP_FRAMES") or "300000")
 local every = tonumber(os.getenv("DDP_EVERY") or "5000")
+local video_every = tonumber(os.getenv("DDP_VIDEO_EVERY") or "2500")
 
 local machine = manager.machine
 local cpu = machine.devices[":maincpu"]
@@ -140,6 +148,53 @@ local function write_file(path, data)
 	if file then file:write(data); file:close() end
 end
 
+-- the video registers: MAME's own copy of them (the share named videoregs), as $800000-$800007 read the interrupt's
+-- cause (and answer it). 128 bytes, big endian; zeros if this MAME has no such share
+local videoregs = nil
+if machine.memory and machine.memory.shares then
+	for tag, share in pairs(machine.memory.shares) do
+		if string.find(tag, "videoregs", 1, true) then videoregs = share; break end
+	end
+end
+if not videoregs then
+	emu.print_error("ddp_check: no videoregs share in this MAME: video_N.bin's video registers are zeros")
+end
+
+local function video_registers()
+	local bytes = {}
+	for word = 0, 63 do
+		local value = 0
+		if videoregs then
+			local ok, got = pcall(function() return videoregs:read_u16(word * 2) end)
+			if ok and type(got) == "number" then value = got end
+		end
+		bytes[#bytes + 1] = string.char((value >> 8) & 0xff, value & 0xff)
+	end
+	return table.concat(bytes)
+end
+
+local function write_video(n)
+	local parts = {
+		"DDPVID01",
+		space:read_range(0x400000, 0x40ffff, 8),
+		space:read_range(0x500000, 0x507fff, 8),
+		space:read_range(0x600000, 0x607fff, 8),
+		space:read_range(0x700000, 0x70ffff, 8),
+		space:read_range(0x900000, 0x900005, 8),
+		space:read_range(0xa00000, 0xa00005, 8),
+		space:read_range(0xb00000, 0xb00005, 8),
+		space:read_range(0xc00000, 0xc0ffff, 8),
+		video_registers(),
+		space:read_range(0x100000, 0x10ffff, 8),
+	}
+	write_file(string.format("%s/video_%d.bin", out, n), table.concat(parts))
+	if screen then
+		local pixels, width, height = screen:pixels()
+		write_file(string.format("%s/screen_%d.bin", out, n), pixels)
+		write_file(out .. "/screen_size.txt", string.format("%d %d\n", width, height))
+	end
+end
+
 local log = io.open(out .. "/log.txt", "w")
 if not log then
 	emu.print_error("ddp_check: cannot write " .. out .. "/log.txt (make the folder first)")
@@ -165,6 +220,9 @@ local function on_frame()
 	if vblank > 2500 then space:write_u8(0x102cca, 0x80) end    -- (player 1's time without harm: held)
 	log:write(string.format("%d %04x %d %08x\n", vblank, held, arrived and 1 or 0, signature()))
 	arrived = false
+	if video_every > 0 and (vblank % video_every == 0 or vblank % video_every == video_every - 1) then
+		write_video(vblank)
+	end
 	if vblank % every == 0 then
 		write_file(string.format("%s/ram_%d.bin", out, vblank), space:read_range(0x100000, 0x10ffff, 8))
 		if screen then
