@@ -938,9 +938,10 @@ static void window_title(void)
 }
 
 /* At the screen's own VBLANK, 90 us after the vblank interrupt came (cave/program.h's program_at_screen_vblank): the
-   picture drawn there, as the board shows it and MAME draws it (the sprites latched as the interrupt came, the
-   layers' scroll and the palette as the interrupt has set them, and what the program wrote in those 90 us: a fade's
-   step). Checked against MAME's own ddonpach: the same to the pixel at every picture before the games part */
+   picture drawn there, as MAME draws it (the sprites latched as the interrupt came, the layers' scroll and the
+   palette as far as the interrupt, still running, has set them). Checked against MAME's own ddonpach: the same to
+   the pixel at every picture before the games part. The board draws line by line as the screen scans (TODO.md: the
+   picture line by line) */
 /* Drawn only when it will be shown: the look-ahead's picture, or with arcade_timing the last frame's of the window's
    frame (not the frames fast forward or the warning's skip run unseen, nor the real frame's the look-ahead's
    replaces: the drawing is the most of a frame's work) */

@@ -82,6 +82,17 @@
             (above). Checked: MAKE=1 (and SHIFT=3) the same; slowdown_check with the hook drawing writes the same
             waits as without; cref_timed against slowdown_check 20,000 the same; replay_check's six in step;
             latency_check: the board 2 frames, FAST 1, ARCADE 2, as before. DonPachi Recomp's port doesn't use it yet
+      - [ ] **The picture line by line, as the board draws it** (owner, 25-11-2026: on the list, not now). Found
+            drawing each frame both ways over 20,000 frames: the vblank interrupt is still running at the screen's
+            VBLANK in every frame (by up to 4.5 ms), and in 934 (5%) a picture drawn there (MAME's way, 0.5.0's)
+            differs from one drawn as the interrupt returns (before 0.5.0): a colour's step (the WARNING's flash), now
+            and then the scroll. The board draws line by line as the screen scans, the interrupt's later writes
+            reaching the lines drawn after them, so it is neither. The way: the scroll, line-scroll and palette
+            writes kept with their cycle during the frame, and each line drawn with what was set when the board
+            draws it (the visible lines' times from MAME's screen: 271.5 lines a frame); the sprites as now (the
+            sprite chip takes them at the VBLANK). Then checked against MAME (its drawing a frame at once) and, if
+            ever, a capture of a real board. In Cave68kSDK's video, for both games (DonPachi Recomp keeps drawing as
+            its interrupt returns until then)
       - [ ] VBLANK 4,149: how near its time the frame came in the port, what ran in it, and what MAME's machine
             spends there that the board model doesn't (wait states, the VBLANK's place in the frame, the YMZ280B's
             interrupt); fixed in Cave68kSDK if so, then checked again to the end
