@@ -6,7 +6,9 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
-Nothing yet.
+### Changed
+- **SESSION counts player 2 joining as a credit**, as starting a game and each continue already were.
+- **Screenshots in the README**: the gadget panels and the classic ones.
 
 ## v0.7.0 (2026-11-26)
 

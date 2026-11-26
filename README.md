@@ -14,6 +14,16 @@ own side panels.
 You need your own ROM set: MAME's `ddonpach` (International, Master Ver. 97/02/05) or its Japanese clone
 `ddonpachj`. No ROMs, and nothing extracted from them, are part of this repository.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/gadgets_stage1.png" width="49%" alt="Stage 1-1 with the gadget side panels: ship, rank, chain, board speed, bees and session on the left; score, score graph, stages against their bests, last scored, input and the nearest achievements on the right">
+  <img src="docs/screenshots/gadgets_boss.png" width="49%" alt="The end of stage 1-2 with the gadget side panels">
+</p>
+<p align="center">
+  <img src="docs/screenshots/classic.png" width="49%" alt="Stage 1-1 with the classic side panels, in the game's own lettering">
+</p>
+
 ## Download and play
 
 1. Get the latest release from [**Releases**](https://github.com/CapsLock4284/DoDonPachi-Recomp/releases/latest):

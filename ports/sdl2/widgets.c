@@ -341,12 +341,14 @@ static struct
 	uint32_t frames;
 	unsigned games, credits;
 	uint32_t best;
+	bool two;                   /* player 2 in the game (joining is a credit too) */
 } session;
 
 static void run_begin(void)
 {
 	session.games++;
 	session.credits++;
+	session.two = false;
 	memset(&chain, 0, sizeof(chain));
 	memset(&run, 0, sizeof(run));
 	run.area = -1;
@@ -468,6 +470,9 @@ void widgets_frame(bool clean)
 		run.last_score_seen = score;
 		if (score > session.best)
 			session.best = score;
+		if (player_in(1) && player_in(0) && !session.two)
+			session.credits++;    /* (player 2 joined, or began with player 1) */
+		session.two = player_in(1) && player_in(0);
 		chain_frame(player, score);
 		if (!clean)
 			run.stage_counts = false;
