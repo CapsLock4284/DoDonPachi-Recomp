@@ -14,7 +14,10 @@
  *    scrolling, the palette, the priorities), not the games' timing. MAME keeps each picture at its frame notifier,
  *    a moment after the VBLANK whose memories it keeps, and draws the screen a moment after that interrupt: so each
  *    point is drawn from VBLANK N's memories and from N-1's (the sprites from one, the rest from either), and the one
- *    nearest MAME's picture N is the one compared (each point's line says which). Writes the first pictures that
+ *    nearest MAME's picture N is the one compared (each point's line says which). The sprites are also drawn from
+ *    the other of the game's two sprite banks ($800008's low bit): MAME's memories are kept after its interrupt has
+ *    begun, and the game turns the bank over there, so MAME's picture of the frame before is the other bank's
+ *    (found on the owner's first run: the same at every point then). Writes the first pictures that
  *    differ (MAME_REDRAW_KEEP of them, 5) as redraw_mame_N.ppm, redraw_port_N.ppm and redraw_diff_N.ppm (white where
  *    they differ) where it runs.
  */
@@ -120,12 +123,15 @@ static void put_part(const uint8_t *data, int part)
 		cave_write16(parts[part].address + offset, (uint16_t)(at[offset] << 8 | at[offset + 1u]), 0xFFFFu);
 }
 
-/* the picture drawn from these memories: the sprites latched from 'sprites', the rest from 'rest' */
-static void draw_from(const uint8_t *sprites, const uint8_t *rest, uint32_t *picture)
+/* the picture drawn from these memories: the sprites latched from 'sprites' (from the other of the game's two
+   sprite banks when 'other_bank'), the rest from 'rest' */
+static void draw_from(const uint8_t *sprites, const uint8_t *rest, bool other_bank, uint32_t *picture)
 {
 	for (int part = 0; part < PARTS; part++)
 		if (part != WORK_RAM_PART)
 			put_part(sprites, part);
+	if (other_bank)
+		cave_board.video_regs[4] ^= 1u;
 	video_latch_sprites();
 	for (int part = 0; part < PARTS; part++)
 		if (part != WORK_RAM_PART)
@@ -194,7 +200,9 @@ static void write_video(const char *dir, uint64_t n)
 		if (part == VIDEO_REGS_PART)
 			for (uint32_t word = 0; word < parts[part].size / 2u; word++)
 			{
-				const uint16_t value = word < CAVE_VIDEO_REG_WORDS ? cave_board.video_regs[word] : 0u;
+				/* (the sprite bank turned over, as MAME's are kept: after its interrupt has turned it) */
+				const uint16_t value = word >= CAVE_VIDEO_REG_WORDS ? 0u
+					: word == 4u ? cave_board.video_regs[word] ^ 1u : cave_board.video_regs[word];
 
 				fputc(value >> 8, file);
 				fputc(value & 255, file);
@@ -210,7 +218,7 @@ static void write_video(const char *dir, uint64_t n)
 			}
 	}
 	fclose(file);
-	/* its picture: drawn from these memories now (as MAME's, a moment after) */
+	/* its picture: drawn from these memories now */
 	video_latch_sprites();
 	video_draw(picture);
 	snprintf(path, sizeof(path), "%s/screen_%llu.bin", dir, (unsigned long long)n);
@@ -350,16 +358,20 @@ int main(int argc, char **argv)
 			continue;
 		}
 		{
-			/* the four ways to draw it: the sprites and the rest each from N-1 or N */
+			/* the ways to draw it: the sprites and the rest each from N-1 or N, the sprites from either bank (N-1's
+			   memories with the other bank first: as MAME's picture N is drawn) */
 			const uint8_t *const sources[2] = { before ? before : now, now };
-			static const char *const names[4] = { "N-1's memories", "N-1's sprites, N's rest", "N's sprites, N-1's rest",
-				"N's memories" };
+			static const char *const names[8] = { "N-1's memories, the other sprite bank", "N-1's memories",
+				"N-1's sprites, N's rest", "N-1's sprites (the other bank), N's rest", "N's sprites, N-1's rest",
+				"N's sprites (the other bank), N-1's rest", "N's memories", "N's memories, the other sprite bank" };
+			static const int sprites_of[8] = { 0, 0, 0, 0, 1, 1, 1, 1 }, rest_of[8] = { 0, 0, 1, 1, 0, 0, 1, 1 };
+			static const bool other[8] = { true, false, false, true, false, true, false, true };
 
-			for (int way = before ? 0 : 3; way < 4; way++)
+			for (int way = before ? 0 : 6; way < 8; way++)
 			{
 				unsigned now_differ;
 
-				draw_from(sources[way >> 1], sources[way & 1], port);
+				draw_from(sources[sprites_of[way]], sources[rest_of[way]], other[way], port);
 				now_differ = differing(port, mame);
 				if (now_differ < least)
 				{

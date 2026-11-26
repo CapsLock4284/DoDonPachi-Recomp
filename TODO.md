@@ -162,14 +162,18 @@
       the priorities are MAME's (cave_v.cpp, sprite013.cpp, init_ddonpach). The small dark shapes are the wrecks
       ground enemies leave (their colour bank is dark). The layers' row-scroll and row-select added to Cave68kSDK
       (MAME's), in case a later stage uses them (the first stage and the demo do not).
-- [ ] The picture side by side with MAME's own, from a later stage. (Not a player that gets further: the full-game
+- [x] The picture side by side with MAME's own, from a later stage. (Not a player that gets further: the full-game
       check below has one, and the real MAME's game drifts from the port's within a few thousand VBLANKs, its YMZ280B
       interrupt held to MAME's own sound updates.) The way (26-11-2026): tools/mame/ddp_check.lua 0.5.0 keeps the
       board's video memories (video_N.bin: sprites, layers, their registers, palette, video registers, work RAM) with
       MAME's picture every DDP_VIDEO_EVERY VBLANKs (2,500) and the one before; tests/mame_redraw puts each in the
       port's board, draws it as the port does and compares it with MAME's picture: MAME's own drawing against the
       port's at every stage the run reaches, however far the games have parted. Checked on itself (MAKE=1: 12 states
-      from the port, all drawn the same). Waiting for the owner's MAME run
+      from the port, all drawn the same). The owner's run (MAME 0.289, 26-11-2026, build/mame_redraw): ALL 120 PICTURES
+      THE SAME, pixel for pixel, 1-1 to 1-6, 2-1 to 2-6 and 2-7 with Hibachi (27 points there). Found on the way:
+      MAME's memories are kept after its interrupt has begun, where the game has already turned its sprite bank over
+      ($800008 bit 0): MAME's picture N is N-1's memories with the other bank (113 points; the other 7 the same
+      either way). Not a difference of the port's: where the script keeps them
 - [x] **The arcade's slowdown matched** (owner: very important, for every game on this board). The original program on
       MAME's 68000 core at the board's timing (tools/cref/cref_timed) against the port (tests/slowdown_check), the
       same inputs (tests/player.h): over 150,000 VBLANKs (about 42 minutes), the same board at all 147,446 game

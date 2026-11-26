@@ -375,6 +375,13 @@ the same .zip, merged, or `ddonpachj.zip` beside it; `tests/build.sh` builds `sr
 When they differ, `TRACE_FRAME=N` on both (the port built from `tools/decompile.py --trace`) and
 `tests/trace_compare.py` show where the port first goes another way.
 
+**The picture against the real MAME's own drawing.** `tools/mame/ddp_check.lua` plays the same game in MAME itself
+(its header has the command line) and keeps MAME's picture with all of the board's video memories (sprites, layers,
+their registers, palette) every 2,500 VBLANKs; `tests/mame_redraw build/mame_redraw` draws each of those states with
+the port's renderer and compares it with MAME's picture pixel by pixel. As each picture is drawn from MAME's own
+memories, the two games needn't stay in step, so it covers the whole game. On MAME 0.289 (26-11-2026): all 120
+pictures the same, from 1-1 through both loops to 2-7 and Hibachi.
+
 ## Licence
 
 BSD-3-Clause: see `LICENSE`. The board code is Cave68kSDK's, the translator is arcade-decomp's; each says
