@@ -241,7 +241,10 @@ and the panels only take the black space at its sides (as wide as the screen lea
 - Right: the stage and the score, and the high score table chased one place at a time: #5 first, then #4 once it
   is passed, up to #1 ("NEXT #3", the score, and how much more it takes); then how much more score the next extra
   life takes ("1UP IN": the game gives one at 6,000,000 and one at 20,000,000; NO MORE after them), also a dotted
-  line on the graph when it is in sight. The graph shows the score through the
+  line on the graph when it is in sight. RANK: how hard the game is making itself now, 0 to 63, as a bar (green,
+  yellow from 22, red from 43). The game works it out again every frame from the stage and loop, the ships' power,
+  the lives, the bees taken and the time since the last miss (about one more every 36 seconds without one), and
+  more on the first credit with no misses; a life lost brings it down. The graph shows the score through the
   game against the place being chased (the dashed line at the top); each place passed leaves a line in its colour
   where it was passed, with its number. Under it, LOOP 2: whether this game still gets the second loop, from the
   game's own rule (below), in the first loop: YES and how once it is sure, the misses left while those alone would

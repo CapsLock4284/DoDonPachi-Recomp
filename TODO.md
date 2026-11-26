@@ -310,11 +310,15 @@
       of a stage was missed; a stage map (the whole stage drawn from its data, "you are here") with its enemies and
       their points (names our own: they are not in the ROM). No painted art (portraits): an artist's, loaded from a
       folder, if ever
-- [ ] **A rank gauge** (owner, 25-11-2026: a player's request; for the gadget-style panels above, the first of
+- [x] **A rank gauge** (owner, 25-11-2026: a player's request; for the gadget-style panels above, the first of
       their gadgets): the game's rank as a gauge, how hard the game is making itself now (bullet speed, intervals).
-      To find first: where DoDonPachi keeps its rank and its range (DonPachi Recomp's is $101A32, 0-63, its low
-      byte), and what raises and lowers it, from the program, checked over the test players' games. Could go in
-      today's right panel first, then move to the gadgets when they come
+      Done 25-11-2026 on today's right panel (widgets.c's draw_rank, under 1UP IN; the graph 8 shorter and the
+      stages' rows 18 for it; the FPS meter over the rank, the graph and the second loop's lines): $101969, 0-63,
+      worked out every frame of play by func_000442 (the same as DonPachi's at $101A33, found by its clamp at 63):
+      the stage's base from a table, the stage, the loop (32), each ship's type, style and power, more on the first
+      credit and without a miss, the lives (2 each), the bees since the stage began or the last miss, the time since
+      the last miss (1 each 2,048 frames). Seen over the test players' games: 22-24 at 1-1's start, 2 down for each
+      life lost, 63 by 1-3 at MAX power without a miss. To move to the gadgets when they come
 - [ ] Side panel ideas still open: the lives; the hit counter's chain (the GP gauge's DoDonPachi equivalent);
       the boss's health; the stage's progress (its scroll position); the run's statistics (bombs used, misses by
       stage); the high score chase and the stage bests per ship and style

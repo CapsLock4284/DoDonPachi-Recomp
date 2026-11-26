@@ -884,10 +884,44 @@ static void draw_input(panel *p, int top)
 
 /* ---- the right panel: the score chasing the high scores, its graph, this stage ---- */
 
-#define GRAPH_TOP    100         /* (under the next extra life's line) */
-#define GRAPH_HEIGHT 56          /* (the second loop's lines under it, LOOP2_TOP) */
+#define RANK_TOP     100         /* (under the next extra life's line) */
+#define GRAPH_TOP    124         /* (under the rank) */
+#define GRAPH_HEIGHT 48          /* (the second loop's lines under it, LOOP2_TOP) */
 #define LOOP2_TOP    (GRAPH_TOP + GRAPH_HEIGHT + 5)
-#define METER_HEIGHT 78          /* the FPS meter, over the graph and the second loop's lines */
+#define STAGES_TOP   200
+#define STAGE_ROWS   18
+
+/* ---- the rank: how hard the game is making itself, 0-63 ---- */
+
+/* $101969 (the low byte of $101968), worked out again every frame of play by func_000442 (src/game_00.c): the
+   stage's base (a table by stage, $10122E's), the stage, the loop (32), each player's ship, style and power (2 a
+   level of its own weapon, 1 of the other), more again on the first credit and more without a miss ($10194C: 2 a
+   miss), the lives (2 each), the bees taken since the stage began or the last miss ($103F8E) and the time since the
+   last miss ($101970, a frame count: 1 each 2,048 frames, 36 seconds); 63 at most. Its halves and quarters are kept
+   beside it for the enemies' shots ($10196A, $10196C), and what is over 32 doubled ($10196E). Seen over the test
+   players' games: 22-24 at 1-1's start, 2 down for each life lost, up with each power level */
+#define RANK         0x101968u
+#define RANK_MOST    63u
+
+static void draw_rank(panel *p)
+{
+	const bool showing = run.on && in_game();
+	const unsigned rank = word(RANK) & 0xFFu;
+	char text[16];
+
+	put_text(p, 8, RANK_TOP, "RANK", showing ? GREY : DIM, 1);
+	snprintf(text, sizeof(text), "%u/%u", rank > RANK_MOST ? RANK_MOST : rank, RANK_MOST);
+	put_right(p, RANK_TOP, showing ? text : "-", showing ? WHITE : DIM, 1);
+	outline(p, 8, RANK_TOP + 10, p->w - 8, RANK_TOP + 18, showing ? GREY : DIM);
+	if (showing)
+	{
+		const int filled = (p->w - 18) * (int)(rank > RANK_MOST ? RANK_MOST : rank) / (int)RANK_MOST;
+		/* green, to yellow from a third, to red from two thirds (as DonPachi Recomp's) */
+		const uint32_t colour = rank < 22u ? GREEN : rank < 43u ? YELLOW : RED;
+
+		box(p, 9, RANK_TOP + 11, 9 + filled, RANK_TOP + 17, colour);
+	}
+}
 
 /* the score of the player's next extend, as the score is kept (game_memory.h: $101950 / $101954, BCD; func_044BBE
    gives the life when the score reaches it), or 0 when there are none left ($FFFF) */
@@ -995,9 +1029,6 @@ static void difference(char *out, size_t size, uint32_t made, uint32_t against, 
 /* the stages of the loop being played, one under the other: each finished one's score and how it went against the
    best for that stage before it (a new best in gold), the one being played as it goes (against its best so far),
    those to come dim */
-#define STAGES_TOP  184
-#define STAGE_ROWS  19
-
 static void draw_stages(panel *p, uint32_t score)
 {
 	const int room = p->w - 16;
@@ -1177,6 +1208,7 @@ static void draw_right(panel *p)
 		put_text(p, 8, 86, label, extend ? EXTEND_COLOUR : DIM, 1);
 		put_right(p, 86, extend ? value : "NO MORE", extend ? WHITE : DIM, 1);
 	}
+	draw_rank(p);
 	draw_graph(p, score);
 	draw_loop2(p);
 	draw_stages(p, score);
@@ -1249,7 +1281,8 @@ void widgets_set_meter(const widgets_meter *now)
 
 static void draw_meter(panel *p)
 {
-	const int top = GRAPH_TOP - 3, bottom = GRAPH_TOP + METER_HEIGHT + 3, w = p->w;
+	const int top = RANK_TOP - 3, bottom = STAGES_TOP - 4, w = p->w;    /* (over the rank, the graph and the second
+	                                                                         loop's lines) */
 	char text[24];
 	const struct { const char *name; double value; const char *format; uint32_t colour; } rows[6] = {
 		{ "GAME", meter.game, "%.1f", meter.game < meter.board - 0.5 ? YELLOW : GREEN },

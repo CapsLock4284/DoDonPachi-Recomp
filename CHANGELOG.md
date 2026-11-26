@@ -6,7 +6,14 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
+Nothing yet.
+
+## v0.5.0 (2026-11-25)
+
 ### Added
+- **A rank gauge** on the right side panel (a player's request): how hard the game is making itself right now, 0
+  to 63, as the game itself works it out every frame. It climbs with the stage and loop, your power, your lives,
+  the bees and the time since your last miss (one more about every 36 seconds), and a life lost brings it down.
 - **`--playtest`**: the game plays itself all the way through, as fast as your PC can run it, to check a build:
   both loops, 2-7, Hibachi and the ending, with every ship and style (or one: `--playtest B-laser`). Player 1 is kept
   from harm and nothing is saved; a message at the end says whether it passed, and `ddonpach_playtest.txt` has each
