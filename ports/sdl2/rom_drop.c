@@ -8,6 +8,7 @@
  *    The font is this program's own (font5x7.h). DonPachi Recomp's, the game's names from its board description.
  */
 #include "rom_drop.h"
+#include "settings.h"
 
 #include "cave/board.h"
 #include "cave/rom_set.h"
@@ -241,8 +242,9 @@ bool rom_drop_japan_too(const char *source, const char *world_data_path, const c
 static bool drop_window(const char *data_path, const char *why, bool *saved, int version, char *dropped,
 	size_t dropped_size)
 {
-	SDL_Window *const window = SDL_CreateWindow("DoDonPachi: the ROM set", SDL_WINDOWPOS_CENTERED,
-		SDL_WINDOWPOS_CENTERED, WINDOW_W, WINDOW_H, 0);
+	SDL_Window *const window = SDL_CreateWindow("DoDonPachi: the ROM set",
+		SDL_WINDOWPOS_CENTERED_DISPLAY(settings_monitor_display()),
+		SDL_WINDOWPOS_CENTERED_DISPLAY(settings_monitor_display()), WINDOW_W, WINDOW_H, 0);
 	SDL_Renderer *renderer;
 	char status[400] = "";
 	uint32_t status_colour = WHITE;
@@ -339,8 +341,8 @@ bool rom_drop_screen_both(const char *data_path, const char *japan_data_path, co
 	if ((*japan_saved = rom_drop_japan_too(dropped, data_path, japan_data_path)))
 		return true;
 	/* else the same window again: ddonpachj.zip, or skip */
-	window = SDL_CreateWindow("DoDonPachi: the ROM set", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_W,
-		WINDOW_H, 0);
+	window = SDL_CreateWindow("DoDonPachi: the ROM set", SDL_WINDOWPOS_CENTERED_DISPLAY(settings_monitor_display()),
+		SDL_WINDOWPOS_CENTERED_DISPLAY(settings_monitor_display()), WINDOW_W, WINDOW_H, 0);
 	if (!window)
 		return true;
 	window_icon_set(window);

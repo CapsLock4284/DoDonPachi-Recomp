@@ -85,6 +85,7 @@ enum
 	ITEM_BULLETS,                 /* the game options': the bullets' points (hitbox.h) */
 	ITEM_VERSION,                 /* the main menu's version of the game: the World one or the Japanese one */
 	ITEM_FILTER_LAYERS,           /* the filter on each layer and the sprites apart (layer_filter.h) */
+	ITEM_MONITOR,                 /* the monitor the game is on (settings.monitor) */
 	ITEM_FAST_FORWARD_KEY = 90,   /* the hotkeys (both players': [hotkeys]): fast forward, save state, load state */
 	ITEM_SAVE_STATE_KEY, ITEM_LOAD_STATE_KEY, ITEM_SLOT_PREVIOUS_KEY, ITEM_SLOT_NEXT_KEY,
 	ITEM_ACTION = 100,            /* + an action: a player's key and button for it */
@@ -104,7 +105,7 @@ static const char *const item_labels[] = {
 	"RETRY TRAINING", "TRAINING MENU", "REPLAYS", "WATCH", "DELETE", "YES, DELETE IT", "NO", "YES", "NO",
 	"STOP REPLAY", "HITBOX", "AURA", "ACHIEVEMENTS", "STATISTICS", "UPDATE", "YES, UPDATE", "NOT NOW",
 	"CHECK FOR UPDATES", "DIFFICULTY", "SOUND", "MUSIC", "EFFECTS", "VOICES", "SPEED", "BULLETS", "VERSION: WORLD",
-	"BY LAYER"
+	"BY LAYER", "MONITOR"
 };
 
 static const char *const action_labels[ACTIONS] = {
@@ -291,7 +292,7 @@ static void build_items(void)
 	{
 		static const int graphics_items[] = { ITEM_SCALING, ITEM_SMOOTH, ITEM_FILTER, ITEM_FILTER_LAYERS,
 			ITEM_SCANLINES, ITEM_CRT,
-			ITEM_VSYNC, ITEM_RENDERER, ITEM_FPS, ITEM_PANELS, ITEM_ROTATE, ITEM_SCALE, ITEM_FULLSCREEN, ITEM_BACK };
+			ITEM_VSYNC, ITEM_RENDERER, ITEM_FPS, ITEM_PANELS, ITEM_ROTATE, ITEM_SCALE, ITEM_FULLSCREEN, ITEM_MONITOR, ITEM_BACK };
 
 		add_items(graphics_items, sizeof(graphics_items) / sizeof(graphics_items[0]));
 	}
@@ -530,6 +531,17 @@ static void change(int item, int step, bool wrap)
 		in_use->fullscreen = file->fullscreen = at != 0;
 		if (at != 0)
 			in_use->exclusive = file->exclusive = at == 2;
+		host.apply_window();
+		break;
+	}
+	case ITEM_MONITOR:
+	{
+		/* MAIN, then each monitor connected (and the one set, if it isn't now): the window moves to it at once */
+		const int connected = SDL_GetNumVideoDisplays();
+		const int last = clamp(connected > in_use->monitor ? connected : in_use->monitor, 1, SETTINGS_MONITORS);
+
+		in_use->monitor = wrap ? (in_use->monitor + 1) % (last + 1) : clamp(in_use->monitor + step, 0, last);
+		file->monitor = in_use->monitor;
 		host.apply_window();
 		break;
 	}
@@ -1478,6 +1490,18 @@ static void item_value(int item, char *out, size_t size)
 	case ITEM_FULLSCREEN:
 		snprintf(out, size, "%s", !s->fullscreen ? "OFF" : s->exclusive ? "EXCLUSIVE" : "BORDERLESS");
 		break;
+	case ITEM_MONITOR:
+	{
+		SDL_Rect bounds;
+
+		if (s->monitor <= 0)
+			snprintf(out, size, "MAIN");
+		else if (s->monitor > SDL_GetNumVideoDisplays() || SDL_GetDisplayBounds(s->monitor - 1, &bounds) != 0)
+			snprintf(out, size, "%d: NOT FOUND", s->monitor);
+		else
+			snprintf(out, size, "%d: %dX%d", s->monitor, bounds.w, bounds.h);
+		break;
+	}
 	case ITEM_CONTROLS:
 	case ITEM_GRAPHICS:
 	case ITEM_GAME:
@@ -1809,6 +1833,9 @@ static const char *item_help(int item)
 	case ITEM_FULLSCREEN:
 		return "BORDERLESS: A WINDOW OVER THE WHOLE SCREEN (QUICK TO SWITCH). EXCLUSIVE: TRUE FULL SCREEN. "
 			"ALT+ENTER OR F11 SWITCHES.";
+	case ITEM_MONITOR:
+		return "THE MONITOR THE GAME OPENS ON. MAIN: WINDOWS' MAIN DISPLAY. EACH OTHER IS SHOWN WITH ITS SIZE (A "
+			"MONITOR ON ITS SIDE IS TALLER THAN WIDE). THE GAME MOVES TO IT AT ONCE.";
 	case ITEM_CONTROLS:
 		return "THE KEYS AND GAMEPAD BUTTONS FOR BOTH PLAYERS, AND THE HOTKEYS.";
 	case ITEM_QUIT:

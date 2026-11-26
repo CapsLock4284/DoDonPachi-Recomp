@@ -182,6 +182,7 @@ how its picture is shown:
 | SIDE PANELS | CLASSIC, GADGETS, OFF | Panels in the empty space beside the picture on a wide screen: the game's information beside the picture, in the game's own lettering (CLASSIC) or as blue gadgets drawn at the screen's resolution (GADGETS; see Side panels below). They widen to fill the screen; the game's picture keeps its size |
 | WINDOW SIZE | 1X to 8X | The window's size, as times the arcade's picture (3X by default) |
 | FULL SCREEN | OFF, BORDERLESS, EXCLUSIVE | BORDERLESS: a window over the whole screen, quick to switch away from. EXCLUSIVE: the display is the game's alone, which may lag a little less. F11 or Alt+Enter switches it too |
+| MONITOR | MAIN, 1 to 8 | The monitor the game opens on (its window, full screen too, and the ROM window): MAIN is Windows' main display; the others are shown with their size ("2: 1080X1920"), so a monitor turned on its side for TATE is the one taller than wide. The game moves there as soon as it is chosen. `[window] monitor` in `ddonpach.ini` (`main` or a number), or `--monitor N` for one run. A monitor that isn't connected: the main one |
 
 Cheats (GAME OPTIONS > CHEATS): the port's own P1 INVINCIBLE and P2 INVINCIBLE (nothing can hit that player's ship:
 the time without harm the game gives after a life, kept up; the ship looks as always), for seeing the whole game. With

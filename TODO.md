@@ -184,6 +184,13 @@
 
 ## The port
 
+- [x] **Which monitor** (a player's request: DonPachi Recomp's GitHub issue #5, 25-11-2026, for all the ports: a
+      monitor set up for TATE, without making it Windows' main display): GRAPHICS > MONITOR, MAIN or 1 to 8, each
+      shown with its size ("2: 1080X1920"); `[window] monitor` (main or a number), `--monitor N` for a run. The
+      window, full screen too, and the ROM window open on it; chosen in the menu, the game moves there at once (out
+      of full screen, centred, back in). One not connected: the main one. The log names the monitor used. As
+      DonPachi Recomp's
+
 - [x] The game in a window (ports/sdl2, DonPachi Recomp's port cut down): the picture with its video settings
       (scaling, scanlines, the CRT look, the pixel-art scalers, rotation), the sound, keys and gamepads
       (ddonpach.ini), the EEPROM kept, save states, fast forward, MAME's cheat files, the ROM drop window, its own

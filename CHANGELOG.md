@@ -14,6 +14,11 @@ notes). The release zip carries this file as `CHANGES.txt`.
   sprite, the score and the place you're chasing, each stage against its best, the last points scored, the
   controls, and the stage's achievements. CLASSIC is the panels as before, and stays the default; an old
   `side_panels = on` reads as classic.
+- **Choose the monitor** (a player's request, DonPachi Recomp's issue #5): SETTINGS > GRAPHICS > MONITOR puts the
+  game on any of your monitors, windowed or full screen, without making it Windows' main display. Each monitor is
+  shown with its size, so one turned on its side for TATE is easy to spot (taller than wide, as "2: 1080X1920").
+  The game moves there as soon as you choose it, and opens there from then on. Also `monitor` in `ddonpach.ini`, or
+  `--monitor N` for one run. If that monitor isn't connected, the game opens on the main one.
 
 ## v0.5.0 (2026-11-25)
 
