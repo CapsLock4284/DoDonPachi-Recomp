@@ -320,7 +320,19 @@
       the sound commands, our own title table); hits by weapon and the chain's timer; achievements by area; which bee
       of a stage was missed; a stage map (the whole stage drawn from its data, "you are here") with its enemies and
       their points (names our own: they are not in the ROM). No painted art (portraits): an artist's, loaded from a
-      folder, if ever
+      folder, if ever. The mockup (25-11-2026, a design canvas: 1920 x 1080, the game in the middle at its size):
+      the owner's picks: keep the ship status, the chain (hits by weapon), the bees, the score, the last kill and
+      the achievements by stage; add the board's FPS and slowdown; the bees as the game's own bee sprite; the
+      stages' scores against their bests (the owner's own wish: before the map); the rank smaller, a left-to-right
+      bar green to red, not a dial; no music or track names; the stage map put back, after the stages; the input
+      display (the stick and S, B, C, as today's), and the second loop's line (LOOP 2 / HIBACHI) under the score.
+      Agreed (owner, 25-11-2026: "looks great"). Switchable with today's panels (owner): SIDE PANELS in the graphics
+      options as CLASSIC, GADGETS or OFF (`side_panels` in ddonpach.ini), each kept as it is
+      - [ ] MAYBE (owner, 25-11-2026), gadgets to add later: a boss's timer (the time left before it leaves by
+            itself, about 3 minutes: the kill's bonus); a boss's health (its hit points, as the playtest's aim reads
+            DonPachi's); the misses and bombs this stage (the second loop's 2, the no-miss and no-bomb achievements,
+            the rank); the lives (and the next extra life); each stage's time against its best (a split, gold when
+            quicker); a line for the session (play time, games, credits, the best today)
 - [x] **A rank gauge** (owner, 25-11-2026: a player's request; for the gadget-style panels above, the first of
       their gadgets): the game's rank as a gauge, how hard the game is making itself now (bullet speed, intervals).
       Done 25-11-2026 on today's right panel (widgets.c's draw_rank, under 1UP IN; the graph 8 shorter and the
