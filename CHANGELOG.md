@@ -10,7 +10,12 @@ notes). The release zip carries this file as `CHANGES.txt`.
 - **SCORE GRAPH on the gadget panels** (the one thing the classic panels had that the gadgets didn't): under SCORE,
   your score through the game against the high score place you're chasing (dashed at the top), a line in each
   place's colour where you passed it, marks where each stage began, and the next extra life's score (dotted).
+
 ### Changed
+- **The LOOP 2 line shows every way in** (the owner's idea): besides the misses left, it now takes turns showing
+  how far you are on the other three ways the game gives the second loop: your best chain against what your ship
+  needs (HITS 412/624), the score against 50 million (SCORE 31M/50M) and the stages with all 13 bees (BEE STAGE
+  2/4), a few seconds each. Once you've made one of them it stays on it (YES: HITS, YES: SCORE or YES: BEES).
 - **The gadget panels' GOALS show the achievements you're closest to** (the owner's idea): instead of the same five
   every stage, the five you haven't earned yet that this game is nearest to, each with how far there is to go
   ("SCORE 10M 2,340,000 TO GO", "100 HITS BEST 49", "CLEAR 1-6 AT 1-2", "SURVIVOR 2:50"), its box filling up as it

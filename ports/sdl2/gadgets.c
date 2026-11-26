@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* The SCORE GRAPH gadget under SCORE (owner, 26-11-2026: to try; 0 takes it out, the right panel as before) */
+/* The SCORE GRAPH gadget under SCORE (owner, 26-11-2026: kept; 0 takes it out, the right panel as before) */
 #ifndef SCORE_GRAPH
 #define SCORE_GRAPH 1
 #endif

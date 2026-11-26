@@ -249,8 +249,9 @@ and the panels only take the black space at its sides (as wide as the screen lea
   more on the first credit with no misses; a life lost brings it down. The graph shows the score through the
   game against the place being chased (the dashed line at the top); each place passed leaves a line in its colour
   where it was passed, with its number. Under it, LOOP 2: whether this game still gets the second loop, from the
-  game's own rule (below), in the first loop: YES and how once it is sure, the misses left while those alone would
-  do it, or what is still short; NO after a continue or with two players. In the second loop it is HIBACHI: AFTER
+  game's own rule (below), in the first loop: YES and how (HITS, SCORE or BEES) once one of those is met, staying
+  on it; until then, a few seconds each, the misses left (while 2 or fewer) and how far the other three have come
+  (HITS 412/624, SCORE 31M/50M, BEE STAGE 2/4); NO after a continue or with two players. In the second loop it is HIBACHI: AFTER
   2-6, then 2-7 NOW! Below: the loop's six stages one under the other, a record of the game so
   far: each stage finished with its score and how it went against the best ever for that stage (+ or -, gold for a
   new best), the stage being played as it goes (yellow), and those to come with their best to beat. The stages' best

@@ -1174,29 +1174,41 @@ static void loop2_line(char *title, size_t title_size, char *show_out, size_t sh
 			show = text;
 			colour = GOLD;
 			break;
-		case LOOP2_ON_TRACK:
-		{
-			const unsigned left = LOOP2_MISSES - s.misses;
-
-			snprintf(text, sizeof(text), "%u MISS%s LEFT", left, left == 1u ? "" : "ES");
-			show = text;
-			colour = left == 2u ? GREEN : left == 1u ? YELLOW : ORANGE;
-			break;
-		}
 		default:
 		{
-			/* (too many misses: the three others, a few seconds each) */
-			const unsigned which = (unsigned)(cave_board.frame / (3u * SECOND_FRAMES)) % 3u;
+			/* none of the three that can't be lost yet: the misses left (while 2 or fewer), then how far each of the
+			   three has come, a few seconds each (orange once the misses are past 2: only those three are left) */
+			const bool misses_left = s.state == LOOP2_ON_TRACK;
+			const unsigned shown = misses_left ? 4u : 3u;
+			const unsigned which = (unsigned)(cave_board.frame / (3u * SECOND_FRAMES)) % shown
+				+ (misses_left ? 0u : 1u);
 
 			if (which == 0u)
-				snprintf(text, sizeof(text), "HITS %u/%u", s.hits, s.hits_needed);
-			else if (which == 1u)
-				snprintf(text, sizeof(text), "SCORE %uM/50M", (unsigned)(gm_bcd(SCORE + 4u * (unsigned)run.player)
-					/ 100000u));
+			{
+				const unsigned left = LOOP2_MISSES - s.misses;
+
+				snprintf(text, sizeof(text), "%u MISS%s LEFT", left, left == 1u ? "" : "ES");
+				colour = left == 2u ? GREEN : left == 1u ? YELLOW : ORANGE;
+			}
 			else
-				snprintf(text, sizeof(text), "BEE STAGE %u/%u", s.bee_stages, LOOP2_BEE_STAGES);
+			{
+				if (which == 1u)
+					snprintf(text, sizeof(text), "HITS %u/%u", s.hits, s.hits_needed);
+				else if (which == 2u)
+				{
+					/* (in millions: a tenth's place under 10, the score as kept being a tenth of what it shows) */
+					const unsigned tenths = (unsigned)(gm_bcd(SCORE + 4u * (unsigned)run.player) / 10000u);
+
+					if (tenths < 100u)
+						snprintf(text, sizeof(text), "SCORE %u.%uM/50M", tenths / 10u, tenths % 10u);
+					else
+						snprintf(text, sizeof(text), "SCORE %uM/50M", tenths / 10u);
+				}
+				else
+					snprintf(text, sizeof(text), "BEE STAGE %u/%u", s.bee_stages, LOOP2_BEE_STAGES);
+				colour = misses_left ? WHITE : ORANGE;
+			}
 			show = text;
-			colour = ORANGE;
 			break;
 		}
 		}
