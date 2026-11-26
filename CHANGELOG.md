@@ -6,6 +6,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
+Nothing yet.
+
+## v0.6.0 (2026-11-26)
+
 ### Added
 - **Gadget side panels**: SIDE PANELS in the graphics options is now CLASSIC, GADGETS or OFF. GADGETS shows the
   panels as blue gadgets with brushed-steel frames, drawn smooth at your screen's resolution in an open font
