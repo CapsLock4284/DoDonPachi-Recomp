@@ -6,6 +6,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
+Nothing yet.
+
+## v0.7.0 (2026-11-26)
+
 ### Added
 - **SCORE GRAPH on the gadget panels** (the one thing the classic panels had that the gadgets didn't): under SCORE,
   your score through the game against the high score place you're chasing (dashed at the top), a line in each
