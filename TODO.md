@@ -311,7 +311,7 @@
       the picture's corner, on the game's area; it is to go onto the side panels instead (a section of its own,
       or over a panel's top as the achievement toast is), so the game is never covered. Over the picture only when
       the panels are off or the picture is rotated. DonPachi Recomp to get the same meter and log (its TODO)
-- [ ] **Gadget-style side panels, our own** (owner, 23-11-2026: an idea, not now; the look of M2's ShotTriggers
+- [x] **Gadget-style side panels, our own** (owner, 23-11-2026: an idea, not now; the look of M2's ShotTriggers
       "gadgets", Dai-Fukkatsu's shown, but our own design, nothing of M2's art or layout): in BLUE (owner: it fits the
       game), brushed-metal frames, header strips, gauges, big outlined score digits, an open-licence font built in
       (SIL OFL), drawn at the screen's own resolution (not the game's 8x8 font scaled up); the game's own sprites from
@@ -327,7 +327,10 @@
       bar green to red, not a dial; no music or track names; the stage map put back, after the stages; the input
       display (the stick and S, B, C, as today's), and the second loop's line (LOOP 2 / HIBACHI) under the score.
       Agreed (owner, 25-11-2026: "looks great"). Switchable with today's panels (owner): SIDE PANELS in the graphics
-      options as CLASSIC, GADGETS or OFF (`side_panels` in ddonpach.ini), each kept as it is
+      options as CLASSIC, GADGETS or OFF (`side_panels` in ddonpach.ini), each kept as it is. Done (26-11-2026):
+      ports/sdl2/gadgets.c (the panels), gadget_canvas.c (rounded boxes, gradients and Chakra Petch's outlines,
+      tools/make_gadget_font.py, drawn anti-aliased at the screen's resolution); their frames drawn once a size, the
+      rest each frame (about 2 ms at 4K on a slow PC). The stage map stays below, after the stages
       - [ ] MAYBE (owner, 25-11-2026), gadgets to add later: a boss's timer (the time left before it leaves by
             itself, about 3 minutes: the kill's bonus); a boss's health (its hit points, as the playtest's aim reads
             DonPachi's); the misses and bombs this stage (the second loop's 2, the no-miss and no-bomb achievements,

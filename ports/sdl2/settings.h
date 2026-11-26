@@ -54,6 +54,9 @@ extern const char *const settings_scaling_names[VIDEO_SCALINGS];
 extern const char *const settings_scanline_names[4];
 extern const char *const settings_crt_names[3];
 extern const char *const settings_rotate_names[ROTATIONS];
+/* the side panels: none, today's (widgets.h), or the gadgets (gadgets.h) */
+enum { PANELS_OFF, PANELS_CLASSIC, PANELS_GADGETS, PANEL_STYLES };
+extern const char *const settings_panel_names[PANEL_STYLES];
 /* the renderers SDL can be asked for (settings_renderer_names[0], "auto": SDL's own choice) */
 #define RENDERERS 6
 extern const char *const settings_renderer_names[RENDERERS];
@@ -98,7 +101,8 @@ typedef struct
 	bool vsync;
 	int renderer;               /* settings_renderer_names: 0 auto (Direct3D 12 on Windows), or the one asked for (main.c;
 	                               used from the next start) */
-	bool side_panels;          /* the side panels (widgets.h) beside the picture: not with it turned */
+	int side_panels;            /* PANELS_OFF, PANELS_CLASSIC (widgets.h) or PANELS_GADGETS (gadgets.h): the panels beside
+	                               the picture, not with it turned */
 	bool show_fps;              /* the FPS meter over the picture's corner (main.c; F9) */
 	int rotate;                 /* ROTATE_NONE, ROTATE_RIGHT (90 degrees clockwise), ROTATE_LEFT */
 	/* [training] (the main menu's TRAINING: training.h) */

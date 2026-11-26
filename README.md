@@ -179,7 +179,7 @@ how its picture is shown:
 | RENDERER | AUTO, DIRECT3D, DIRECT3D11, DIRECT3D12, OPENGL, SOFTWARE | How the picture reaches the screen, used from the next start. AUTO is Direct3D 12 on Windows, the quickest to show |
 | FPS METER | OFF, ON | The frame rate and the PC's time a frame (F9 too): on the right side panel, never over the game; over the picture's corner only when the panels are off or the picture is rotated |
 | ROTATE | OFF, RIGHT, LEFT | Turns the picture for a monitor on its side (TATE); the side panels are hidden then |
-| SIDE PANELS | ON, OFF | Panels in the empty space beside the picture on a wide screen: the game's information beside the picture (see Side panels below). They widen to fill the screen; the game's picture keeps its size |
+| SIDE PANELS | CLASSIC, GADGETS, OFF | Panels in the empty space beside the picture on a wide screen: the game's information beside the picture, in the game's own lettering (CLASSIC) or as blue gadgets drawn at the screen's resolution (GADGETS; see Side panels below). They widen to fill the screen; the game's picture keeps its size |
 | WINDOW SIZE | 1X to 8X | The window's size, as times the arcade's picture (3X by default) |
 | FULL SCREEN | OFF, BORDERLESS, EXCLUSIVE | BORDERLESS: a window over the whole screen, quick to switch away from. EXCLUSIVE: the display is the game's alone, which may lag a little less. F11 or Alt+Enter switches it too |
 
@@ -226,7 +226,8 @@ the picture rotated, over the picture's top corner.
 While the meter is on, each second is also written to `ddonpach_fps.log` beside the program, with the settings,
 the renderer, and the time each part of a frame takes (the filter and the uploads to the graphics card among them).
 
-Side panels (SIDE PANELS in the graphics options, `side_panels` in `ddonpach.ini`; on by default) fill the screen
+Side panels (SIDE PANELS in the graphics options, `side_panels` in `ddonpach.ini`: `classic`, `gadgets` or `off`;
+classic by default) fill the screen
 beside the picture. The game's picture is never changed by them: it stays the arcade's 240 x 320, at the same scale,
 and the panels only take the black space at its sides (as wide as the screen leaves room for: wider on a 16:9 or
 21:9 screen than on a 16:10 one). Not with the picture rotated.
@@ -254,6 +255,17 @@ and the panels only take the black space at its sides (as wide as the screen lea
   new best), the stage being played as it goes (yellow), and those to come with their best to beat. The stages' best
   scores are kept in `ddonpach.stages` beside the program, from clean
   games only (no cheat, no save state, the slowdown on); a stage after a continue doesn't count either.
+
+GADGETS shows the same information, and a little more, as blue gadgets with brushed-steel frames, drawn smooth at
+the screen's own resolution (not the game's 8 x 8 letters scaled up), in Chakra Petch (an open font, SIL OFL 1.1,
+built into the program). Left: 1P SHIP (the style, shot, laser, bombs); RANK (a bar, green to red); CHAIN (the hits
+in big digits, the chain's time left as a bar, and the hits made with the shot, the laser and bombs; the best
+chain of the game); BOARD (the frames a second, the slowdown, the bullets graph); BEES (the game's own bee sprite,
+from your ROM set: grey until taken, gold-framed when taken, a red cross once the stage's chance is gone). Right:
+SCORE (the score in big digits, the place chased, 1UP IN and the second loop's line); STAGES (each stage against its
+best, as above); LAST SCORED (the last points scored and the chain they came at); INPUT (the stick and buttons);
+GOALS (the stage's achievements: NO MISS, NO BOMB, ALL 13 BEES, the next hits goal, SURVIVOR; a gold dot on those
+already earned). The panels grow to fill the screen's height; the narrowest screens get a two-line stage list.
 
 **The second loop** comes after 1-6 when the player played alone, never continued, and has any one of: 2 misses or
 fewer (lives lost); a MAX HIT of 624 or more with type A, 768 with B or 816 with C; a score of 50,000,000 or more; 4
@@ -349,4 +361,6 @@ When they differ, `TRACE_FRAME=N` on both (the port built from `tools/decompile.
 
 BSD-3-Clause: see `LICENSE`. The board code is Cave68kSDK's, the translator is arcade-decomp's; each says
 what it follows (MAME's drivers and devices, BSD-3-Clause). The window port is DonPachi Recomp's (BSD-3-Clause); the
-icon is the program's own (`tools/make_icon.py`).
+icon is the program's own (`tools/make_icon.py`). The gadget panels' font is Chakra Petch (SIL Open Font License
+1.1, Copyright 2018 The Chakra Petch Project Authors: `ports/sdl2/fonts/OFL-ChakraPetch.txt`), its outlines built
+into the program by `tools/make_gadget_font.py`.

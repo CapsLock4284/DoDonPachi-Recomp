@@ -572,7 +572,7 @@ static void change(int item, int step, bool wrap)
 		menu_notice("USED FROM THE NEXT START");
 		break;
 	case ITEM_PANELS:
-		in_use->side_panels = file->side_panels = !in_use->side_panels;
+		in_use->side_panels = file->side_panels = cycle(in_use->side_panels, PANEL_STYLES, step, wrap);
 		host.apply_window();    /* (the window wider or narrower for them) */
 		break;
 	case ITEM_ROTATE:
@@ -1525,7 +1525,8 @@ static void item_value(int item, char *out, size_t size)
 		snprintf(out, size, "%s", settings_renderer_names[s->renderer]);
 		break;
 	case ITEM_PANELS:
-		snprintf(out, size, "%s", s->side_panels ? "ON" : "OFF");
+		snprintf(out, size, "%s", s->side_panels == PANELS_GADGETS ? "GADGETS" : s->side_panels == PANELS_CLASSIC
+			? "CLASSIC" : "OFF");
 		break;
 	case ITEM_ROTATE:
 		snprintf(out, size, "%s", s->rotate == ROTATE_NONE ? "OFF" : settings_rotate_names[s->rotate]);
@@ -1844,8 +1845,9 @@ static const char *item_help(int item)
 	case ITEM_ROTATE:
 		return "TURNS THE PICTURE FOR A SCREEN ON ITS SIDE (TATE). THE SIDE PANELS ARE HIDDEN THEN.";
 	case ITEM_PANELS:
-		return "THESE PANELS AT THE SIDES ON A WIDE SCREEN: POWER, BOMBS, THE BOARD'S SPEED, BEES (LEFT); THE HIGH "
-			"SCORE CHASE, THE NEXT EXTRA LIFE, THE STAGES AGAINST THEIR BESTS (RIGHT).";
+		return "PANELS AT THE SIDES ON A WIDE SCREEN. CLASSIC: POWER, BOMBS, THE BOARD'S SPEED, BEES; THE HIGH SCORE "
+			"CHASE, THE NEXT EXTRA LIFE, THE STAGES AGAINST THEIR BESTS. GADGETS: THE SAME AND MORE (THE RANK, THE CHAIN, "
+			"THE CONTROLS, THE STAGE'S ACHIEVEMENTS) AS BLUE GADGETS, SHARP AT YOUR SCREEN'S RESOLUTION.";
 	case ITEM_DEADZONE:
 		return "HOW FAR THE STICK MUST MOVE BEFORE IT COUNTS.";
 	case ITEM_SAVE_STATE:

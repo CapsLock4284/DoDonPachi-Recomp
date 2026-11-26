@@ -80,6 +80,7 @@
 #include "settings.h"
 #include "pads.h"
 #include "playtest.h"
+#include "gadgets.h"
 #include "window_icon.h"
 
 #include "cave/boards.h"
@@ -94,6 +95,7 @@
 #include <SDL.h>
 
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -708,6 +710,60 @@ static int panel_width_for(int out_w, int out_h)
 	return width < WIDGET_W ? WIDGET_W : width > WIDGET_MAX_W ? WIDGET_MAX_W : width;
 }
 
+/* ---- the gadget panels (gadgets.h): drawn at k of the screen's pixels a game's pixel, k the scale rounded up (2
+   to 5), so they are sharp; shown smoothed to the picture's scale ---- */
+
+static uint32_t *gadget_pixels[2];
+static SDL_Texture *gadget_textures[2];
+static int gadget_k;
+
+/* ready for k: false if there is no memory or no texture for them (the classic panels then) */
+static bool gadgets_ready(int k)
+{
+	if (k == gadget_k && gadget_pixels[0] && gadget_textures[0] && gadget_textures[1])
+		return true;
+	for (int side = 0; side < 2; side++)
+	{
+		free(gadget_pixels[side]);
+		gadget_pixels[side] = NULL;
+		if (gadget_textures[side])
+			SDL_DestroyTexture(gadget_textures[side]);
+		gadget_textures[side] = NULL;
+	}
+	gadget_k = 0;
+	for (int side = 0; side < 2; side++)
+		if (!(gadget_pixels[side] = malloc((size_t)WIDGET_MAX_W * (size_t)k * (size_t)WIDGET_H * (size_t)k * 4u))
+				|| !(gadget_textures[side] = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+					SDL_TEXTUREACCESS_STREAMING, WIDGET_MAX_W * k, WIDGET_H * k)))
+			return false;
+	gadget_k = k;
+	return true;
+}
+
+static bool draw_gadgets(const SDL_FRect *left, const SDL_FRect *right, float scale)
+{
+	int k = (int)ceilf(scale - 0.15f);
+	const char *title, *text;
+
+	k = k < 2 ? 2 : k > 5 ? 5 : k;
+	if (!gadgets_ready(k))
+		return false;
+	gadgets_draw(gadget_pixels[0], gadget_pixels[1], panel_width, k);
+	if (menu_help(&title, &text))
+		gadgets_draw_help(gadget_pixels[1], panel_width, k, title, text);
+	for (int side = 0; side < 2; side++)
+	{
+		const SDL_Rect source = { 0, 0, panel_width * k, WIDGET_H * k };
+		const Uint64 began = SDL_GetPerformanceCounter();
+
+		SDL_UpdateTexture(gadget_textures[side], &source, gadget_pixels[side], panel_width * k * (int)sizeof(uint32_t));
+		spend(SPENT_UPLOAD, began);
+		SDL_SetTextureScaleMode(gadget_textures[side], SDL_ScaleModeLinear);
+		SDL_RenderCopyF(renderer, gadget_textures[side], &source, side ? right : left);
+	}
+	return true;
+}
+
 /* the panels drawn at (x, y), the picture's top left with them, at the picture's scale; the picture's own place and
    width returned */
 static void draw_panels(float *x, float y, float *w, float scale_x, float scale_y)
@@ -716,6 +772,12 @@ static void draw_panels(float *x, float y, float *w, float scale_x, float scale_
 	const SDL_FRect left = { *x, y, (float)panel_width * scale_x, WIDGET_H * scale_y };
 	const SDL_FRect right = { *x + *w - (float)panel_width * scale_x, y, (float)panel_width * scale_x, WIDGET_H * scale_y };
 
+	if (options.side_panels == PANELS_GADGETS && draw_gadgets(&left, &right, scale_y))
+	{
+		*x += (float)(panel_width + WIDGET_GAP) * scale_x;
+		*w = VIDEO_HEIGHT * scale_x;
+		return;
+	}
 	widgets_draw(panel_pixels[0], panel_pixels[1], panel_width);
 	{
 		/* (a menu page up: its chosen entry explained on the right panel, as DonPachi Recomp's) */

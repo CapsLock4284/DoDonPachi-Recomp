@@ -245,6 +245,14 @@ const char *achievements_text(int index)
 	return index >= 0 && index < ACHIEVEMENTS ? list[index].text : "";
 }
 
+int achievements_find(const char *id)
+{
+	for (int index = 0; index < ACHIEVEMENTS; index++)
+		if (!strcmp(list[index].id, id))
+			return index;
+	return -1;
+}
+
 const char *achievements_date(int index)
 {
 	return index >= 0 && index < ACHIEVEMENTS && dates[index][0] ? dates[index] : NULL;

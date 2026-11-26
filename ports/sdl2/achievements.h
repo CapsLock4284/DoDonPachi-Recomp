@@ -30,5 +30,6 @@ int achievements_done(void);
 const char *achievements_name(int index);
 const char *achievements_text(int index);       /* what it asks for */
 const char *achievements_date(int index);       /* when it was earned ("2026-11-18"), or NULL */
+int achievements_find(const char *id);          /* the index of the one kept as 'id' ("no_miss_stage"), or -1 */
 
 #endif

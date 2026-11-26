@@ -272,6 +272,52 @@ static struct
 
 static bool was_in_game;
 
+/* ---- the chain: its hits by what made them, and the last points scored (the gadget panels') ---- */
+
+#define CHAIN_HITS    0x1017EAu   /* player 1's hits (the HUD's); 0 as a chain begins again */
+#define CHAIN_TIMER   0x1017D0u   /* the frames left to add a hit: 56 at each, 1 down a frame */
+#define BEST_HITS     0x101842u   /* the game's best (the table's MAX HIT) */
+#define LASER_AURA    0x103BAEu   /* bit 15: player 1's laser firing (hitbox.c) */
+#define BOMB_GOING    0x10C976u   /* not 0 while a bomb goes off (found over the test players' bombs: 118-146 frames
+                                     from the stock going down) */
+
+static struct
+{
+	unsigned hits, shot, laser, bomb;
+	uint32_t last_score, last_gain;
+	unsigned last_gain_hits;
+	bool gained;
+} chain;
+
+static void chain_frame(int player, uint32_t score)
+{
+	const unsigned hits = word(CHAIN_HITS);
+
+	if (player != 0)
+		return;
+	if (hits < chain.hits || hits == 0u)
+		chain.shot = chain.laser = chain.bomb = 0;    /* (a new chain) */
+	if (hits > chain.hits)
+	{
+		const unsigned more = hits - chain.hits;
+
+		if (word(BOMB_GOING))
+			chain.bomb += more;
+		else if (word(LASER_AURA) & 0x8000u)
+			chain.laser += more;
+		else
+			chain.shot += more;
+	}
+	chain.hits = hits;
+	if (score > chain.last_score && chain.last_score)
+	{
+		chain.last_gain = score - chain.last_score;
+		chain.last_gain_hits = hits;
+		chain.gained = true;
+	}
+	chain.last_score = score;
+}
+
 void widgets_game_begun(void)
 {
 	attract_seen = true;
@@ -290,6 +336,7 @@ void widgets_reset(void)
 
 static void run_begin(void)
 {
+	memset(&chain, 0, sizeof(chain));
 	memset(&run, 0, sizeof(run));
 	run.area = -1;
 	speed.stage_frames = speed.stage_lagged = speed.game_frames = speed.game_lagged = 0;
@@ -406,6 +453,7 @@ void widgets_frame(bool clean)
 			run.stage_counts = false;
 		}
 		run.last_score_seen = score;
+		chain_frame(player, score);
 		if (!clean)
 			run.stage_counts = false;
 		if (area != run.area)
@@ -1088,7 +1136,8 @@ static void draw_stages(panel *p, uint32_t score)
 
 /* The second loop (loop2.h): in the first loop, whether this game still gets it and how; in the second, Hibachi.
    One line under the section's name, 13 characters at most (the narrowest panel's) */
-static void draw_loop2(panel *p)
+/* the line: its title (LOOP 2, or HIBACHI in the second loop), what it says and its colour */
+static void loop2_line(char *title, size_t title_size, char *show_out, size_t show_size, uint32_t *colour_out)
 {
 	const unsigned loop = word(LOOP), stage = word(STAGE);
 	char text[24];
@@ -1100,11 +1149,12 @@ static void draw_loop2(panel *p)
 		/* the second loop: no continue there, and 2-6 cleared is all Hibachi asks */
 		const bool hidden = stage >= STAGES;
 
-		section(p, LOOP2_TOP, "HIBACHI");
-		put_centre(p, LOOP2_TOP + 11, hidden ? "2-7 NOW!" : "AFTER 2-6", hidden ? GOLD : WHITE, 1);
+		snprintf(title, title_size, "HIBACHI");
+		snprintf(show_out, show_size, "%s", hidden ? "2-7 NOW!" : "AFTER 2-6");
+		*colour_out = hidden ? GOLD : WHITE;
 		return;
 	}
-	section(p, LOOP2_TOP, "LOOP 2");
+	snprintf(title, title_size, "LOOP 2");
 	if (run.on && in_game() && loop <= 1u)
 	{
 		const loop2_status s = loop2_now(run.player);
@@ -1151,6 +1201,17 @@ static void draw_loop2(panel *p)
 		}
 		}
 	}
+	snprintf(show_out, show_size, "%s", show);
+	*colour_out = colour;
+}
+
+static void draw_loop2(panel *p)
+{
+	char title[12], show[24];
+	uint32_t colour;
+
+	loop2_line(title, sizeof(title), show, sizeof(show), &colour);
+	section(p, LOOP2_TOP, title);
 	put_centre(p, LOOP2_TOP + 11, show, colour, 1);
 }
 
@@ -1348,6 +1409,94 @@ void widgets_draw_help(uint32_t *pixels, int width, const char *title, const cha
 	y = put_wrapped(&p, 26, title, GOLD);
 	box(&p, 6, y + 2, p.w - 6, y + 3, FRAME);
 	put_wrapped(&p, y + 10, text, WHITE);
+}
+
+void widgets_view_now(widgets_view *v)
+{
+	const int player = run.player;
+	const unsigned step = PLAYER_STEP * (unsigned)player;
+	const int frames = speed.filled ? speed.filled : 1;
+	const double rate = 1000000.0 / (double)CAVE_FRAME_USEC;
+
+	memset(v, 0, sizeof(*v));
+	v->on = run.on;
+	v->showing = run.on && in_game();
+	v->player = player;
+	v->ship = (int)(word(SHIP + 4u * (unsigned)player) % 3u);
+	v->laser = word(STYLE + 4u * (unsigned)player) == 1u;
+	v->own_power = word(OWN_POWER + step);
+	v->other_power = word(OTHER_POWER + step);
+	v->bombs = byte_at(BOMBS + step);
+	v->bombs_most = byte_at(BOMBS + step + 1u);
+	v->rank = word(RANK) & 0xFFu;
+	if (v->rank > RANK_MOST)
+		v->rank = RANK_MOST;
+	v->chain_known = player == 0;
+	v->hits = player == 0 ? word(CHAIN_HITS) : 0u;
+	v->best_hits = player == 0 ? word(BEST_HITS) : 0u;
+	v->chain_timer = player == 0 ? word(CHAIN_TIMER) : 0u;
+	v->shot_hits = chain.shot;
+	v->laser_hits = chain.laser;
+	v->bomb_hits = chain.bomb;
+	v->gained = chain.gained;
+	v->last_gain = chain.last_gain;
+	v->last_gain_hits = chain.last_gain_hits;
+	v->board_rate = rate;
+	v->game_rate = rate * (double)(frames - speed.lagged_now) / (double)frames;
+	v->slowdown_now = (unsigned)(speed.lagged_now * 100 + frames / 2) / (unsigned)frames;
+	v->bullets_now = history.now;
+	v->history_count = history.filled;
+	for (int at = 0; at < history.filled; at++)
+	{
+		const int from = (history.at - history.filled + at + 2 * HISTORY) % HISTORY;
+
+		v->bullets[at] = history.bullets[from];
+		v->lagged[at] = history.lagged[from];
+	}
+	v->stage_lagged = speed.stage_lagged;
+	v->stage_frames = speed.stage_frames;
+	v->game_lagged = speed.game_lagged;
+	v->game_frames = speed.game_frames;
+	v->bee_area = run.on ? run.bee_area : -1;
+	v->bees_taken = run.on && run.bee_area >= 0 ? run.bees[run.bee_area] : 0u;
+	v->bee_area_over = run.on && run.bee_area >= 0 && (run.done[run.bee_area] || run.area != run.bee_area);
+	v->score = run.on ? score_of(player) : 0u;
+	v->chasing = run.chasing;
+	v->chase = run.chasing >= 0 ? run.table[run.chasing] : 0u;
+	v->next_extend = run.on ? next_extend(player) : 0u;
+	loop2_line(v->loop2_title, sizeof(v->loop2_title), v->loop2_text, sizeof(v->loop2_text), &v->loop2_colour);
+	v->loop_shown = run.on && run.area >= 0 ? run.area / STAGES : run.on && run.done[STAGES] ? 1 : 0;
+	for (int stage = 0; stage < STAGES; stage++)
+	{
+		const int area = v->loop_shown * STAGES + stage;
+
+		if (run.on && area == run.area && in_game())
+		{
+			v->stages[stage].state = WIDGET_STAGE_LIVE;
+			v->stages[stage].made = v->score - run.stage_start;
+			v->stages[stage].best = best[area];
+			v->stages[stage].counts = run.stage_counts;
+		}
+		else if (run.on && run.done[area])
+		{
+			v->stages[stage].state = WIDGET_STAGE_DONE;
+			v->stages[stage].made = run.made[area];
+			v->stages[stage].best = run.best_before[area];
+			v->stages[stage].counts = run.counted[area];
+			v->stages[stage].new_best = run.new_best[area];
+		}
+		else
+		{
+			v->stages[stage].state = WIDGET_STAGE_TODO;
+			v->stages[stage].best = best[area];
+		}
+	}
+	v->held = (uint16_t)~(player ? cave_board.in1 : cave_board.in0);
+	if (toast_frames > 0)
+		snprintf(v->toast, sizeof(v->toast), "%s", toast_name);
+	v->toast_frames = toast_frames;
+	v->toast_more = toast_more;
+	v->meter = meter;
 }
 
 void widgets_draw(uint32_t *left, uint32_t *right, int width)

@@ -24,7 +24,10 @@ if [ -f "$JPN/jpn_names.h" ]; then
 			-I$ROOT/runtime/include -I"$JPN" -include "$JPN/jpn_names.h" -c "$f" -o "$o"; }
 	done
 fi
+# (a tool's tests/TOOL.extra: more of the port's files built with it, one a line, from the project's folder)
 for tool in ${TOOLS:-$(cd "$ROOT/tests" && ls *.c | sed 's/\.c$//')}; do
-	gcc $CFLAGS "$ROOT/tests/$tool.c" "$OBJ"/*.o -lm -o "$ROOT/tests/bin/$tool"
+	extra=""
+	[ -f "$ROOT/tests/$tool.extra" ] && extra=$(tr -d '\r' < "$ROOT/tests/$tool.extra" | sed "s|^|$ROOT/|")
+	gcc $CFLAGS "$ROOT/tests/$tool.c" $extra "$OBJ"/*.o -lm -o "$ROOT/tests/bin/$tool"
 	echo "built tests/bin/$tool"
 done

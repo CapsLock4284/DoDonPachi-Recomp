@@ -6,7 +6,14 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+- **Gadget side panels**: SIDE PANELS in the graphics options is now CLASSIC, GADGETS or OFF. GADGETS shows the
+  panels as blue gadgets with brushed-steel frames, drawn smooth at your screen's resolution in an open font
+  (Chakra Petch): the ship, the rank as a green-to-red bar, the chain (its hits in big digits, its time left, the
+  hits by shot, laser and bomb), the board's frames a second and slowdown, the stage's bees as the game's own bee
+  sprite, the score and the place you're chasing, each stage against its best, the last points scored, the
+  controls, and the stage's achievements. CLASSIC is the panels as before, and stays the default; an old
+  `side_panels = on` reads as classic.
 
 ## v0.5.0 (2026-11-25)
 

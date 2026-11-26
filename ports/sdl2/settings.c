@@ -30,6 +30,7 @@ const char *const settings_scaling_names[VIDEO_SCALINGS] = { "fit", "integer", "
 const char *const settings_scanline_names[4] = { "off", "light", "medium", "heavy" };
 const char *const settings_crt_names[3] = { "off", "light", "full" };
 const char *const settings_rotate_names[ROTATIONS] = { "none", "right", "left" };
+const char *const settings_panel_names[PANEL_STYLES] = { "off", "classic", "gadgets" };
 const char *const settings_renderer_names[RENDERERS] = { "auto", "direct3d", "direct3d11", "direct3d12", "opengl",
 	"software" };
 
@@ -100,7 +101,7 @@ void settings_defaults(settings *s)
 	s->vsync = false;
 	s->renderer = 0;
 	s->show_fps = false;
-	s->side_panels = true;
+	s->side_panels = PANELS_CLASSIC;
 	s->rotate = ROTATE_NONE;
 	s->training_power = 5;    /* (ON PACE) */
 	s->training_retry = true;
@@ -338,7 +339,20 @@ static bool take(settings *s, const char *section, const char *name, char *value
 		if (!SDL_strcasecmp(name, "show_fps"))
 			return parse_bool(value, &s->show_fps);
 		if (!SDL_strcasecmp(name, "side_panels"))
-			return parse_bool(value, &s->side_panels);
+		{
+			/* (off, classic or gadgets; on and off as before 0.6.0: on is classic) */
+			bool on;
+
+			if ((s->side_panels = name_of(value, settings_panel_names, PANEL_STYLES)) >= 0)
+				return true;
+			if (!parse_bool(value, &on))
+			{
+				s->side_panels = PANELS_CLASSIC;
+				return false;
+			}
+			s->side_panels = on ? PANELS_CLASSIC : PANELS_OFF;
+			return true;
+		}
 		if (!SDL_strcasecmp(name, "rotate"))
 			return (s->rotate = name_of(value, settings_rotate_names, ROTATIONS)) >= 0
 				|| (s->rotate = ROTATE_NONE, false);
@@ -634,10 +648,12 @@ const char *settings_save(const settings *s, const char *path)
 		"; board's frames run a second (57.55), WINDOW the pictures shown, LATE the frames the PC ran late in that\n"
 		"; second, WORK the milliseconds a frame takes the PC\n", file);
 	fprintf(file, "show_fps = %s\n", bool_text(s->show_fps));
-	fputs("; the panels beside the picture on a wide screen: the ship's power and bombs, the board's speed and slowdown\n"
-		"; (left); the score chasing the high score table, its graph, this stage against its best (right). As wide as\n"
-		"; the screen leaves room for; the game's picture is never changed by them. Not with the picture rotated\n", file);
-	fprintf(file, "side_panels = %s\n", bool_text(s->side_panels));
+	fputs("; the panels beside the picture on a wide screen: off, classic (the ship's power and bombs, the board's speed\n"
+		"; and slowdown, the bees; the score chasing the high score table, its graph, the stages against their bests) or\n"
+		"; gadgets (the same and more as blue gadgets, sharp at the screen's own resolution: the rank, the chain, the\n"
+		"; controls, the stage's achievements). As wide as the screen leaves room for; the game's picture is never\n"
+		"; changed by them. Not with the picture rotated\n", file);
+	fprintf(file, "side_panels = %s\n", settings_panel_names[s->side_panels]);
 	fputs("; none, right or left: the picture turned for a monitor on its side (TATE)\n", file);
 	fprintf(file, "rotate = %s\n", settings_rotate_names[s->rotate]);
 	fputc('\n', file);

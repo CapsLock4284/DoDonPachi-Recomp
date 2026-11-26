@@ -79,4 +79,66 @@ void widgets_draw_help(uint32_t *pixels, int width, const char *title, const cha
    pixels */
 void widgets_draw(uint32_t *left, uint32_t *right, int width);
 
+/* ---- what the gadget panels show (gadgets.h): the panels' run, read as it is now ---- */
+
+#define WIDGET_HISTORY 288      /* the bullets graph's frames: 5 seconds */
+
+enum { WIDGET_STAGE_TODO, WIDGET_STAGE_LIVE, WIDGET_STAGE_DONE };
+
+typedef struct
+{
+	bool on;                    /* a game seen from its start (the last one's, through the attract mode) */
+	bool showing;               /* a game being played now */
+	int player;                 /* the one followed: 0, or 1 playing alone */
+	/* the ship */
+	int ship;                   /* 0-2 */
+	bool laser;                 /* its style */
+	unsigned own_power, other_power, bombs, bombs_most;
+	/* the rank, 0-63 */
+	unsigned rank;
+	/* the chain (player 1's: $1017EA the hits, $1017D0 its timer, 56 down to 0; $101842 the game's best) */
+	bool chain_known;
+	unsigned hits, best_hits, chain_timer;
+	unsigned shot_hits, laser_hits, bomb_hits;    /* this chain's hits, by what made them */
+	/* the last points scored (as the game counts them: shown with a 0 after), the hits then */
+	bool gained;
+	uint32_t last_gain;
+	unsigned last_gain_hits;
+	/* the board */
+	double game_rate, board_rate;
+	unsigned slowdown_now;      /* percent, over the last second */
+	int bullets_now, history_count;
+	uint8_t bullets[WIDGET_HISTORY];    /* oldest first */
+	bool lagged[WIDGET_HISTORY];
+	unsigned stage_lagged, stage_frames, game_lagged, game_frames;
+	/* the bees */
+	int bee_area;               /* the stage they are of (0-11), or -1 */
+	unsigned bees_taken;
+	bool bee_area_over;         /* that stage is over: those not taken were missed */
+	/* the score (as the game counts it, as the others: shown with a 0 after) and what it chases */
+	uint32_t score;
+	int chasing;                /* the high score table's place, 0 (#1) ... 4 (#5), or -1 all passed */
+	uint32_t chase;
+	uint32_t next_extend;       /* the score of the next extra life, or 0: none left */
+	char loop2_title[12], loop2_text[24];
+	uint32_t loop2_colour;
+	/* the loop's stages */
+	int loop_shown;             /* 0 or 1 */
+	struct
+	{
+		int state;              /* WIDGET_STAGE_* */
+		uint32_t made;          /* its score (as the game counts it: no last digit) so far or in all */
+		uint32_t best;          /* the best before it, or 0 */
+		bool counts, new_best;  /* it counts for a best (clean, no continue); it beat it */
+	} stages[6];
+	/* the controls as the board was given them (1 held) */
+	uint16_t held;
+	/* an achievement's box ("" none), its frames left, the ones waiting after it */
+	char toast[32];
+	int toast_frames, toast_more;
+	widgets_meter meter;
+} widgets_view;
+
+void widgets_view_now(widgets_view *out);
+
 #endif
