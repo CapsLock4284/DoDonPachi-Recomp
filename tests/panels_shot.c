@@ -47,7 +47,7 @@ static void save_gadgets(const char *name, int pw, int k)
 	const int panel = pw * k, gap = WIDGET_GAP * k, w = VIDEO_HEIGHT * k + 2 * (panel + gap), h = WIDGET_H * k;
 	FILE *const out = fopen(name, "wb");
 
-	gadgets_draw(gl, gr, pw, k);
+	gadgets_draw(gl, gr, pw, k, NULL);
 	if (getenv("HELP"))
 		gadgets_draw_help(gr, pw, k, "SIDE PANELS", "CLASSIC: THE PANELS AS THEY WERE. GADGETS: THE BLUE GADGETS, SHARP AT "
 			"THE SCREEN'S OWN RESOLUTION. OFF: NONE.");

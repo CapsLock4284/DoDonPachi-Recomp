@@ -19,6 +19,7 @@
 #include "cave/machine.h"
 #include "cave/rom_set.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -71,6 +72,85 @@ typedef struct
 /* The panels' frames, header strips and background are drawn once for a width and k (the chrome: kept, and copied
    under each frame's panels), their text and contents each frame: true while the chrome is drawn */
 static bool chrome_pass;
+
+/* Each gadget is drawn again, and given to the graphics card, only when what it shows has changed: first recorded
+   (gcanvas.hash: its drawing as a hash, nothing drawn), then, when the hash isn't last frame's, its place put back
+   to the chrome and the gadget drawn there. A side is drawn whole (fresh false) when its chrome is new, its picture
+   isn't the one drawn last time, the help or an achievement's box has been over it, or gadgets_invalidate */
+#define PARTS 5
+
+static struct
+{
+	uint32_t hash[2][PARTS];
+	bool fresh[2];
+	const uint32_t *pixels[2];  /* the pictures last drawn */
+	bool toast;                 /* an achievement's box over the right panel last frame */
+	bool help;                  /* the help drawn over the right panel */
+} kept;
+
+static int side_now;               /* the side being drawn: 0 left, 1 right */
+static const uint32_t *chrome_now; /* its chrome */
+static gadgets_dirty *dirty_now;   /* the places drawn again, or NULL */
+
+typedef void (*part_fn)(gcanvas *c, const widgets_view *v, float x, float y, float w, float h);
+
+static void part(gcanvas *c, int id, part_fn draw, const widgets_view *v, float x, float y, float w, float h)
+{
+	uint32_t hash = 2166136261u;
+	gcanvas record = *c;
+	const float place[4] = { x, y, w, h };
+
+	if (chrome_pass)
+	{
+		draw(c, v, x, y, w, h);
+		return;
+	}
+	record.hash = &hash;
+	gc_record(&record, place, sizeof(place));
+	draw(&record, v, x, y, w, h);
+	if (kept.fresh[side_now] && kept.hash[side_now][id] == hash)
+		return;
+	kept.hash[side_now][id] = hash;
+	if (!kept.fresh[side_now] || !chrome_now)
+	{
+		draw(c, v, x, y, w, h);    /* (the side drawn whole: its chrome copied already) */
+		return;
+	}
+	{
+		/* (its place, a pixel more each way, back to the chrome: then drawn) */
+		int left = (int)floorf(x * c->k) - 1, top = (int)floorf(y * c->k) - 1;
+		int right = (int)ceilf((x + w) * c->k) + 1, bottom = (int)ceilf((y + h) * c->k) + 1;
+
+		left = left < 0 ? 0 : left;
+		top = top < 0 ? 0 : top;
+		right = right > c->w ? c->w : right;
+		bottom = bottom > c->h ? c->h : bottom;
+		if (left >= right || top >= bottom)
+			return;
+		for (int row = top; row < bottom; row++)
+			memcpy(c->pixels + (size_t)row * (size_t)c->w + (size_t)left,
+				chrome_now + (size_t)row * (size_t)c->w + (size_t)left, (size_t)(right - left) * sizeof(uint32_t));
+		draw(c, v, x, y, w, h);
+		if (dirty_now)
+		{
+			int *const count = &dirty_now->count[side_now];
+
+			if (*count < GADGETS_RECTS)
+			{
+				const gadgets_rect rect = { left, top, right - left, bottom - top };
+
+				dirty_now->rect[side_now][(*count)++] = rect;
+			}
+			else
+			{
+				const gadgets_rect whole = { 0, 0, c->w, c->h };
+
+				dirty_now->rect[side_now][0] = whole;
+				*count = 1;
+			}
+		}
+	}
+}
 
 static void background(gcanvas *c, float width, float height)
 {
@@ -304,6 +384,16 @@ static void bee(gcanvas *c, float x, float y, float size, bool lit)
 	const int left = (int)(x * c->k + 0.5f), top = (int)(y * c->k + 0.5f), side = (int)(size * c->k + 0.5f);
 	const uint32_t *icon;
 
+	if (c->hash)
+	{
+		/* (recorded: its place, size and colours; the palette's 16 colours with them) */
+		const float numbers[4] = { x, y, size, c->k };
+
+		gc_record(c, numbers, sizeof(numbers));
+		gc_record(c, &lit, sizeof(lit));
+		gc_record(c, &cave_board.palette[(BEE_PALETTE * 256u) & 0x7FFFu], 16u * sizeof(uint16_t));
+		return;
+	}
 	if (!rom_set.sprites || side <= 0 || !(icon = bee_pixels(side, lit)))
 		return;
 	for (int py = 0; py < side; py++)
@@ -606,15 +696,15 @@ static void draw_left(gcanvas *full, const widgets_view *v, float width)
 		gap = 12.0f;
 	if (gap < GAP * 0.5f)
 		gap = GAP * 0.5f;
-	draw_ship(c, v, MARGIN, y, w, heights[0]);
+	part(c, 0, draw_ship, v, MARGIN, y, w, heights[0]);
 	y += heights[0] + gap;
-	draw_rank(c, v, MARGIN, y, w, heights[1]);
+	part(c, 1, draw_rank, v, MARGIN, y, w, heights[1]);
 	y += heights[1] + gap;
-	draw_chain(c, v, MARGIN, y, w, heights[2]);
+	part(c, 2, draw_chain, v, MARGIN, y, w, heights[2]);
 	y += heights[2] + gap;
-	draw_board(c, v, MARGIN, y, w, heights[3]);
+	part(c, 3, draw_board, v, MARGIN, y, w, heights[3]);
 	y += heights[3] + gap;
-	draw_bees(c, v, MARGIN, y, w, height - MARGIN - y);
+	part(c, 4, draw_bees, v, MARGIN, y, w, height - MARGIN - y);
 }
 
 /* ---- the right panel ---- */
@@ -957,6 +1047,18 @@ static void draw_toast(gcanvas *c, const widgets_view *v, float width)
 	}
 }
 
+static bool stages_two_lines, goals_narrow;
+
+static void part_stages(gcanvas *c, const widgets_view *v, float x, float y, float w, float h)
+{
+	draw_stages(c, v, x, y, w, h, stages_two_lines);
+}
+
+static void part_goals(gcanvas *c, const widgets_view *v, float x, float y, float w, float h)
+{
+	draw_goals(c, v, x, y, w, h, goals_narrow);
+}
+
 static void draw_right(gcanvas *full, const widgets_view *v, float width)
 {
 	const bool wide = width >= 150.0f;
@@ -990,15 +1092,17 @@ static void draw_right(gcanvas *full, const widgets_view *v, float width)
 		gap = 12.0f;
 	if (gap < GAP * 0.5f)
 		gap = GAP * 0.5f;
-	draw_score(c, v, MARGIN, y, w, heights[0]);
+	stages_two_lines = two_lines;
+	goals_narrow = narrow;
+	part(c, 0, draw_score, v, MARGIN, y, w, heights[0]);
 	y += heights[0] + gap;
-	draw_stages(c, v, MARGIN, y, w, heights[1], two_lines);
+	part(c, 1, part_stages, v, MARGIN, y, w, heights[1]);
 	y += heights[1] + gap;
-	draw_last(c, v, MARGIN, y, w, heights[2]);
+	part(c, 2, draw_last, v, MARGIN, y, w, heights[2]);
 	y += heights[2] + gap;
-	draw_input(c, v, MARGIN, y, w, heights[3]);
+	part(c, 3, draw_input, v, MARGIN, y, w, heights[3]);
 	y += heights[3] + gap;
-	draw_goals(c, v, MARGIN, y, w, height - MARGIN - y, narrow);
+	part(c, 4, part_goals, v, MARGIN, y, w, height - MARGIN - y);
 	if (v->toast_frames > 0 && !chrome_pass)
 		draw_toast(c, v, width);
 }
@@ -1016,11 +1120,17 @@ static struct
 	uint32_t *left, *right;
 } chrome;
 
-void gadgets_draw(uint32_t *left, uint32_t *right, int width, int k)
+void gadgets_invalidate(void)
+{
+	kept.fresh[0] = kept.fresh[1] = false;
+}
+
+void gadgets_draw(uint32_t *left, uint32_t *right, int width, int k, gadgets_dirty *dirty)
 {
 	widgets_view v;
 	gcanvas c;
 	size_t pixels;
+	uint32_t *const outs[2] = { left, right };
 
 	width = clamp_width(width);
 	pixels = (size_t)width * (size_t)k * (size_t)WIDGET_H * (size_t)k;
@@ -1029,12 +1139,16 @@ void gadgets_draw(uint32_t *left, uint32_t *right, int width, int k)
 	c.h = WIDGET_H * k;
 	c.k = (float)k;
 	c.clip = 0;
+	c.hash = NULL;
+	if (dirty)
+		dirty->count[0] = dirty->count[1] = 0;
 	if (chrome.width != width || chrome.k != k)
 	{
 		/* the chrome for this width and k: drawn once */
 		free(chrome.left);
 		free(chrome.right);
 		chrome.width = chrome.k = 0;
+		gadgets_invalidate();
 		chrome.left = malloc(pixels * sizeof(uint32_t));
 		chrome.right = malloc(pixels * sizeof(uint32_t));
 		if (chrome.left && chrome.right)
@@ -1049,25 +1163,49 @@ void gadgets_draw(uint32_t *left, uint32_t *right, int width, int k)
 			chrome.k = k;
 		}
 	}
-	if (chrome.width)
+	/* (the right side whole while an achievement's box is over it and the frame after, and after the help) */
+	if (v.toast_frames > 0 || kept.toast || kept.help)
+		kept.fresh[1] = false;
+	kept.toast = v.toast_frames > 0;
+	kept.help = false;
+	dirty_now = dirty;
+	for (int side = 0; side < 2; side++)
 	{
-		memcpy(left, chrome.left, pixels * sizeof(uint32_t));
-		memcpy(right, chrome.right, pixels * sizeof(uint32_t));
+		if (outs[side] != kept.pixels[side])
+			kept.fresh[side] = false;
+		side_now = side;
+		chrome_now = chrome.width ? (side ? chrome.right : chrome.left) : NULL;
+		c.pixels = outs[side];
+		if (!kept.fresh[side] || !chrome_now)
+		{
+			/* (drawn whole: the chrome, or drawn again when there is no memory for it) */
+			if (chrome_now)
+				memcpy(outs[side], chrome_now, pixels * sizeof(uint32_t));
+			else
+			{
+				chrome_pass = true;
+				(side ? draw_right : draw_left)(&c, &v, (float)width);
+				chrome_pass = false;
+			}
+			if (dirty)
+			{
+				const gadgets_rect whole = { 0, 0, c.w, c.h };
+
+				dirty->rect[side][0] = whole;
+				dirty->count[side] = 1;
+			}
+		}
+		(side ? draw_right : draw_left)(&c, &v, (float)width);
+		kept.fresh[side] = chrome_now != NULL;
+		kept.pixels[side] = outs[side];
+		if (dirty && dirty->count[side] > 1)
+		{
+			/* (a whole side once drawn whole: the gadgets' places after it are in it) */
+			if (dirty->rect[side][0].w == c.w && dirty->rect[side][0].h == c.h)
+				dirty->count[side] = 1;
+		}
 	}
-	else
-	{
-		/* (no memory for the chrome: drawn each time) */
-		chrome_pass = true;
-		c.pixels = left;
-		draw_left(&c, &v, (float)width);
-		c.pixels = right;
-		draw_right(&c, &v, (float)width);
-		chrome_pass = false;
-	}
-	c.pixels = left;
-	draw_left(&c, &v, (float)width);
-	c.pixels = right;
-	draw_right(&c, &v, (float)width);
+	dirty_now = NULL;
 }
 
 void gadgets_draw_help(uint32_t *pixels, int width, int k, const char *title, const char *text)
@@ -1081,7 +1219,9 @@ void gadgets_draw_help(uint32_t *pixels, int width, int k, const char *title, co
 	c.h = WIDGET_H * k;
 	c.k = (float)k;
 	c.clip = 0;
+	c.hash = NULL;
 	c.pixels = pixels;
+	kept.help = true;
 	background(&c, (float)width, (float)WIDGET_H);
 	chrome_pass = true;
 	gadget(&c, MARGIN, MARGIN, (float)width - 2.0f * MARGIN, (float)WIDGET_H - 2.0f * MARGIN, "HELP", NULL);

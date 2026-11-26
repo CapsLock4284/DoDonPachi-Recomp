@@ -16,6 +16,36 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* ---- recording: a gadget's drawing as a hash (gcanvas.hash) ---- */
+
+void gc_record(gcanvas *c, const void *data, unsigned size)
+{
+	const unsigned char *const bytes = data;
+	uint32_t hash = *c->hash;
+
+	for (unsigned at = 0; at < size; at++)
+		hash = (hash ^ bytes[at]) * 16777619u;
+	*c->hash = hash;
+}
+
+/* (a drawing's operation, its numbers (the canvas's scale and clip with them) and colour folded in: true when the
+   canvas records, and nothing is drawn) */
+static bool recorded(gcanvas *c, int op, const float *numbers, unsigned count, uint32_t colour, unsigned alpha)
+{
+	if (!c->hash)
+		return false;
+	{
+		const float place[2] = { c->k, (float)c->clip };
+
+		gc_record(c, &op, sizeof(op));
+		gc_record(c, place, sizeof(place));
+		gc_record(c, numbers, count * (unsigned)sizeof(float));
+		gc_record(c, &colour, sizeof(colour));
+		gc_record(c, &alpha, sizeof(alpha));
+	}
+	return true;
+}
+
 /* ---- pixels ---- */
 
 static void blend(uint32_t *pixel, uint32_t colour, unsigned alpha)
@@ -162,6 +192,10 @@ static uint32_t flat_shade(const void *how, float px, float py)
 
 void gc_box(gcanvas *c, float x, float y, float w, float h, float radius, uint32_t colour, unsigned alpha)
 {
+	const float numbers[5] = { x, y, w, h, radius };
+
+	if (recorded(c, 1, numbers, 5, colour, alpha))
+		return;
 	fill(c, x, y, w, h, radius, flat_shade, &colour, alpha);
 }
 
@@ -197,6 +231,14 @@ void gc_gradient(gcanvas *c, float x, float y, float w, float h, float radius, c
 	const float *stops, int count)
 {
 	const gradient g = { colours, stops, count, y * c->k, h * c->k, false };
+	const float numbers[5] = { x, y, w, h, radius };
+
+	if (recorded(c, 2, numbers, 5, 0u, (unsigned)count))
+	{
+		gc_record(c, colours, (unsigned)count * (unsigned)sizeof(uint32_t));
+		gc_record(c, stops, (unsigned)count * (unsigned)sizeof(float));
+		return;
+	}
 
 	fill(c, x, y, w, h, radius, gradient_shade, &g, 255u);
 }
@@ -205,11 +247,19 @@ void gc_gradient_across(gcanvas *c, float x, float y, float w, float h, float ra
 	const float *stops, int count)
 {
 	const gradient g = { colours, stops, count, x * c->k, w * c->k, true };
+	const float numbers[5] = { x, y, w, h, radius };
+
+	if (recorded(c, 3, numbers, 5, 0u, (unsigned)count))
+	{
+		gc_record(c, colours, (unsigned)count * (unsigned)sizeof(uint32_t));
+		gc_record(c, stops, (unsigned)count * (unsigned)sizeof(float));
+		return;
+	}
 
 	fill(c, x, y, w, h, radius, gradient_shade, &g, 255u);
 }
 
-void gc_brushed(gcanvas *c, float x, float y, float w, float h, float step, uint32_t colour, unsigned alpha)
+static void brushed(gcanvas *c, float x, float y, float w, float h, float step, uint32_t colour, unsigned alpha)
 {
 	/* (a hair line each step: whole pixels, at least two apart) */
 	const float every = step * c->k < 2.0f ? 2.0f : step * c->k;
@@ -225,12 +275,24 @@ void gc_brushed(gcanvas *c, float x, float y, float w, float h, float step, uint
 			blend(c->pixels + (size_t)py * (size_t)c->w + (int)fx, colour, alpha);
 }
 
+void gc_brushed(gcanvas *c, float x, float y, float w, float h, float step, uint32_t colour, unsigned alpha)
+{
+	const float numbers[5] = { x, y, w, h, step };
+
+	if (!recorded(c, 4, numbers, 5, colour, alpha))
+		brushed(c, x, y, w, h, step, colour, alpha);
+}
+
 void gc_disc(gcanvas *c, float cx, float cy, float radius, uint32_t colour, unsigned alpha)
 {
+	const float numbers[3] = { cx, cy, radius };
+
+	if (recorded(c, 5, numbers, 3, colour, alpha))
+		return;
 	fill(c, cx - radius, cy - radius, radius * 2.0f, radius * 2.0f, radius, flat_shade, &colour, alpha);
 }
 
-void gc_line(gcanvas *c, float x0, float y0, float x1, float y1, float width, uint32_t colour, unsigned alpha)
+static void line(gcanvas *c, float x0, float y0, float x1, float y1, float width, uint32_t colour, unsigned alpha)
 {
 	/* (each pixel near it by its distance from the line's middle: smooth at its sides, square at its ends) */
 	const float ax = x0 * c->k, ay = y0 * c->k, bx = x1 * c->k, by = y1 * c->k, half = width * c->k * 0.5f;
@@ -261,6 +323,14 @@ void gc_line(gcanvas *c, float x0, float y0, float x1, float y1, float width, ui
 				cover = 1.0f;
 			blend(c->pixels + (size_t)py * (size_t)c->w + px, colour, (unsigned)(cover * (float)alpha + 0.5f));
 		}
+}
+
+void gc_line(gcanvas *c, float x0, float y0, float x1, float y1, float width, uint32_t colour, unsigned alpha)
+{
+	const float numbers[5] = { x0, y0, x1, y1, width };
+
+	if (!recorded(c, 6, numbers, 5, colour, alpha))
+		line(c, x0, y0, x1, y1, width, colour, alpha);
 }
 
 /* ---- the glyphs ---- */
@@ -527,15 +597,29 @@ static void text(gcanvas *c, int font, float size, float x, float y, const char 
 	}
 }
 
+/* (text recorded: its font, size, place, alignment, colours and characters) */
+static bool text_recorded(gcanvas *c, int font, float size, float x, float y, const char *string, uint32_t colour,
+	uint32_t outline, float stroke, int align)
+{
+	const float numbers[6] = { (float)font, size, x, y, stroke, (float)align };
+
+	if (!recorded(c, 7, numbers, 6, colour, outline))
+		return false;
+	gc_record(c, string, (unsigned)strlen(string) + 1u);
+	return true;
+}
+
 void gc_text(gcanvas *c, int font, float size, float x, float y, const char *string, uint32_t colour, int align)
 {
-	text(c, font, size, x, y, string, colour, 0u, 0.0f, align);
+	if (!text_recorded(c, font, size, x, y, string, colour, 0u, 0.0f, align))
+		text(c, font, size, x, y, string, colour, 0u, 0.0f, align);
 }
 
 void gc_text_outlined(gcanvas *c, int font, float size, float x, float y, const char *string, uint32_t colour,
 	uint32_t outline, float stroke, int align)
 {
-	text(c, font, size, x, y, string, colour, outline, stroke, align);
+	if (!text_recorded(c, font, size, x, y, string, colour, outline, stroke, align))
+		text(c, font, size, x, y, string, colour, outline, stroke, align);
 }
 
 float gc_fit(int font, float size, const char *string, float width)

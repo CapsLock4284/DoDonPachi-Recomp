@@ -710,8 +710,9 @@ static int panel_width_for(int out_w, int out_h)
 	return width < WIDGET_W ? WIDGET_W : width > WIDGET_MAX_W ? WIDGET_MAX_W : width;
 }
 
-/* ---- the gadget panels (gadgets.h): drawn at k of the screen's pixels a game's pixel, k the scale rounded up (2
-   to 5), so they are sharp; shown smoothed to the picture's scale ---- */
+/* ---- the gadget panels (gadgets.h): drawn at k of the screen's pixels a game's pixel, k the scale rounded (2 to
+   5), so they are sharp; shown smoothed to the picture's scale. Only the gadgets that changed are drawn again and
+   given to the graphics card (gadgets_dirty): most frames, the board's graph and the chain's timer ---- */
 
 static uint32_t *gadget_pixels[2];
 static SDL_Texture *gadget_textures[2];
@@ -737,26 +738,43 @@ static bool gadgets_ready(int k)
 					SDL_TEXTUREACCESS_STREAMING, WIDGET_MAX_W * k, WIDGET_H * k)))
 			return false;
 	gadget_k = k;
+	gadgets_invalidate();    /* (new textures: drawn whole) */
 	return true;
 }
 
 static bool draw_gadgets(const SDL_FRect *left, const SDL_FRect *right, float scale)
 {
-	int k = (int)ceilf(scale - 0.15f);
+	/* (k: the scale rounded, 3 at 1080p's 3.375; drawn finer than the screen above that is not seen) */
+	int k = (int)(scale + 0.5f);
 	const char *title, *text;
+	gadgets_dirty dirty;
 
 	k = k < 2 ? 2 : k > 5 ? 5 : k;
 	if (!gadgets_ready(k))
 		return false;
-	gadgets_draw(gadget_pixels[0], gadget_pixels[1], panel_width, k);
+	gadgets_draw(gadget_pixels[0], gadget_pixels[1], panel_width, k, &dirty);
 	if (menu_help(&title, &text))
+	{
+		const gadgets_rect whole = { 0, 0, panel_width * k, WIDGET_H * k };
+
 		gadgets_draw_help(gadget_pixels[1], panel_width, k, title, text);
+		dirty.rect[1][0] = whole;
+		dirty.count[1] = 1;
+	}
 	for (int side = 0; side < 2; side++)
 	{
 		const SDL_Rect source = { 0, 0, panel_width * k, WIDGET_H * k };
+		const int pitch = panel_width * k;
 		const Uint64 began = SDL_GetPerformanceCounter();
 
-		SDL_UpdateTexture(gadget_textures[side], &source, gadget_pixels[side], panel_width * k * (int)sizeof(uint32_t));
+		for (int at = 0; at < dirty.count[side]; at++)
+		{
+			const gadgets_rect *const r = &dirty.rect[side][at];
+			const SDL_Rect place = { r->x, r->y, r->w, r->h };
+
+			SDL_UpdateTexture(gadget_textures[side], &place,
+				gadget_pixels[side] + (size_t)r->y * (size_t)pitch + (size_t)r->x, pitch * (int)sizeof(uint32_t));
+		}
 		spend(SPENT_UPLOAD, began);
 		SDL_SetTextureScaleMode(gadget_textures[side], SDL_ScaleModeLinear);
 		SDL_RenderCopyF(renderer, gadget_textures[side], &source, side ? right : left);
@@ -1973,7 +1991,10 @@ int main(int argc, char **argv)
 		while (SDL_PollEvent(&event))
 		{
 			if (event.type == SDL_RENDER_TARGETS_RESET || event.type == SDL_RENDER_DEVICE_RESET)
+			{
 				crt_reset();    /* (its textures lost: made again) */
+				gadgets_invalidate();    /* (the gadget panels' pictures lost: given whole again) */
+			}
 			if (event.type == SDL_QUIT)
 				running = 0;
 			else if (event.type == SDL_JOYDEVICEADDED)

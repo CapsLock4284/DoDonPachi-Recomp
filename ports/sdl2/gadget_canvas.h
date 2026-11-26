@@ -23,7 +23,12 @@ typedef struct
 	int w, h;                  /* in pixels */
 	float k;                   /* pixels a unit */
 	int clip;                  /* boxes drawn only left of this pixel (0: the whole width) */
+	uint32_t *hash;            /* not NULL: nothing drawn, each drawing's place, size, colours and text folded into
+	                              it instead (gc_record: what a gadget would draw, to tell whether it changed) */
 } gcanvas;
+
+/* Data folded into a recording canvas's hash (as each gc_ function folds its own) */
+void gc_record(gcanvas *c, const void *data, unsigned size);
 
 enum { GC_FONT_TEXT, GC_FONT_BOLD };    /* Chakra Petch SemiBold, Bold */
 enum { GC_LEFT, GC_CENTRE, GC_RIGHT };

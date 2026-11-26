@@ -329,13 +329,26 @@
       Agreed (owner, 25-11-2026: "looks great"). Switchable with today's panels (owner): SIDE PANELS in the graphics
       options as CLASSIC, GADGETS or OFF (`side_panels` in ddonpach.ini), each kept as it is. Done (26-11-2026):
       ports/sdl2/gadgets.c (the panels), gadget_canvas.c (rounded boxes, gradients and Chakra Petch's outlines,
-      tools/make_gadget_font.py, drawn anti-aliased at the screen's resolution); their frames drawn once a size, the
-      rest each frame (about 2 ms at 4K on a slow PC). The stage map stays below, after the stages
+      tools/make_gadget_font.py, drawn anti-aliased at the screen's resolution); their frames drawn once a size, and
+      each gadget drawn again and given to the graphics card only when what it shows changed (its drawing recorded as
+      a hash first), at k the scale rounded (3 at 1080p). The owner's FPS logs (26-11-2026, 1080p, xbr3x, D3D12)
+      before that: 16.55 ms of work a frame and 11.6 frames a second late with gadgets, 11.0 ms and none with the
+      classic panels. The stage map stays below, after the stages
       - [ ] MAYBE (owner, 25-11-2026), gadgets to add later: a boss's timer (the time left before it leaves by
             itself, about 3 minutes: the kill's bonus); a boss's health (its hit points, as the playtest's aim reads
             DonPachi's); the misses and bombs this stage (the second loop's 2, the no-miss and no-bomb achievements,
             the rank); the lives (and the next extra life); each stage's time against its best (a split, gold when
-            quicker); a line for the session (play time, games, credits, the best today)
+            quicker); a line for the session (play time, games, credits, the best today); the classic panels'
+            score graph (owner, 25-11-2026: the one thing the gadgets don't have; mock it up first): the score
+            through the game against the place chased, a line where each place was passed, the 1UP dotted line;
+            under SCORE, minding the room it takes from the stages and goals on narrow screens
+            The goals gadget showing the unearned achievements you're closest to (owner, 25-11-2026: "I really like
+            that idea"): today it is the same five each stage (NO MISS, NO BOMB, ALL 13 BEES, the next HITS goal,
+            SURVIVOR); instead, lines that change with the game, each with how far there is to go: SCORE 10,000,000
+            and the score still to make, FULL POWER once one weapon is MAX, BOMB HOARDER at 5 bombs, ONE CREDIT on a
+            first credit near 1-6, PERFECT LOOP while the first loop has no miss, QUEEN BEE while no bee is missed,
+            HIDDEN STAGE while LOOP 2 heads for 2-7, and so on; those already earned left out (or last, with the gold
+            dot), the stage's own goals kept while they can still be won
 - [x] **A rank gauge** (owner, 25-11-2026: a player's request; for the gadget-style panels above, the first of
       their gadgets): the game's rank as a gauge, how hard the game is making itself now (bullet speed, intervals).
       Done 25-11-2026 on today's right panel (widgets.c's draw_rank, under 1UP IN; the graph 8 shorter and the

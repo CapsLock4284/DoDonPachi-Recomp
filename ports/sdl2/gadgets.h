@@ -21,11 +21,31 @@
 
 #include <stdint.h>
 
-/* Both panels, 'width' units wide (WIDGET_W to WIDGET_MAX_W, as widgets_draw's) and WIDGET_H tall, at 'k' pixels a
-   unit: each 'width' x 'k' pixels a row, WIDGET_H x 'k' rows */
-void gadgets_draw(uint32_t *left, uint32_t *right, int width, int k);
+/* The places of a panel's picture drawn again (pixels), to give the graphics card only those */
+typedef struct
+{
+	int x, y, w, h;
+} gadgets_rect;
 
-/* The right panel as the menu's help: the chosen entry's name and what it does */
+#define GADGETS_RECTS 8
+
+typedef struct
+{
+	int count[2];                           /* left, right: 0 when nothing changed */
+	gadgets_rect rect[2][GADGETS_RECTS];
+} gadgets_dirty;
+
+/* Both panels, 'width' units wide (WIDGET_W to WIDGET_MAX_W, as widgets_draw's) and WIDGET_H tall, at 'k' pixels a
+   unit: each 'width' x 'k' pixels a row, WIDGET_H x 'k' rows. Only the gadgets whose contents changed are drawn
+   again over last frame's pictures (the same pictures each time: others are drawn whole); 'dirty' (or NULL) gets
+   their places */
+void gadgets_draw(uint32_t *left, uint32_t *right, int width, int k, gadgets_dirty *dirty);
+
+/* The next gadgets_draw draws both panels whole (their textures lost: a graphics device reset) */
+void gadgets_invalidate(void);
+
+/* The right panel as the menu's help: the chosen entry's name and what it does (drawn over gadgets_draw's: give the
+   whole panel to the graphics card then) */
 void gadgets_draw_help(uint32_t *pixels, int width, int k, const char *title, const char *text);
 
 #endif
