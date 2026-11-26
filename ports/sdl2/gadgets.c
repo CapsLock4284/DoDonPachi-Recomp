@@ -24,6 +24,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* The SCORE GRAPH gadget under SCORE (owner, 26-11-2026: to try; 0 takes it out, the right panel as before) */
+#ifndef SCORE_GRAPH
+#define SCORE_GRAPH 1
+#endif
+
 /* ---- the look ---- */
 
 #define BACK_TOP    0x0B1A36u
@@ -77,7 +82,7 @@ static bool chrome_pass;
    (gcanvas.hash: its drawing as a hash, nothing drawn), then, when the hash isn't last frame's, its place put back
    to the chrome and the gadget drawn there. A side is drawn whole (fresh false) when its chrome is new, its picture
    isn't the one drawn last time, the help or an achievement's box has been over it, or gadgets_invalidate */
-#define PARTS 5
+#define PARTS 6
 
 static struct
 {
@@ -873,6 +878,107 @@ static void draw_stages(gcanvas *c, const widgets_view *v, float x, float y, flo
 	}
 }
 
+/* the score graph, as the classic panel's: the score through the game against the place chased (its score the top,
+   dashed; the score itself the top once past the #1), the places passed (a dotted line at their score and one in
+   their colour where, with their number), where each stage began, and the next extra life's score (dotted) */
+static float graph_height(void)
+{
+	return HEADER + 2.0f * FRAME + 1.6f * PAD + 26.0f;
+}
+
+static void draw_graph(gcanvas *c, const widgets_view *v, float x, float y, float w, float h)
+{
+	static const uint32_t fill[2] = { ORANGE, 0xB8520Fu };
+	static const float fill_at[2] = { 0.0f, 1.0f };
+	const int count = v->graph_count;
+	uint32_t top = v->chasing >= 0 ? v->chase : v->score;
+	char note[24];
+	body b;
+	float gx, gy, gw, gh;
+
+	if (v->chasing >= 0)
+		snprintf(note, sizeof(note), "VS #%d", v->chasing + 1);
+	else
+		snprintf(note, sizeof(note), "PAST #1");
+	b = gadget(c, x, y, w, h, "SCORE GRAPH", v->on ? note : NULL);
+	if (chrome_pass)
+		return;
+	gx = b.x;
+	gy = b.y;
+	gw = b.w;
+	gh = b.h;
+	gc_box(c, gx, gy, gw, gh, 1.0f, WELL_EDGE, 255u);
+	gc_box(c, gx + 0.3f, gy + 0.3f, gw - 0.6f, gh - 0.6f, 0.8f, 0x050B1Au, 255u);
+	gx += 0.6f;
+	gy += 0.6f;
+	gw -= 1.2f;
+	gh -= 1.2f;
+	if (!v->on || count <= 0)
+		return;
+	for (int at = 0; at < count; at++)
+		if (v->graph[at] > top)
+			top = v->graph[at];
+	if (top == 0)
+		top = 1;
+	{
+		/* (a column a point while they fit, then the columns share them out: as many columns as there are pixels) */
+		const int columns = (int)(gw * c->k);
+		const int shown = count < columns ? count : columns;
+		const float step = gw / (float)(count < columns ? (count > 1 ? count : 1) : columns);
+		float last_y = -1.0f;
+
+		for (int column = 0; column < shown; column++)
+		{
+			const int at = count <= columns ? column : (int)((long)column * count / columns);
+			const float tall = (float)((double)v->graph[at] / (double)top) * gh, py = gy + gh - tall;
+
+			if (tall > 0.05f)
+				gc_gradient(c, gx + (float)column * step, py, step + 0.05f, tall, 0.0f, fill, fill_at, 2);
+			if (last_y >= 0.0f)
+				gc_line(c, gx + ((float)column - 0.5f) * step, last_y, gx + ((float)column + 0.5f) * step, py, 0.45f,
+					HEADER_TEXT, 255u);
+			last_y = py;
+		}
+		/* the stages' beginnings: marks along the bottom */
+		for (int mark = 0; mark < v->mark_count; mark++)
+		{
+			const int column = count <= columns ? v->marks[mark] : (int)((long)v->marks[mark] * columns / count);
+
+			gc_box(c, gx + (float)column * step, gy + gh - 2.0f, 0.3f, 2.0f, 0.0f, 0x6F86AEu, 255u);
+		}
+		for (int place = 4; place >= 0; place--)
+		{
+			const float py = gy + gh - (float)((double)v->table[place] / (double)top) * gh;
+
+			if (!v->table[place] || py < gy - 0.1f)
+				continue;
+			if (v->passed_at[place] >= 0)
+			{
+				const int column = count <= columns ? v->passed_at[place]
+					: (int)((long)v->passed_at[place] * columns / count);
+				const float px = gx + (float)column * step;
+				const char digit[2] = { (char)('1' + place), 0 };
+
+				for (float dx = gx; dx < gx + gw; dx += 2.0f)
+					gc_box(c, dx, py, 0.6f, 0.3f, 0.0f, places[place], 200u);
+				gc_box(c, px, gy, 0.35f, gh, 0.0f, places[place], 255u);
+				gc_text(c, GC_FONT_BOLD, 3.0f, px + 3.0f > gx + gw ? px - 2.4f : px + 0.8f,
+					gy + 3.0f + 3.2f * (float)(4 - place), digit, places[place], GC_LEFT);
+			}
+			else if (place == v->chasing)
+				for (float dx = gx; dx < gx + gw; dx += 3.0f)
+					gc_box(c, dx, py, 1.6f, 0.35f, 0.0f, places[place], 255u);
+		}
+		if (v->next_extend && v->next_extend > v->score && v->next_extend <= top)
+		{
+			const float py = gy + gh - (float)((double)v->next_extend / (double)top) * gh;
+
+			for (float dx = gx; dx < gx + gw; dx += 2.0f)
+				gc_box(c, dx, py, 0.6f, 0.3f, 0.0f, EXTEND, 255u);
+		}
+	}
+}
+
 static float last_height(void)
 {
 	return HEADER + 2.0f * FRAME + 1.6f * PAD + 8.0f;
@@ -1141,47 +1247,68 @@ static void part_goals(gcanvas *c, const widgets_view *v, float x, float y, floa
 static void draw_right(gcanvas *full, const widgets_view *v, float width)
 {
 	const bool wide = width >= 150.0f;
-	float heights[5] = { score_height(), stages_height(!wide), last_height(), input_height(), goals_height() };
-	float height, w, used, gap, y = MARGIN;
+	float heights[6], height, w, used = 0.0f, gap, y = MARGIN;
+	part_fn draws[6];
+	int count = 0, stages = 0, grows = -1;
 	bool two_lines, narrow;
 	gcanvas zoom, *c = &zoom;
 
 	if (chrome_pass)
 		background(full, width, (float)WIDGET_H);
+	heights[count] = score_height();
+	draws[count++] = draw_score;
+	if (SCORE_GRAPH)
+	{
+		grows = count;    /* (the graph takes the room left over) */
+		heights[count] = graph_height();
+		draws[count++] = draw_graph;
+	}
+	stages = count;
+	heights[count] = stages_height(!wide);
+	draws[count++] = part_stages;
+	heights[count] = last_height();
+	draws[count++] = draw_last;
+	heights[count] = input_height();
+	draws[count++] = draw_input;
+	heights[count] = goals_height();
+	draws[count++] = part_goals;
+	for (int at = 0; at < count; at++)
+		used += heights[at];
 	{
 		/* (zoomed narrower than 150 units, the stages take two lines each: zoomed again for those) */
 		const float full_width = width;
 
-		zoom = zoomed(full, heights[0] + heights[1] + heights[2] + heights[3] + heights[4] + 4.0f * GAP, &width,
-			&height);
+		zoom = zoomed(full, used + (float)(count - 1) * GAP, &width, &height);
 		if (wide && width < 150.0f)
 		{
 			width = full_width;
-			zoom = zoomed(full, heights[0] + stages_height(true) + heights[2] + heights[3] + heights[4] + 4.0f * GAP,
-				&width, &height);
+			zoom = zoomed(full, used - heights[stages] + stages_height(true) + (float)(count - 1) * GAP, &width,
+				&height);
 		}
 	}
 	w = width - 2.0f * MARGIN;
 	two_lines = width < 150.0f;
 	narrow = width < 140.0f;
-	heights[1] = stages_height(two_lines);
-	used = heights[0] + heights[1] + heights[2] + heights[3] + heights[4];
-	gap = (height - 2.0f * MARGIN - used) / 4.0f;
+	used -= heights[stages];
+	heights[stages] = stages_height(two_lines);
+	used += heights[stages];
+	gap = (height - 2.0f * MARGIN - used) / (float)(count - 1);
 	if (gap > 12.0f)
 		gap = 12.0f;
 	if (gap < GAP * 0.5f)
 		gap = GAP * 0.5f;
 	stages_two_lines = two_lines;
 	goals_narrow = narrow;
-	part(c, 0, draw_score, v, MARGIN, y, w, heights[0]);
-	y += heights[0] + gap;
-	part(c, 1, part_stages, v, MARGIN, y, w, heights[1]);
-	y += heights[1] + gap;
-	part(c, 2, draw_last, v, MARGIN, y, w, heights[2]);
-	y += heights[2] + gap;
-	part(c, 3, draw_input, v, MARGIN, y, w, heights[3]);
-	y += heights[3] + gap;
-	part(c, 4, part_goals, v, MARGIN, y, w, height - MARGIN - y);
+	for (int at = 0; at < count; at++)
+	{
+		/* (the room left over: to the graph, or to the goals at the foot) */
+		const float left = height - 2.0f * MARGIN - used - gap * (float)(count - 1);
+		const float tall = grows < 0 && at == count - 1 ? height - MARGIN - y
+			: heights[at] + (at == grows && left > 0.0f ? left : 0.0f);
+
+		part(c, at, draws[at], v, MARGIN, y, w, tall);
+		y += tall + gap;
+	}
 	if (v->toast_frames > 0 && !chrome_pass)
 		draw_toast(c, v, width);
 }

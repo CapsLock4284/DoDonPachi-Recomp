@@ -346,7 +346,8 @@
             DonPachi's); the misses and bombs this stage (the second loop's 2, the no-miss and no-bomb achievements,
             the rank); the lives (and the next extra life); each stage's time against its best (a split, gold when
             quicker); a line for the session (play time, games, credits, the best today); the classic panels'
-            score graph (owner, 25-11-2026: the one thing the gadgets don't have; mock it up first): the score
+            score graph (owner, 25-11-2026: the one thing the gadgets don't have; DONE 26-11-2026 to try, the
+            owner's "easily removable": SCORE_GRAPH 0 in gadgets.c takes it out, the panel exactly as before): the score
             through the game against the place chased, a line where each place was passed, the 1UP dotted line;
             under SCORE, minding the room it takes from the stages and goals on narrow screens
             DONE (26-11-2026): the goals gadget showing the unearned achievements you're closest to (owner,

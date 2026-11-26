@@ -6,6 +6,10 @@ notes). The release zip carries this file as `CHANGES.txt`.
 
 ## Unreleased
 
+### Added
+- **SCORE GRAPH on the gadget panels** (the one thing the classic panels had that the gadgets didn't): under SCORE,
+  your score through the game against the high score place you're chasing (dashed at the top), a line in each
+  place's colour where you passed it, marks where each stage began, and the next extra life's score (dotted).
 ### Changed
 - **The gadget panels' GOALS show the achievements you're closest to** (the owner's idea): instead of the same five
   every stage, the five you haven't earned yet that this game is nearest to, each with how far there is to go

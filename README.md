@@ -263,7 +263,9 @@ built into the program). Left: 1P SHIP (the style, shot, laser, bombs); RANK (a 
 in big digits, the chain's time left as a bar, and the hits made with the shot, the laser and bombs; the best
 chain of the game); BOARD (the frames a second, the slowdown, the bullets graph); BEES (the game's own bee sprite,
 from your ROM set: grey until taken, gold-framed when taken, a red cross once the stage's chance is gone). Right:
-SCORE (the score in big digits, the place chased, 1UP IN and the second loop's line); STAGES (each stage against its
+SCORE (the score in big digits, the place chased, 1UP IN and the second loop's line); SCORE GRAPH (as the classic
+panel's: the score through the game against the place chased, the places passed, where each stage began and the next
+extra life); STAGES (each stage against its
 best, as above); LAST SCORED (the last points scored and the chain they came at); INPUT (the stick and buttons);
 GOALS (the five achievements you're nearest to and haven't earned yet, each with where it stands, as "SCORE 10M
 2,340,000 TO GO", "100 HITS BEST 49" or "CLEAR 1-6 AT 1-2", and its box filling as it nears: ticked when met or held

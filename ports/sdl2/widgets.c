@@ -242,8 +242,8 @@ static void stages_save(void)
 
 /* ---- the run: the stage being played, the graph, the high scores chased ---- */
 
-#define POINTS  512             /* the graph's points kept (two become one when it is full) */
-#define MARKS   32
+#define POINTS  WIDGET_GRAPH_POINTS    /* the graph's points kept (two become one when it is full) */
+#define MARKS   WIDGET_GRAPH_MARKS
 
 static struct
 {
@@ -1463,6 +1463,12 @@ void widgets_view_now(widgets_view *v)
 	v->score = run.on ? score_of(player) : 0u;
 	v->chasing = run.chasing;
 	v->chase = run.chasing >= 0 ? run.table[run.chasing] : 0u;
+	memcpy(v->table, run.table, sizeof(v->table));
+	memcpy(v->passed_at, run.passed_at, sizeof(v->passed_at));
+	v->graph_count = run.count;
+	memcpy(v->graph, run.points, sizeof(uint32_t) * (size_t)run.count);
+	v->mark_count = run.mark_count;
+	memcpy(v->marks, run.stage_marks, sizeof(v->marks));
 	v->next_extend = run.on ? next_extend(player) : 0u;
 	loop2_line(v->loop2_title, sizeof(v->loop2_title), v->loop2_text, sizeof(v->loop2_text), &v->loop2_colour);
 	v->loop_shown = run.on && run.area >= 0 ? run.area / STAGES : run.on && run.done[STAGES] ? 1 : 0;

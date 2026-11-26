@@ -82,6 +82,8 @@ void widgets_draw(uint32_t *left, uint32_t *right, int width);
 /* ---- what the gadget panels show (gadgets.h): the panels' run, read as it is now ---- */
 
 #define WIDGET_HISTORY 288      /* the bullets graph's frames: 5 seconds */
+#define WIDGET_GRAPH_POINTS 512 /* the score graph's points (widgets.c's POINTS) */
+#define WIDGET_GRAPH_MARKS  32
 
 enum { WIDGET_STAGE_TODO, WIDGET_STAGE_LIVE, WIDGET_STAGE_DONE };
 
@@ -120,6 +122,13 @@ typedef struct
 	int chasing;                /* the high score table's place, 0 (#1) ... 4 (#5), or -1 all passed */
 	uint32_t chase;
 	uint32_t next_extend;       /* the score of the next extra life, or 0: none left */
+	/* the score graph (the gadgets' SCORE GRAPH): the score through the game, oldest first (as the game counts it),
+	   where each stage began, and the high score table as the game began, with where each place was passed */
+	uint32_t table[5];
+	int passed_at[5];           /* -1: not passed */
+	int graph_count;
+	uint32_t graph[WIDGET_GRAPH_POINTS];
+	int marks[WIDGET_GRAPH_MARKS], mark_count;
 	char loop2_title[12], loop2_text[24];
 	uint32_t loop2_colour;
 	/* the loop's stages */
