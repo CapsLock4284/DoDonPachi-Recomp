@@ -2,7 +2,8 @@
 
 ## Next
 
-- [ ] **The picture and the slowdown against the real MAME** (owner, 23-11-2026: first on the list): a Lua script for
+- [ ] **The picture and the slowdown against the real MAME** (owner, 23-11-2026: first on the list; the slowdown part
+      parked 26-11-2026, see its last item): a Lua script for
       the owner's own MAME (`mame ddonpach -autoboot_script ...`) that plays tests/player.h's inputs by the VBLANK,
       holds P1's time without harm at $80 from VBLANK 2,500 as cref_timed's INVINCIBLE=1 does, saves the picture at
       chosen frames through both loops (and 2-7) and logs the frames MAME's own machine slows down on. The port's
@@ -96,6 +97,12 @@
       - [ ] VBLANK 4,149: how near its time the frame came in the port, what ran in it, and what MAME's machine
             spends there that the board model doesn't (wait states, the VBLANK's place in the frame, the YMZ280B's
             interrupt); fixed in Cave68kSDK if so, then checked again to the end
+      - Parked (owner, 26-11-2026, as DonPachi Recomp's): the parting found so far is MAME's own (its YMZ280B's
+        interrupt held to its sound updates), and what a difference of a few cycles changes is which frames slow
+        down in a given game, not the game, its scoring, picture or sound, or how much slowdown there is.
+        DonPachi Recomp found the same kind of drift from the boot on (its random numbers, counted on the
+        frame's wait, a round apart): see its TODO. It matters for MAME input recordings played on the port;
+        taken up again with those, if ever
 
 ## Translating the program (step 4 of the SDK plan)
 
