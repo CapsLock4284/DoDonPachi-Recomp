@@ -387,5 +387,5 @@ pictures the same, from 1-1 through both loops to 2-7 and Hibachi.
 BSD-3-Clause: see `LICENSE`. The board code is Cave68kSDK's, the translator is arcade-decomp's; each says
 what it follows (MAME's drivers and devices, BSD-3-Clause). The window port is DonPachi Recomp's (BSD-3-Clause); the
 icon is the program's own (`tools/make_icon.py`). The gadget panels' font is Chakra Petch (SIL Open Font License
-1.1, Copyright 2018 The Chakra Petch Project Authors: `ports/sdl2/fonts/OFL-ChakraPetch.txt`), its outlines built
-into the program by `tools/make_gadget_font.py`.
+1.1, Copyright 2018 The Chakra Petch Project Authors: `runtime/port/fonts/OFL-ChakraPetch.txt`), its outlines built
+into the program by Cave68kSDK's `tools/make_gadget_font.py`.
